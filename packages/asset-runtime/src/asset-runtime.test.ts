@@ -14,11 +14,13 @@ import {
 } from "../../contracts/src";
 import {
   canonicalizeJson,
+  collectManifestAssets,
   loadResonanceDataset,
   manifestIdentityPayload,
   sha256Hex,
   validateResonanceManifest,
   isRuntimeCompatible,
+  type VerifiedAssetProgressEvent,
 } from "./index";
 
 const encoder = new TextEncoder();
@@ -28,7 +30,7 @@ function jsonBytes(value: unknown): Uint8Array {
   return encoder.encode(JSON.stringify(value));
 }
 
-function modesBytes(): Uint8Array {
+function modesBytes(textureLayer = 0): Uint8Array {
   const bytes = new Uint8Array(
     MODES_BINARY_V1.headerBytes + MODES_BINARY_V1.recordBytes,
   );
@@ -40,7 +42,7 @@ function modesBytes(): Uint8Array {
   bytes.set(encoder.encode("mode-001"), 16);
   const base = MODES_BINARY_V1.headerBytes;
   view.setUint32(base + 24, 0, true);
-  view.setUint32(base + 28, 0, true);
+  view.setUint32(base + 28, textureLayer, true);
   view.setFloat64(base + 32, 220, true);
   view.setFloat64(base + 40, 220 * Math.PI * 2, true);
   view.setFloat64(base + 48, 0.01, true);
@@ -54,8 +56,7 @@ function modesBytes(): Uint8Array {
 
 function responseBytes(): Uint8Array {
   const bytes = new Uint8Array(
-    RESPONSE_BINARY_V1.headerBytes +
-      RESPONSE_BINARY_V1.recordBytes * 2,
+    RESPONSE_BINARY_V1.headerBytes + RESPONSE_BINARY_V1.recordBytes * 2,
   );
   bytes.set(encoder.encode(RESPONSE_BINARY_V1.magic), 0);
   const view = new DataView(bytes.buffer);
@@ -84,7 +85,7 @@ async function reference(
   };
 }
 
-async function fixture() {
+async function fixture(options: { readonly textureLayer?: number } = {}) {
   const assets = new Map<string, Uint8Array>();
   assets.set(
     "plate-spec.json",
@@ -93,7 +94,7 @@ async function fixture() {
       plateId: "test-plate",
     }),
   );
-  assets.set("modes.bin", modesBytes());
+  assets.set("modes.bin", modesBytes(options.textureLayer));
   assets.set("response.bin", responseBytes());
   assets.set("provenance.json", jsonBytes({ solver: "test" }));
   assets.set("convergence-report.json", jsonBytes({ passed: true }));
@@ -130,9 +131,7 @@ async function fixture() {
     initialFrequencyHz: 45,
     durationSeconds: 1,
     expectedSettledVolume: target,
-    keyframes: [
-      { sequence: 0, atSeconds: 0, frequencyHz: 45 },
-    ],
+    keyframes: [{ sequence: 0, atSeconds: 0, frequencyHz: 45 }],
   }));
   assets.set(
     "provenance.json",
@@ -355,14 +354,28 @@ async function fixture() {
   return { assets, manifest };
 }
 
-function fetchFrom(assets: ReadonlyMap<string, Uint8Array>) {
-  return async (input: RequestInfo | URL) => {
+interface RecordedFetch {
+  readonly url: URL;
+  readonly cache: RequestCache | undefined;
+  readonly credentials: RequestCredentials | undefined;
+  readonly signal: AbortSignal | null | undefined;
+}
+
+function fetchFrom(
+  assets: ReadonlyMap<string, Uint8Array>,
+  requests: RecordedFetch[] = [],
+) {
+  return async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = new URL(String(input));
+    requests.push({
+      url,
+      cache: init?.cache,
+      credentials: init?.credentials,
+      signal: init?.signal,
+    });
     const path = url.pathname.replace("/runtime/", "");
     const bytes = assets.get(path);
-    const body = bytes
-      ? Uint8Array.from(bytes).buffer
-      : "missing";
+    const body = bytes ? Uint8Array.from(bytes).buffer : "missing";
     return bytes
       ? new Response(body, { status: 200 })
       : new Response(body, { status: 404 });
@@ -388,23 +401,150 @@ describe("asset runtime", () => {
     expect(result.diagnostics.at(-1)?.code).toBe("DATASET_READY");
   });
 
+  it("aborts an in-flight manifest request with its owning runtime", async () => {
+    const controller = new AbortController();
+    let notifyStarted: (() => void) | undefined;
+    const started = new Promise<void>((resolve) => {
+      notifyStarted = resolve;
+    });
+    const pending = loadResonanceDataset({
+      manifestUrl: `${BASE}manifest.json`,
+      signal: controller.signal,
+      fetch: (async (_input, init) => {
+        notifyStarted?.();
+        return await new Promise<Response>((_resolve, reject) => {
+          const signal = init?.signal;
+          if (signal?.aborted) {
+            reject(signal.reason);
+            return;
+          }
+          signal?.addEventListener(
+            "abort",
+            () => reject(signal.reason),
+            { once: true },
+          );
+        });
+      }) as typeof fetch,
+    });
+
+    await started;
+    controller.abort();
+    await expect(pending).rejects.toMatchObject({ name: "AbortError" });
+  });
+
+  it("uses revalidated manifest and immutable hash-keyed asset requests while reporting verified priority assets first", async () => {
+    const { assets, manifest } = await fixture();
+    const requests: RecordedFetch[] = [];
+    const progress: VerifiedAssetProgressEvent[] = [];
+    const result = await loadResonanceDataset({
+      manifestUrl: `${BASE}manifest.json`,
+      expectedDatasetId: manifest.datasetId,
+      fetch: fetchFrom(assets, requests) as typeof fetch,
+      onAssetVerified(event) {
+        progress.push(event);
+        event.bytes[0] ^= 0xff;
+        if (event.path === "response.bin") {
+          return Promise.reject(
+            new Error("async observer failures must be isolated"),
+          );
+        }
+      },
+    });
+
+    expect(result.status).toBe("ready");
+    expect(requests[0]?.url.href).toBe(`${BASE}manifest.json`);
+    expect(requests[0]?.cache).toBe("no-cache");
+    expect(requests[0]?.credentials).toBe("same-origin");
+    expect(requests.every(({ signal }) => signal === undefined)).toBe(true);
+    expect(
+      requests
+        .slice(1, 4)
+        .map(({ url }) => url.pathname.replace("/runtime/", "")),
+    ).toEqual(["modes.bin", "response.bin", "textures/sand-density.ktx2"]);
+    expect(
+      requests.slice(1).every(({ cache }) => cache === "force-cache"),
+    ).toBe(true);
+    expect(
+      requests
+        .slice(1)
+        .every(({ url }) =>
+          /^[a-f0-9]{64}$/.test(url.searchParams.get("sha256") ?? ""),
+        ),
+    ).toBe(true);
+
+    const expectedPaths = collectManifestAssets(manifest)
+      .map((asset) => asset.path)
+      .sort();
+    expect(progress.slice(0, 3).map(({ path }) => path)).toEqual([
+      "modes.bin",
+      "response.bin",
+      "textures/sand-density.ktx2",
+    ]);
+    expect(progress.map(({ path }) => path).sort()).toEqual(expectedPaths);
+    expect(progress.map(({ verifiedCount }) => verifiedCount)).toEqual(
+      Array.from({ length: progress.length }, (_, index) => index + 1),
+    );
+    expect(
+      progress.every(
+        (event) =>
+          event.schemaVersion === "mandelhowl.asset-progress.v1" &&
+          event.datasetReady === false &&
+          event.datasetId === manifest.datasetId &&
+          event.totalCount === expectedPaths.length,
+      ),
+    ).toBe(true);
+    const modesProgress = progress.find(({ path }) => path === "modes.bin");
+    const sandProgress = progress.find(
+      ({ path }) => path === "textures/sand-density.ktx2",
+    );
+    expect(modesProgress?.textureKind).toBeNull();
+    expect(modesProgress?.texture).toBeNull();
+    expect(sandProgress?.textureKind).toBe("sand-density");
+    expect(sandProgress?.texture).toEqual({
+      kind: "sand-density",
+      modeIds: ["mode-001"],
+      widthPx: 128,
+      heightPx: 128,
+      layers: 1,
+      uvOrigin: "negative-x-negative-y",
+    });
+    expect(Object.isFrozen(sandProgress?.texture)).toBe(true);
+    expect(Object.isFrozen(sandProgress?.texture?.modeIds)).toBe(true);
+    expect(new URL(sandProgress!.url).searchParams.get("sha256")).toBe(
+      sandProgress?.sha256,
+    );
+    expect(sandProgress?.bytes).toBeInstanceOf(Uint8Array);
+    expect(sandProgress?.bytes.byteLength).toBe(sandProgress?.byteLength);
+  });
+
   it("fails closed with confirmed evidence when a fetched asset is tampered", async () => {
     const { assets } = await fixture();
     const tampered = new Map(assets);
     const modes = new Uint8Array(tampered.get("modes.bin")!);
     modes[modes.length - 1] ^= 1;
     tampered.set("modes.bin", modes);
+    const verifiedPaths: string[] = [];
     const result = await loadResonanceDataset({
       manifestUrl: `${BASE}manifest.json`,
       fetch: fetchFrom(tampered) as typeof fetch,
+      onAssetVerified(event) {
+        verifiedPaths.push(event.path);
+      },
     });
 
     expect(result.status).toBe("failed");
-    expect(result.diagnostics.some(
-      (diagnostic) =>
-        diagnostic.code === "DATASET_ASSET_HASH_MISMATCH" &&
-        diagnostic.evidenceState === "confirmed",
-    )).toBe(true);
+    expect(
+      result.diagnostics.some(
+        (diagnostic) =>
+          diagnostic.code === "DATASET_ASSET_HASH_MISMATCH" &&
+          diagnostic.evidenceState === "confirmed",
+      ),
+    ).toBe(true);
+    expect(verifiedPaths).not.toContain("modes.bin");
+    expect(verifiedPaths.slice(0, 2)).toEqual([
+      "response.bin",
+      "textures/sand-density.ktx2",
+    ]);
   });
 
   it("rejects a valid dataset when it is not the canonical release pin", async () => {
@@ -438,70 +578,113 @@ describe("asset runtime", () => {
     };
     const result = validateResonanceManifest(invalid);
     expect(result.manifest).toBeNull();
-    expect(result.diagnostics[0]?.code).toBe(
-      "DATASET_ASSET_PATH_UNSAFE",
-    );
+    expect(result.diagnostics[0]?.code).toBe("DATASET_ASSET_PATH_UNSAFE");
   });
 
-  it(
-    "loads the pinned production thin-plate release with all 48 modes",
-    async () => {
-      const datasetRoot = resolve(
-        process.cwd(),
-        GENERATED_DATASET_RELEASE_SPEC.sourceDirectory,
-      );
-      const fileFetch = async (input: RequestInfo | URL) => {
-        const url = new URL(String(input));
-        const prefix = "/runtime/";
-        if (!url.pathname.startsWith(prefix)) {
-          return new Response("outside dataset", { status: 404 });
-        }
-        const relative = url.pathname.slice(prefix.length);
-        if (
-          relative === "" ||
-          relative.includes("\\") ||
-          relative.split("/").includes("..")
-        ) {
-          return new Response("unsafe", { status: 400 });
-        }
-        try {
-          const bytes = await readFile(resolve(datasetRoot, relative));
-          return new Response(Uint8Array.from(bytes).buffer, {
-            status: 200,
-          });
-        } catch {
-          return new Response("missing", { status: 404 });
-        }
-      };
-      const result = await loadResonanceDataset({
-        manifestUrl: `${BASE}manifest.json`,
-        expectedDatasetId: GENERATED_DATASET_RELEASE_SPEC.datasetId,
-        fetch: fileFetch as typeof fetch,
-      });
+  it("rejects duplicate texture kinds, mode ids, and mismatched layer counts", async () => {
+    const { manifest } = await fixture();
+    const first = manifest.files.textures[0]!;
+    const duplicateKind = validateResonanceManifest({
+      ...manifest,
+      files: {
+        ...manifest.files,
+        textures: [
+          ...manifest.files.textures,
+          { ...first, path: "textures/duplicate.ktx2" },
+        ],
+      },
+    });
+    expect(duplicateKind.manifest).toBeNull();
 
-      expect(result.status).toBe("ready");
-      if (result.status !== "ready") {
-        throw new Error(
-          result.diagnostics
-            .map((diagnostic) => diagnostic.code)
-            .join(","),
-        );
-      }
-      expect(result.dataset.modes).toHaveLength(48);
-      expect(isRuntimeCompatible(result.manifest, "0.1.0")).toBe(true);
-      expect(isRuntimeCompatible(result.manifest, "0.0.9")).toBe(false);
-      expect(isRuntimeCompatible(result.manifest, "1.0.0")).toBe(false);
-      expect(
-        `sha256:${result.manifest.files.modes.sha256}`,
-      ).toBe(GENERATED_DATASET_RELEASE_SPEC.modalModelId);
-      const coverage = JSON.parse(
-        new TextDecoder().decode(
-          result.assets.get(result.manifest.files.coverageReport.path),
+    const duplicateModeId = validateResonanceManifest({
+      ...manifest,
+      files: {
+        ...manifest.files,
+        textures: manifest.files.textures.map((texture, index) =>
+          index === 0
+            ? {
+                ...texture,
+                layers: 2,
+                modeIds: ["mode-001", "mode-001"],
+              }
+            : texture,
         ),
-      ) as { outputs?: unknown[]; replayVerified?: boolean };
-      expect(coverage.outputs).toHaveLength(101);
-      expect(coverage.replayVerified).toBe(true);
-    },
-    30_000,
-  );
+      },
+    });
+    expect(duplicateModeId.manifest).toBeNull();
+  });
+
+  it("fails closed when decoded mode texture layers do not match every atlas", async () => {
+    const { assets, manifest } = await fixture({ textureLayer: 1 });
+    const result = await loadResonanceDataset({
+      manifestUrl: `${BASE}manifest.json`,
+      expectedDatasetId: manifest.datasetId,
+      fetch: fetchFrom(assets) as typeof fetch,
+    });
+
+    expect(result.status).toBe("failed");
+    expect(
+      result.diagnostics.some(
+        ({ code, messageKey }) =>
+          code === "DATASET_BINARY_INVALID" &&
+          messageKey === "dataset.binary.invalid",
+      ),
+    ).toBe(true);
+  });
+
+  it("loads the pinned production thin-plate release with all 48 modes", async () => {
+    const datasetRoot = resolve(
+      process.cwd(),
+      GENERATED_DATASET_RELEASE_SPEC.sourceDirectory,
+    );
+    const fileFetch = async (input: RequestInfo | URL) => {
+      const url = new URL(String(input));
+      const prefix = "/runtime/";
+      if (!url.pathname.startsWith(prefix)) {
+        return new Response("outside dataset", { status: 404 });
+      }
+      const relative = url.pathname.slice(prefix.length);
+      if (
+        relative === "" ||
+        relative.includes("\\") ||
+        relative.split("/").includes("..")
+      ) {
+        return new Response("unsafe", { status: 400 });
+      }
+      try {
+        const bytes = await readFile(resolve(datasetRoot, relative));
+        return new Response(Uint8Array.from(bytes).buffer, {
+          status: 200,
+        });
+      } catch {
+        return new Response("missing", { status: 404 });
+      }
+    };
+    const result = await loadResonanceDataset({
+      manifestUrl: `${BASE}manifest.json`,
+      expectedDatasetId: GENERATED_DATASET_RELEASE_SPEC.datasetId,
+      fetch: fileFetch as typeof fetch,
+    });
+
+    expect(result.status).toBe("ready");
+    if (result.status !== "ready") {
+      throw new Error(
+        result.diagnostics.map((diagnostic) => diagnostic.code).join(","),
+      );
+    }
+    expect(result.dataset.modes).toHaveLength(48);
+    expect(isRuntimeCompatible(result.manifest, "0.1.0")).toBe(true);
+    expect(isRuntimeCompatible(result.manifest, "0.0.9")).toBe(false);
+    expect(isRuntimeCompatible(result.manifest, "1.0.0")).toBe(false);
+    expect(`sha256:${result.manifest.files.modes.sha256}`).toBe(
+      GENERATED_DATASET_RELEASE_SPEC.modalModelId,
+    );
+    const coverage = JSON.parse(
+      new TextDecoder().decode(
+        result.assets.get(result.manifest.files.coverageReport.path),
+      ),
+    ) as { outputs?: unknown[]; replayVerified?: boolean };
+    expect(coverage.outputs).toHaveLength(101);
+    expect(coverage.replayVerified).toBe(true);
+  }, 30_000);
 });

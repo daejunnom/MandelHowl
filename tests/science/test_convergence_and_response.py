@@ -44,8 +44,28 @@ class ConvergenceAndResponseTests(unittest.TestCase):
                 (dataset / "provenance.json").read_text(encoding="utf-8")
             )
             divisor = provenance["response"]["normalizationDivisor"]
-            for sample_index in (0, 51, 177, 311, 511):
-                frequency, stored_real, stored_imaginary = response[sample_index]
+            metadata = provenance["response"]
+            self.assertEqual(metadata["sampleCount"], len(response))
+            self.assertEqual(metadata["spacing"], "logarithmic")
+            self.assertAlmostEqual(
+                response[0][0], metadata["minimumFrequencyHz"], places=12
+            )
+            self.assertAlmostEqual(
+                response[-1][0], metadata["maximumFrequencyHz"], places=12
+            )
+            logarithmic_steps = [
+                math.log(response[index + 1][0] / response[index][0])
+                for index in range(len(response) - 1)
+            ]
+            self.assertLess(
+                max(logarithmic_steps) - min(logarithmic_steps),
+                1e-12,
+            )
+            for sample_index, (
+                frequency,
+                stored_real,
+                stored_imaginary,
+            ) in enumerate(response):
                 omega = 2 * math.pi * frequency
                 value = 0j
                 for mode in modes:
@@ -63,8 +83,18 @@ class ConvergenceAndResponseTests(unittest.TestCase):
                     )
                     value += numerator / denominator
                 value /= divisor
-                self.assertAlmostEqual(value.real, stored_real, places=12)
-                self.assertAlmostEqual(value.imag, stored_imaginary, places=12)
+                self.assertAlmostEqual(
+                    value.real,
+                    stored_real,
+                    places=12,
+                    msg=f"real response sample {sample_index}",
+                )
+                self.assertAlmostEqual(
+                    value.imag,
+                    stored_imaginary,
+                    places=12,
+                    msg=f"imaginary response sample {sample_index}",
+                )
 
 
 if __name__ == "__main__":

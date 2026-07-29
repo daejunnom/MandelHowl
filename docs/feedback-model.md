@@ -17,6 +17,13 @@ The state is deterministic for a fixed dataset and gesture trace. Frame
 presentation rate never changes simulation step size, long paused gaps are
 bounded, and no random forcing is used.
 
+The verified runtime dataset also retains the baked `response-v1` complex
+transfer curve and exposes deterministic logarithmic-frequency interpolation.
+That curve is one normalized aggregate across all modes, not a per-mode state
+table. Consequently it is suitable for response-curve display and diagnostics,
+but it does not replace the mode-specific capture and residual-energy weights
+in this v1 feedback integrator.
+
 ## Regimes
 
 - `decaying`: loop margin is below the narrow critical band and residual mode

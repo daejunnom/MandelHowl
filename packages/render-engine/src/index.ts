@@ -3,12 +3,14 @@ export {
   type PlatePainterOptions,
   type PlateRenderSnapshot,
 } from "./plate-painter";
+export { createPlateRenderer } from "./plate-renderer";
 export {
-  createPlateRenderer,
-} from "./plate-renderer";
-export {
+  expectedPlateTextureChannels,
   frameFromSnapshot,
+  ModalBlendTracker,
+  RenderFrameTracker,
   selectRenderQuality,
+  type ModalBlendSelection,
   type PlateRenderer,
   type PlateRendererKind,
   type PlateRendererOptions,

@@ -7,7 +7,9 @@ import {
   type DecodedKtx2Array,
 } from "./ktx2-texture";
 import {
-  frameFromSnapshot,
+  expectedPlateTextureChannels,
+  ModalBlendTracker,
+  RenderFrameTracker,
   selectRenderQuality,
   type PlateRenderer,
   type PlateRendererOptions,
@@ -17,17 +19,49 @@ import {
   type RenderQualityTier,
 } from "./render-types";
 
+const WEBGL_MODAL_CAPACITY = 4;
+
 const VERTEX_SHADER = `#version 300 es
+precision highp float;
+precision highp sampler2DArray;
+
 in vec2 aPosition;
 out vec2 vUv;
 
+uniform sampler2DArray uDisplacementAtlas;
+uniform bool uHasDisplacementAtlas;
+uniform float uDisplacementLayers[4];
+uniform float uDisplacementWeights[4];
+uniform float uMotion;
+
 void main() {
   vUv = aPosition * 0.5 + 0.5;
-  gl_Position = vec4(aPosition, 0.0, 1.0);
+  float displacement = 0.0;
+  if (uHasDisplacementAtlas) {
+    for (int index = 0; index < 4; index += 1) {
+      float layer = uDisplacementLayers[index];
+      if (layer >= 0.0) {
+        float basis = texture(
+          uDisplacementAtlas,
+          vec3(vUv, layer)
+        ).r * 2.0 - 1.0;
+        displacement += basis * uDisplacementWeights[index];
+      }
+    }
+  }
+
+  // The baked signed basis now changes actual tessellated plate vertices.
+  // A small radial strain plus projected lift keeps the deformation legible
+  // without allowing the mesh to leave its circular fixture.
+  float deformation = displacement * uMotion;
+  vec2 warped = aPosition * (1.0 + deformation * 0.022);
+  warped.y += deformation * 0.032;
+  gl_Position = vec4(warped, deformation * 0.045, 1.0);
 }`;
 
 const FRAGMENT_SHADER = `#version 300 es
 precision highp float;
+precision highp int;
 precision highp sampler2DArray;
 
 in vec2 vUv;
@@ -41,17 +75,36 @@ uniform bool uHasSandAtlas;
 uniform bool uHasDisplacementAtlas;
 uniform bool uHasNormalAtlas;
 uniform bool uHasNodalAtlas;
-uniform float uSandLayer;
-uniform float uDisplacementLayer;
-uniform float uNormalLayer;
-uniform float uNodalLayer;
+uniform float uSandLayers[4];
+uniform float uDisplacementLayers[4];
+uniform float uNormalLayers[4];
+uniform float uNodalLayers[4];
+uniform float uSandWeights[4];
+uniform float uDisplacementWeights[4];
+uniform float uModalPresence;
 uniform float uEnvelope;
-uniform float uPhase;
 uniform bool uHasAnalyticalShape;
 uniform float uRadialOrder;
 uniform float uAngularOrder;
 uniform float uRegime;
 uniform float uMotion;
+
+uint grainHash(uvec2 cell, uint salt) {
+  uint value =
+    cell.x * 0x8da6b343u ^
+    cell.y * 0xd8163841u ^
+    salt;
+  value ^= value >> 16u;
+  value *= 0x7feb352du;
+  value ^= value >> 15u;
+  value *= 0x846ca68bu;
+  value ^= value >> 16u;
+  return value;
+}
+
+float grainNoise(uvec2 cell, uint salt) {
+  return float(grainHash(cell, salt) & 0x00ffffffu) / 16777215.0;
+}
 
 void main() {
   vec2 centered = (vUv - 0.5) * 2.0;
@@ -60,47 +113,105 @@ void main() {
     discard;
   }
 
-  float edge = smoothstep(1.0, 0.88, radius);
+  float edge = 1.0 - smoothstep(0.88, 1.0, radius);
   float brushed = sin((vUv.y + sin(vUv.x * 31.0) * 0.004) * 980.0) * 0.018;
   vec2 canonicalUv = vUv;
-  float displacement = uHasDisplacementAtlas
-    ? texture(uDisplacementAtlas, vec3(canonicalUv, uDisplacementLayer)).r * 2.0 - 1.0
-    : 0.0;
-  vec2 normalXY = uHasNormalAtlas
-    ? texture(uNormalAtlas, vec3(canonicalUv, uNormalLayer)).rg * 2.0 - 1.0
-    : centered * 0.2;
+  float displacement = 0.0;
+  vec2 normalXY = vec2(0.0);
+  for (int index = 0; index < 4; index += 1) {
+    float displacementLayer = uDisplacementLayers[index];
+    if (uHasDisplacementAtlas && displacementLayer >= 0.0) {
+      float basis = texture(
+        uDisplacementAtlas,
+        vec3(canonicalUv, displacementLayer)
+      ).r * 2.0 - 1.0;
+      displacement += basis * uDisplacementWeights[index];
+    }
+    float normalLayer = uNormalLayers[index];
+    if (uHasNormalAtlas && normalLayer >= 0.0) {
+      float weight = uDisplacementWeights[index];
+      normalXY += (
+        texture(uNormalAtlas, vec3(canonicalUv, normalLayer)).rg *
+        2.0 - 1.0
+      ) * weight;
+    }
+  }
+  if (!uHasNormalAtlas) {
+    normalXY = centered * 0.2;
+  }
+  float normalLength = length(normalXY);
+  if (normalLength > 0.94) {
+    normalXY *= 0.94 / normalLength;
+  }
   float normalZ = sqrt(max(0.01, 1.0 - dot(normalXY, normalXY)));
   vec3 surfaceNormal = normalize(vec3(normalXY, normalZ));
   float light = 0.62 + dot(normalize(vec3(-0.45, -0.55, 0.8)), surfaceNormal) * 0.25;
   vec3 metal = mix(vec3(0.19, 0.22, 0.21), vec3(0.78, 0.79, 0.74), clamp(light + brushed, 0.0, 1.0));
 
-  float pulse = sin(uPhase + radius * 15.0) * uEnvelope * 0.018 * uMotion *
-    (0.35 + abs(displacement) * 0.65);
-  float density;
+  float density = 0.0;
   if (uHasSandAtlas) {
     // KTXorientation=ru and the plate contract both use negative-y at v=0.
-    vec2 textureUv = vec2(vUv.x, vUv.y + pulse);
-    density = texture(uSandAtlas, vec3(textureUv, uSandLayer)).r;
+    for (int index = 0; index < 4; index += 1) {
+      float layer = uSandLayers[index];
+      if (layer >= 0.0) {
+        density += texture(
+          uSandAtlas,
+          vec3(canonicalUv, layer)
+        ).r * uSandWeights[index];
+      }
+    }
   } else {
     if (uHasAnalyticalShape) {
       float angle = atan(centered.y, centered.x);
       float angular = uAngularOrder < 0.5
         ? 1.0
         : cos(angle * uAngularOrder);
-      float shape = sin(radius * 3.14159265 * uRadialOrder + uPhase * 0.12) *
+      float shape = sin(
+        radius * 3.14159265 * uRadialOrder +
+        displacement * 0.12
+      ) *
         angular;
       density = 1.0 - smoothstep(0.035, 0.13, abs(shape));
-    } else {
-      density = 0.0;
     }
   }
   if (uHasNodalAtlas) {
-    float nodal = texture(uNodalAtlas, vec3(canonicalUv, uNodalLayer)).r;
-    density = max(density, nodal * (0.45 + uEnvelope * 0.45));
+    float nodalDensity = 0.0;
+    for (int index = 0; index < 4; index += 1) {
+      float layer = uNodalLayers[index];
+      if (layer >= 0.0) {
+        nodalDensity += texture(
+          uNodalAtlas,
+          vec3(canonicalUv, layer)
+        ).r * uSandWeights[index];
+      }
+    }
+    density = max(density, nodalDensity * (0.48 + uModalPresence * 0.42));
   }
 
   vec3 sand = vec3(0.91, 0.79, 0.50);
-  float sandMix = density * (0.34 + uEnvelope * 0.62);
+  // Stable screen-space grain cells turn the baked target density into actual
+  // separated particles. Density controls occupancy rather than only colour,
+  // so even a saturated nodal band retains visible gaps between grains.
+  vec2 grainCoordinate = gl_FragCoord.xy * 0.72;
+  uvec2 grainCell = uvec2(floor(grainCoordinate));
+  vec2 grainLocal = fract(grainCoordinate) - 0.5;
+  float occupancy = step(
+    1.0 - clamp(density * 0.88, 0.0, 0.88),
+    grainNoise(grainCell, 0x68bc21ebu)
+  );
+  float grainRadius =
+    0.24 + grainNoise(grainCell, 0x02e5be93u) * 0.16;
+  float particle = 1.0 - smoothstep(
+    grainRadius,
+    grainRadius + 0.075,
+    length(grainLocal)
+  );
+  float grainCoverage = occupancy * particle;
+  float sandMix = clamp(
+    grainCoverage * uModalPresence * (0.42 + uModalPresence * 0.5),
+    0.0,
+    0.94
+  );
   vec3 colour = mix(metal, sand, sandMix);
 
   vec3 regimeTint =
@@ -167,41 +278,79 @@ function regimeNumber(regime: RuntimeSnapshot["regime"]): number {
   return 0;
 }
 
+function createDiscVertices(
+  radialSegments: number,
+  angularSegments: number,
+): Float32Array {
+  const triangleCount =
+    angularSegments + (radialSegments - 1) * angularSegments * 2;
+  const vertices = new Float32Array(triangleCount * 3 * 2);
+  let offset = 0;
+  const write = (radius: number, angle: number) => {
+    vertices[offset] = Math.cos(angle) * radius;
+    vertices[offset + 1] = Math.sin(angle) * radius;
+    offset += 2;
+  };
+
+  for (let angular = 0; angular < angularSegments; angular += 1) {
+    const angle0 = (angular / angularSegments) * Math.PI * 2;
+    const angle1 = ((angular + 1) / angularSegments) * Math.PI * 2;
+    write(0, 0);
+    write(1 / radialSegments, angle0);
+    write(1 / radialSegments, angle1);
+  }
+  for (let radial = 1; radial < radialSegments; radial += 1) {
+    const inner = radial / radialSegments;
+    const outer = (radial + 1) / radialSegments;
+    for (let angular = 0; angular < angularSegments; angular += 1) {
+      const angle0 = (angular / angularSegments) * Math.PI * 2;
+      const angle1 = ((angular + 1) / angularSegments) * Math.PI * 2;
+      write(inner, angle0);
+      write(outer, angle0);
+      write(outer, angle1);
+      write(inner, angle0);
+      write(outer, angle1);
+      write(inner, angle1);
+    }
+  }
+  return vertices;
+}
+
 export class WebGlPlateRenderer implements PlateRenderer {
   readonly canvas: HTMLCanvasElement;
   private readonly gl: WebGL2RenderingContext;
   private readonly options: PlateRendererOptions;
   private readonly quality: RenderQualityTier;
+  private readonly modalBlend = new ModalBlendTracker(WEBGL_MODAL_CAPACITY);
+  private frameTracker: RenderFrameTracker | null = null;
+  private readonly sandLayers = new Float32Array(WEBGL_MODAL_CAPACITY);
+  private readonly displacementLayers = new Float32Array(WEBGL_MODAL_CAPACITY);
+  private readonly normalLayers = new Float32Array(WEBGL_MODAL_CAPACITY);
+  private readonly nodalLayers = new Float32Array(WEBGL_MODAL_CAPACITY);
   private program: WebGLProgram | null = null;
   private positionBuffer: WebGLBuffer | null = null;
+  private vertexCount = 0;
   private positionLocation = -1;
-  private uniformLocations = new Map<
-    string,
-    WebGLUniformLocation | null
-  >();
+  private uniformLocations = new Map<string, WebGLUniformLocation | null>();
   private textures = new Map<PlateTextureKind, WebGLTexture>();
   private decodedTextures = new Map<PlateTextureKind, DecodedKtx2Array>();
   private textureModeIds = new Map<PlateTextureKind, readonly string[]>();
   private abortController: AbortController | null = null;
   private disposed = false;
+  private framesRendered = 0;
   private currentStatus: PlateRendererStatus;
 
   private readonly handleContextLost = (event: Event) => {
     event.preventDefault();
     this.updateStatus({ contextLost: true });
     this.options.onDiagnostic?.(
-      diagnostic(
-        "MH-RENDER-CONTEXT-LOST",
-        "warning",
-        "render.contextLost",
-        [
-          {
-            key: "datasetId",
-            value: this.currentStatus.datasetId,
-            source: "webglcontextlost",
-          },
-        ],
-      ),
+      diagnostic("MH-RENDER-CONTEXT-LOST", "warning", "render.contextLost", [
+        {
+          key: "datasetId",
+          value: this.currentStatus.datasetId,
+          source: "webglcontextlost",
+        },
+      ]),
     );
   };
 
@@ -260,15 +409,30 @@ export class WebGlPlateRenderer implements PlateRenderer {
   }
 
   get status(): PlateRendererStatus {
+    if (this.currentStatus.framesRendered !== this.framesRendered) {
+      this.currentStatus = Object.freeze({
+        ...this.currentStatus,
+        framesRendered: this.framesRendered,
+      });
+    }
     return this.currentStatus;
   }
 
   async setTextureSource(source: PlateTextureSource | null): Promise<void> {
     this.abortController?.abort();
     this.abortController = null;
-    this.decodedTextures.clear();
-    this.textureModeIds.clear();
-    this.deleteTextures();
+    const sameDataset =
+      source !== null && source.datasetId === this.currentStatus.datasetId;
+    if (!sameDataset) {
+      this.modalBlend.reset();
+      this.decodedTextures.clear();
+      this.textureModeIds.clear();
+      this.deleteTextures();
+      this.updateStatus({
+        datasetId: source?.datasetId ?? null,
+        textureReady: false,
+      });
+    }
 
     if (!source) {
       this.updateStatus({ datasetId: null, textureReady: false });
@@ -302,16 +466,21 @@ export class WebGlPlateRenderer implements PlateRenderer {
     try {
       const decodedAtlases = await Promise.all(
         source.atlases.map(async (atlas) => {
-          const decoded = atlas.bytes
-            ? decodePortableKtx2(atlas.bytes.slice().buffer)
-            : await fetchPortableKtx2(
-                atlas.url,
-                abortController.signal,
-              );
           if (
-            decoded.width !== atlas.width ||
-            decoded.height !== atlas.height ||
-            decoded.layers < atlas.layers
+            sameDataset &&
+            this.decodedTextures.has(atlas.kind) &&
+            this.textures.has(atlas.kind)
+          ) {
+            return { atlas, decoded: null };
+          }
+          const decoded = atlas.bytes
+            ? decodePortableKtx2(atlas.bytes)
+            : await fetchPortableKtx2(atlas.url, abortController.signal);
+      if (
+        decoded.width !== atlas.width ||
+        decoded.height !== atlas.height ||
+        decoded.layers !== atlas.layers ||
+        decoded.channels !== expectedPlateTextureChannels(atlas.kind)
           ) {
             throw new Error(
               `Decoded ${atlas.kind} atlas dimensions do not match manifest.`,
@@ -322,9 +491,11 @@ export class WebGlPlateRenderer implements PlateRenderer {
       );
       if (this.disposed || abortController.signal.aborted) return;
       for (const { atlas, decoded } of decodedAtlases) {
-        this.decodedTextures.set(atlas.kind, decoded);
         this.textureModeIds.set(atlas.kind, atlas.modeIds);
-        this.uploadTexture(atlas.kind, decoded);
+        if (decoded) {
+          this.decodedTextures.set(atlas.kind, decoded);
+          this.uploadTexture(atlas.kind, decoded);
+        }
       }
       this.updateStatus({
         datasetId: source.datasetId,
@@ -372,7 +543,9 @@ export class WebGlPlateRenderer implements PlateRenderer {
     }
 
     const gl = this.gl;
-    const frame = frameFromSnapshot(snapshot);
+    this.frameTracker ??= new RenderFrameTracker(snapshot);
+    const frame = this.frameTracker.update(snapshot);
+    const blend = this.modalBlend.update(snapshot);
     gl.viewport(0, 0, this.canvas.width, this.canvas.height);
     gl.clearColor(0, 0, 0, 0);
     gl.clear(gl.COLOR_BUFFER_BIT);
@@ -383,13 +556,12 @@ export class WebGlPlateRenderer implements PlateRenderer {
     if (position < 0) return;
     gl.enableVertexAttribArray(position);
     gl.vertexAttribPointer(position, 2, gl.FLOAT, false, 0, 0);
-    gl.uniform1f(
-      this.uniform("uEnvelope"),
-      frame.envelope,
-    );
-    gl.uniform1f(
-      this.uniform("uPhase"),
-      frame.dominantModePhase,
+    gl.uniform1f(this.uniform("uEnvelope"), frame.envelope);
+    gl.uniform1f(this.uniform("uModalPresence"), blend.presence);
+    gl.uniform1fv(this.uniform("uSandWeights[0]"), blend.sandWeights);
+    gl.uniform1fv(
+      this.uniform("uDisplacementWeights[0]"),
+      blend.displacementWeights,
     );
     const analyticalGeometry = this.options.fallbackModes?.find(
       (mode) => mode.modeId === frame.dominantModeId,
@@ -406,56 +578,52 @@ export class WebGlPlateRenderer implements PlateRenderer {
       this.uniform("uAngularOrder"),
       analyticalGeometry?.angularOrder ?? 0,
     );
-    gl.uniform1f(
-      this.uniform("uRegime"),
-      regimeNumber(snapshot.regime),
-    );
+    gl.uniform1f(this.uniform("uRegime"), regimeNumber(snapshot.regime));
     gl.uniform1f(
       this.uniform("uMotion"),
       this.options.preferences.reducedMotion ? 0 : 1,
     );
     this.bindAtlas(
       "sand-density",
-      frame.dominantModeId,
       0,
       "uSandAtlas",
       "uHasSandAtlas",
-      "uSandLayer",
+      "uSandLayers[0]",
+      blend.modeIds,
+      this.sandLayers,
     );
     this.bindAtlas(
       "signed-displacement",
-      frame.dominantModeId,
       1,
       "uDisplacementAtlas",
       "uHasDisplacementAtlas",
-      "uDisplacementLayer",
+      "uDisplacementLayers[0]",
+      blend.modeIds,
+      this.displacementLayers,
     );
     this.bindAtlas(
       "normal",
-      frame.dominantModeId,
       2,
       "uNormalAtlas",
       "uHasNormalAtlas",
-      "uNormalLayer",
+      "uNormalLayers[0]",
+      blend.modeIds,
+      this.normalLayers,
     );
     this.bindAtlas(
       "nodal-mask",
-      frame.dominantModeId,
       3,
       "uNodalAtlas",
       "uHasNodalAtlas",
-      "uNodalLayer",
+      "uNodalLayers[0]",
+      blend.modeIds,
+      this.nodalLayers,
     );
 
-    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+    gl.drawArrays(gl.TRIANGLES, 0, this.vertexCount);
     gl.disableVertexAttribArray(position);
 
-    this.updateStatus(
-      {
-        framesRendered: this.currentStatus.framesRendered + 1,
-      },
-      false,
-    );
+    this.framesRendered += 1;
   }
 
   resize(): void {
@@ -486,6 +654,9 @@ export class WebGlPlateRenderer implements PlateRenderer {
     this.positionBuffer = null;
     this.program = null;
     this.positionLocation = -1;
+    this.vertexCount = 0;
+    this.modalBlend.reset();
+    this.frameTracker = null;
     this.uniformLocations.clear();
     this.decodedTextures.clear();
     this.textureModeIds.clear();
@@ -495,20 +666,19 @@ export class WebGlPlateRenderer implements PlateRenderer {
     const gl = this.gl;
     this.program = createProgram(gl);
     this.uniformLocations.clear();
-    this.positionLocation = gl.getAttribLocation(
-      this.program,
-      "aPosition",
-    );
+    this.positionLocation = gl.getAttribLocation(this.program, "aPosition");
     this.positionBuffer = gl.createBuffer();
     if (!this.positionBuffer) {
       throw new Error("Unable to allocate the plate vertex buffer.");
     }
     gl.bindBuffer(gl.ARRAY_BUFFER, this.positionBuffer);
-    gl.bufferData(
-      gl.ARRAY_BUFFER,
-      new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]),
-      gl.STATIC_DRAW,
-    );
+    const radialSegments =
+      this.quality === "high" ? 32 : this.quality === "balanced" ? 24 : 16;
+    const angularSegments =
+      this.quality === "high" ? 96 : this.quality === "balanced" ? 72 : 48;
+    const vertices = createDiscVertices(radialSegments, angularSegments);
+    this.vertexCount = vertices.length / 2;
+    gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
     gl.disable(gl.DEPTH_TEST);
     gl.disable(gl.CULL_FACE);
     gl.enable(gl.BLEND);
@@ -517,26 +687,27 @@ export class WebGlPlateRenderer implements PlateRenderer {
 
   private bindAtlas(
     kind: PlateTextureKind,
-    modeId: string | null,
     unit: number,
     samplerUniform: string,
     presenceUniform: string,
-    layerUniform: string,
+    layersUniform: string,
+    selectedModeIds: readonly (string | null)[],
+    targetLayers: Float32Array,
   ): void {
     if (!this.program) return;
     const gl = this.gl;
     const texture = this.textures.get(kind) ?? null;
     const modeIds = this.textureModeIds.get(kind) ?? [];
-    const layer = modeId ? modeIds.indexOf(modeId) : -1;
-    const available = Boolean(texture && layer >= 0);
-    gl.uniform1i(
-      this.uniform(presenceUniform),
-      available ? 1 : 0,
-    );
-    gl.uniform1f(
-      this.uniform(layerUniform),
-      Math.max(0, layer),
-    );
+    let hasSelectedLayer = false;
+    for (let slot = 0; slot < targetLayers.length; slot += 1) {
+      const modeId = selectedModeIds[slot] ?? null;
+      const layer = modeId ? modeIds.indexOf(modeId) : -1;
+      targetLayers[slot] = layer;
+      if (layer >= 0) hasSelectedLayer = true;
+    }
+    const available = Boolean(texture && hasSelectedLayer);
+    gl.uniform1i(this.uniform(presenceUniform), available ? 1 : 0);
+    gl.uniform1fv(this.uniform(layersUniform), targetLayers);
     if (!available || !texture) return;
     gl.activeTexture(gl.TEXTURE0 + unit);
     gl.bindTexture(gl.TEXTURE_2D_ARRAY, texture);
@@ -548,6 +719,22 @@ export class WebGlPlateRenderer implements PlateRenderer {
     decoded: DecodedKtx2Array,
   ): void {
     const gl = this.gl;
+    const maximumTextureSize = Number(gl.getParameter(gl.MAX_TEXTURE_SIZE));
+    const maximumArrayLayers = Number(
+      gl.getParameter(gl.MAX_ARRAY_TEXTURE_LAYERS),
+    );
+    if (
+      decoded.width > maximumTextureSize ||
+      decoded.height > maximumTextureSize ||
+      decoded.layers > maximumArrayLayers
+    ) {
+      throw new Error(`${kind} atlas exceeds this WebGL2 texture-array limit.`);
+    }
+    // Drain unrelated stale errors, then attribute the next error to this
+    // upload transaction rather than silently claiming texture readiness.
+    for (let attempt = 0; attempt < 8; attempt += 1) {
+      if (gl.getError() === gl.NO_ERROR) break;
+    }
     const existing = this.textures.get(kind);
     if (existing) gl.deleteTexture(existing);
     const texture = gl.createTexture();
@@ -583,17 +770,16 @@ export class WebGlPlateRenderer implements PlateRenderer {
     );
     gl.texParameteri(gl.TEXTURE_2D_ARRAY, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
     gl.texParameteri(gl.TEXTURE_2D_ARRAY, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-    gl.texParameteri(
-      gl.TEXTURE_2D_ARRAY,
-      gl.TEXTURE_WRAP_S,
-      gl.CLAMP_TO_EDGE,
-    );
-    gl.texParameteri(
-      gl.TEXTURE_2D_ARRAY,
-      gl.TEXTURE_WRAP_T,
-      gl.CLAMP_TO_EDGE,
-    );
+    gl.texParameteri(gl.TEXTURE_2D_ARRAY, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D_ARRAY, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
     gl.bindTexture(gl.TEXTURE_2D_ARRAY, null);
+    const uploadError = gl.getError();
+    if (uploadError !== gl.NO_ERROR) {
+      gl.deleteTexture(texture);
+      throw new Error(
+        `${kind} texture upload failed with WebGL error 0x${uploadError.toString(16)}.`,
+      );
+    }
     this.textures.set(kind, texture);
   }
 
@@ -622,6 +808,7 @@ export class WebGlPlateRenderer implements PlateRenderer {
     this.currentStatus = Object.freeze({
       ...this.currentStatus,
       ...patch,
+      framesRendered: this.framesRendered,
     });
     if (notify) this.options.onStatus?.(this.currentStatus);
   }

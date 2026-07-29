@@ -7,7 +7,10 @@ import {
   type DecodedKtx2Array,
 } from "./ktx2-texture";
 import {
-  frameFromSnapshot,
+  expectedPlateTextureChannels,
+  ModalBlendTracker,
+  RenderFrameTracker,
+  type ModalBlendSelection,
   type PlateRenderer,
   type PlateRendererOptions,
   type PlateRendererStatus,
@@ -15,6 +18,30 @@ import {
 } from "./render-types";
 
 const TAU = Math.PI * 2;
+
+export function deterministicCanvasGrainAlpha(
+  density: number,
+  x: number,
+  y: number,
+  layer: number,
+): number {
+  const grainHash =
+    ((x * 73_856_093) ^ (y * 19_349_663) ^ (layer * 83_492_791)) >>> 0;
+  const grain = (grainHash & 255) / 255;
+  const occupied = grain < (Math.max(0, Math.min(255, density)) / 255) * 0.88;
+  return occupied ? Math.min(255, 178 + Math.round(density * 0.3)) : 0;
+}
+
+export function blendCanvasSandDensity(
+  firstDensity: number,
+  firstWeight: number,
+  secondDensity: number,
+  secondWeight: number,
+): number {
+  return (
+    firstDensity * firstWeight + secondDensity * secondWeight
+  );
+}
 
 function diagnostic(
   code: string,
@@ -33,11 +60,18 @@ export class CanvasPlateRenderer implements PlateRenderer {
   readonly canvas: HTMLCanvasElement;
   private readonly context: CanvasRenderingContext2D;
   private readonly options: PlateRendererOptions;
+  private readonly modalBlend = new ModalBlendTracker(2);
+  private frameTracker: RenderFrameTracker | null = null;
   private texture: DecodedKtx2Array | null = null;
   private textureModeIds: readonly string[] = [];
-  private layerCanvases = new Map<number, HTMLCanvasElement>();
+  private sandBlendCanvas: HTMLCanvasElement | null = null;
+  private sandBlendContext: CanvasRenderingContext2D | null = null;
+  private sandBlendImage: ImageData | null = null;
+  private metalGradient: CanvasGradient | null = null;
+  private metalGradientRadius = -1;
   private abortController: AbortController | null = null;
   private disposed = false;
+  private framesRendered = 0;
   private logicalWidth = 1;
   private logicalHeight = 1;
   private currentStatus: PlateRendererStatus = {
@@ -60,15 +94,32 @@ export class CanvasPlateRenderer implements PlateRenderer {
   }
 
   get status(): PlateRendererStatus {
+    if (this.currentStatus.framesRendered !== this.framesRendered) {
+      this.currentStatus = Object.freeze({
+        ...this.currentStatus,
+        framesRendered: this.framesRendered,
+      });
+    }
     return this.currentStatus;
   }
 
   async setTextureSource(source: PlateTextureSource | null): Promise<void> {
     this.abortController?.abort();
     this.abortController = null;
-    this.texture = null;
-    this.textureModeIds = [];
-    this.layerCanvases.clear();
+    const sameDataset =
+      source !== null && source.datasetId === this.currentStatus.datasetId;
+    if (!sameDataset) {
+      this.modalBlend.reset();
+      this.texture = null;
+      this.textureModeIds = [];
+      this.sandBlendCanvas = null;
+      this.sandBlendContext = null;
+      this.sandBlendImage = null;
+      this.updateStatus({
+        datasetId: source?.datasetId ?? null,
+        textureReady: false,
+      });
+    }
 
     if (!source) {
       this.updateStatus({
@@ -97,21 +148,28 @@ export class CanvasPlateRenderer implements PlateRenderer {
       });
       return;
     }
+    if (sameDataset && this.texture) {
+      this.textureModeIds = sandAtlas.modeIds;
+      this.updateStatus({
+        datasetId: source.datasetId,
+        textureReady: true,
+      });
+      return;
+    }
 
     const abortController = new AbortController();
     this.abortController = abortController;
     try {
       const decoded = sandAtlas.bytes
-        ? decodePortableKtx2(sandAtlas.bytes.slice().buffer)
-        : await fetchPortableKtx2(
-            sandAtlas.url,
-            abortController.signal,
-          );
+        ? decodePortableKtx2(sandAtlas.bytes)
+        : await fetchPortableKtx2(sandAtlas.url, abortController.signal);
       if (this.disposed || abortController.signal.aborted) return;
       if (
         decoded.width !== sandAtlas.width ||
         decoded.height !== sandAtlas.height ||
-        decoded.layers < sandAtlas.layers
+        decoded.layers !== sandAtlas.layers ||
+        decoded.channels !==
+          expectedPlateTextureChannels(sandAtlas.kind)
       ) {
         throw new Error("Decoded sand atlas dimensions do not match manifest.");
       }
@@ -146,7 +204,9 @@ export class CanvasPlateRenderer implements PlateRenderer {
 
   render(snapshot: RuntimeSnapshot): void {
     if (this.disposed) return;
-    const frame = frameFromSnapshot(snapshot);
+    this.frameTracker ??= new RenderFrameTracker(snapshot);
+    const frame = this.frameTracker.update(snapshot);
+    const blend = this.modalBlend.update(snapshot);
     const width = this.logicalWidth;
     const height = this.logicalHeight;
     const context = this.context;
@@ -170,41 +230,36 @@ export class CanvasPlateRenderer implements PlateRenderer {
     context.arc(0, 0, radius, 0, TAU);
     context.clip();
 
-    const metal = context.createRadialGradient(
-      -radius * 0.3,
-      -radius * 0.35,
-      radius * 0.02,
-      0,
-      0,
-      radius,
-    );
-    metal.addColorStop(0, "#f3efe0");
-    metal.addColorStop(0.32, "#b9bbb0");
-    metal.addColorStop(0.76, "#656b67");
-    metal.addColorStop(1, "#111817");
-    context.fillStyle = metal;
+    if (!this.metalGradient || this.metalGradientRadius !== radius) {
+      this.metalGradient = context.createRadialGradient(
+        -radius * 0.3,
+        -radius * 0.35,
+        radius * 0.02,
+        0,
+        0,
+        radius,
+      );
+      this.metalGradient.addColorStop(0, "#f3efe0");
+      this.metalGradient.addColorStop(0.32, "#b9bbb0");
+      this.metalGradient.addColorStop(0.76, "#656b67");
+      this.metalGradient.addColorStop(1, "#111817");
+      this.metalGradientRadius = radius;
+    }
+    context.fillStyle = this.metalGradient;
     context.fillRect(-radius, -radius, radius * 2, radius * 2);
 
-    const layer = frame.dominantModeId
-      ? this.textureModeIds.indexOf(frame.dominantModeId)
-      : -1;
-    const layerCanvas = layer >= 0 ? this.getLayerCanvas(layer) : null;
-    if (layerCanvas) {
+    const blendedSand = this.composeSandLayers(blend);
+    if (blendedSand) {
       context.save();
-      context.globalAlpha = 0.42 + frame.envelope * 0.5;
-      context.globalCompositeOperation = "screen";
-      context.drawImage(
-        layerCanvas,
-        -radius,
-        -radius,
-        radius * 2,
-        radius * 2,
-      );
+      context.globalAlpha = blend.presence * (0.48 + blend.presence * 0.46);
+      context.globalCompositeOperation = "source-over";
+      context.imageSmoothingEnabled = false;
+      context.drawImage(blendedSand, -radius, -radius, radius * 2, radius * 2);
       context.restore();
     } else {
       this.paintAnalyticalFallback(
         frame.dominantModeId,
-        frame.envelope,
+        blend.presence,
         radius,
       );
     }
@@ -225,18 +280,15 @@ export class CanvasPlateRenderer implements PlateRenderer {
     context.stroke();
     context.restore();
 
-    this.updateStatus(
-      {
-        framesRendered: this.currentStatus.framesRendered + 1,
-      },
-      false,
-    );
+    this.framesRendered += 1;
   }
 
   resize(): void {
     const rect = this.canvas.getBoundingClientRect();
     this.logicalWidth = Math.max(1, rect.width);
     this.logicalHeight = Math.max(1, rect.height);
+    this.metalGradient = null;
+    this.metalGradientRadius = -1;
     const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
     const width = Math.max(1, Math.round(this.logicalWidth * dpr));
     const height = Math.max(1, Math.round(this.logicalHeight * dpr));
@@ -253,43 +305,104 @@ export class CanvasPlateRenderer implements PlateRenderer {
     this.abortController = null;
     this.texture = null;
     this.textureModeIds = [];
-    this.layerCanvases.clear();
+    this.sandBlendCanvas = null;
+    this.sandBlendContext = null;
+    this.sandBlendImage = null;
+    this.metalGradient = null;
+    this.metalGradientRadius = -1;
+    this.modalBlend.reset();
+    this.frameTracker = null;
     this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
   }
 
-  private getLayerCanvas(layer: number): HTMLCanvasElement | null {
-    const existing = this.layerCanvases.get(layer);
-    if (existing) return existing;
+  private composeSandLayers(
+    blend: ModalBlendSelection,
+  ): HTMLCanvasElement | null {
     const texture = this.texture;
-    if (!texture || layer < 0 || layer >= texture.layers) return null;
+    if (!texture || blend.count < 1) return null;
+    if (
+      !this.sandBlendCanvas ||
+      this.sandBlendCanvas.width !== texture.width ||
+      this.sandBlendCanvas.height !== texture.height
+    ) {
+      this.sandBlendCanvas = document.createElement("canvas");
+      this.sandBlendCanvas.width = texture.width;
+      this.sandBlendCanvas.height = texture.height;
+      this.sandBlendContext = this.sandBlendCanvas.getContext("2d");
+      this.sandBlendImage = null;
+    }
+    const canvas = this.sandBlendCanvas;
+    const context = this.sandBlendContext;
+    if (!canvas || !context) return null;
 
-    const canvas = document.createElement("canvas");
-    canvas.width = texture.width;
-    canvas.height = texture.height;
-    const context = canvas.getContext("2d");
-    if (!context) return null;
+    let firstLayer = -1;
+    let firstWeight = 0;
+    let secondLayer = -1;
+    let secondWeight = 0;
+    for (let slot = 0; slot < blend.count; slot += 1) {
+      const modeId = blend.modeIds[slot] ?? null;
+      const layer = modeId ? this.textureModeIds.indexOf(modeId) : -1;
+      if (layer < 0 || layer >= texture.layers) continue;
+      if (firstLayer < 0) {
+        firstLayer = layer;
+        firstWeight = blend.sandWeights[slot] ?? 0;
+      } else {
+        secondLayer = layer;
+        secondWeight = blend.sandWeights[slot] ?? 0;
+        break;
+      }
+    }
+    if (firstLayer < 0) return null;
 
+    this.sandBlendImage ??= context.createImageData(
+      texture.width,
+      texture.height,
+    );
+    const image = this.sandBlendImage;
     const pixelsPerLayer =
       texture.width * texture.height * texture.channels;
-    const sourceOffset = layer * pixelsPerLayer;
-    const image = context.createImageData(texture.width, texture.height);
-    for (let pixel = 0; pixel < texture.width * texture.height; pixel += 1) {
+    const firstOffset = firstLayer * pixelsPerLayer;
+    const secondOffset =
+      secondLayer >= 0 ? secondLayer * pixelsPerLayer : 0;
+    const pixelCount = texture.width * texture.height;
+
+    for (let pixel = 0; pixel < pixelCount; pixel += 1) {
       const sourceX = pixel % texture.width;
       const sourceY = Math.floor(pixel / texture.width);
-      const source = sourceOffset + pixel * texture.channels;
-      const density = texture.pixels[source] ?? 0;
+      const channelOffset = pixel * texture.channels;
+      const firstDensity =
+        texture.pixels[firstOffset + channelOffset] ?? 0;
+      const secondDensity =
+        secondLayer >= 0
+          ? (texture.pixels[secondOffset + channelOffset] ?? 0)
+          : 0;
+      // Blend the precomputed density basis before applying the nonlinear
+      // particle pass: S(x) = sum_i w_i * S_i(x).
+      const density = blendCanvasSandDensity(
+        firstDensity,
+        firstWeight,
+        secondDensity,
+        secondWeight,
+      );
       // Canonical KTXorientation=ru stores row zero at negative-y. Canvas
       // ImageData is top-down, so rows are mirrored once at this boundary.
       const targetPixel =
         (texture.height - 1 - sourceY) * texture.width + sourceX;
       const target = targetPixel * 4;
-      image.data[target] = 229;
-      image.data[target + 1] = 201;
-      image.data[target + 2] = 135;
-      image.data[target + 3] = density;
+      const grainHash =
+        ((sourceX * 73_856_093) ^ (sourceY * 19_349_663)) >>> 0;
+      const grain = (grainHash & 255) / 255;
+      image.data[target] = 218 + Math.round(grain * 24);
+      image.data[target + 1] = 187 + Math.round(grain * 27);
+      image.data[target + 2] = 112 + Math.round(grain * 31);
+      image.data[target + 3] = deterministicCanvasGrainAlpha(
+        density,
+        sourceX,
+        sourceY,
+        0,
+      );
     }
     context.putImageData(image, 0, 0);
-    this.layerCanvases.set(layer, canvas);
     return canvas;
   }
 
@@ -316,10 +429,7 @@ export class CanvasPlateRenderer implements PlateRenderer {
     for (let spoke = 0; spoke < spokes; spoke += 1) {
       const angle = (spoke / spokes) * Math.PI;
       context.beginPath();
-      context.moveTo(
-        Math.cos(angle) * -radius,
-        Math.sin(angle) * -radius,
-      );
+      context.moveTo(Math.cos(angle) * -radius, Math.sin(angle) * -radius);
       context.lineTo(Math.cos(angle) * radius, Math.sin(angle) * radius);
       context.stroke();
     }
@@ -333,6 +443,7 @@ export class CanvasPlateRenderer implements PlateRenderer {
     this.currentStatus = Object.freeze({
       ...this.currentStatus,
       ...patch,
+      framesRendered: this.framesRendered,
     });
     if (notify) this.options.onStatus?.(this.currentStatus);
   }

@@ -24,11 +24,7 @@ const IDENTITY_SCOPE =
   "manifest-with-datasetId-and-directoryName-omitted-and-all-referenced-file-digests";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
-  return (
-    typeof value === "object" &&
-    value !== null &&
-    !Array.isArray(value)
-  );
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 function validateKeys(
@@ -73,7 +69,10 @@ function validateAsset(
     label,
     errors,
   );
-  if (typeof value.path !== "string" || !isSafeDatasetRelativePath(value.path)) {
+  if (
+    typeof value.path !== "string" ||
+    !isSafeDatasetRelativePath(value.path)
+  ) {
     errors.push(`${label}.path`);
   }
   if (
@@ -116,9 +115,13 @@ function validateTexture(
   if (
     !Array.isArray(texture.modeIds) ||
     texture.modeIds.length === 0 ||
-    texture.modeIds.some((modeId) => typeof modeId !== "string" || modeId === "")
+    texture.modeIds.some(
+      (modeId) => typeof modeId !== "string" || modeId === "",
+    )
   ) {
     errors.push(`files.textures[${index}].modeIds`);
+  } else if (new Set(texture.modeIds).size !== texture.modeIds.length) {
+    errors.push(`files.textures[${index}].modeIds:duplicate`);
   }
   for (const key of ["widthPx", "heightPx", "layers"] as const) {
     if (
@@ -128,6 +131,13 @@ function validateTexture(
     ) {
       errors.push(`files.textures[${index}].${key}`);
     }
+  }
+  if (
+    Array.isArray(texture.modeIds) &&
+    typeof texture.layers === "number" &&
+    texture.layers !== texture.modeIds.length
+  ) {
+    errors.push(`files.textures[${index}].layers:modeIds`);
   }
   if (texture.uvOrigin !== "negative-x-negative-y") {
     errors.push(`files.textures[${index}].uvOrigin`);
@@ -182,7 +192,10 @@ export function validateResonanceManifest(
   if (input.schemaVersion !== "mandelhowl.resonance-manifest.v1") {
     errors.push("schemaVersion");
   }
-  if (typeof input.datasetId !== "string" || !CONTENT_ID.test(input.datasetId)) {
+  if (
+    typeof input.datasetId !== "string" ||
+    !CONTENT_ID.test(input.datasetId)
+  ) {
     errors.push("datasetId");
   }
   const ownership = input.ownership;
@@ -319,12 +332,7 @@ export function validateResonanceManifest(
   ) {
     errors.push("frequencyRange");
   } else {
-    validateKeys(
-      range,
-      ["minimumHz", "maximumHz"],
-      "frequencyRange",
-      errors,
-    );
+    validateKeys(range, ["minimumHz", "maximumHz"], "frequencyRange", errors);
   }
   const solver = input.solverProvenance;
   if (
@@ -342,12 +350,7 @@ export function validateResonanceManifest(
   } else {
     validateKeys(
       solver,
-      [
-        "solverName",
-        "solverVersion",
-        "containerImageDigest",
-        "optionsSha256",
-      ],
+      ["solverName", "solverVersion", "containerImageDigest", "optionsSha256"],
       "solverProvenance",
       errors,
     );
@@ -382,7 +385,10 @@ export function validateResonanceManifest(
     ] as const) {
       validateAsset(files[key], `files.${key}`, errors);
     }
-    if (!Array.isArray(files.textures) || files.textures.length < 4) {
+    if (
+      !Array.isArray(files.textures) ||
+      files.textures.length !== TEXTURE_KINDS.size
+    ) {
       errors.push("files.textures");
     } else {
       files.textures.forEach((texture, index) =>
@@ -394,6 +400,9 @@ export function validateResonanceManifest(
           .map((texture) => texture.kind)
           .filter((kind): kind is string => typeof kind === "string"),
       );
+      if (kinds.size !== files.textures.length) {
+        errors.push("files.textures.kind:duplicate");
+      }
       for (const kind of TEXTURE_KINDS) {
         if (!kinds.has(kind)) errors.push(`files.textures.missing:${kind}`);
       }

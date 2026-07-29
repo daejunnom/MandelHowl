@@ -49,6 +49,11 @@ seed만 만들며 이를 도달성 증명이라고 표시하지 않는다.
 9. binary와 KTX2, provenance, 수렴·coverage 보고서, checksums를 만든 후
    manifest identity를 디렉터리명으로 사용한다.
 
+이 단계의 렌더 기저는 48개 모드다. signed displacement, normal, nodal mask,
+sand density의 같은 ordinal layer가 같은 물리 모드를 나타낸다. 런타임은 이
+기저를 다시 계산하지 않고 WebGL2 top 4, Canvas2D top 2로 혼합한다. 자세한
+선택·잔류 규칙은 `docs/adr-runtime-rendering-and-migration.md`에 있다.
+
 ## 수치해석의 정확한 범위
 
 사용한 방법은 실제 가변 두께 얇은 판 고유값 수치해석이지만 shell FEM은 아니다.
@@ -86,6 +91,18 @@ annular essential boundary로 표현한다. 공기 부가질량, 재료 비선�
 - 16-byte header: ASCII `MHRESPN1`, `u16 version=1`,
   `u16 headerBytes=16`, `u32 sampleCount`.
 - sample마다 `f64 frequencyHz`, `f64 real`, `f64 imaginary`.
+
+브라우저 loader는 `response.bin`을 해시 검증하고 위 형식으로 디코딩한다.
+v1 값은 모든 모드의 `g_i*m_i*r_i` 전달응답을 합산한 뒤 bake된 표본 중
+최대 복소 크기로 한 번 정규화한 전역 응답 곡선이다. 현재 baker는
+45–6000 Hz를 512개 로그 간격으로 표본화한다. resonance runtime dataset은
+이 표를 보존하며 표시·진단 소비자를 위해 복소 실수부와 허수부를 로그
+주파수 축에서 결정적으로 보간한다.
+
+이 aggregate 표에는 모드별 행이 없으므로 각 모드의 포획·잔향 에너지를
+대신할 수 없다. 해당 용도에는 mode별 복소 응답과 연속 구간 오차 한계를
+명시하는 `response-v2` 계약, runtime calibration 및 `0..100` coverage의
+재생성이 필요하다.
 
 `science/solver-evidence.bin`은 런타임 자산이 아니라 테스트 증거다.
 `MHEVID01`, version, basis count, mode count 뒤에 mass matrix와 모든
@@ -135,3 +152,45 @@ unit-modal-mass 직교성, coverage inventory를 모두 검사한다.
 `mandelhowl.baker-diagnostic.v1` JSON을 stderr로 출력한다. schema, 입력 누락,
 solver, 제조성, 수렴성, dataset 무결성, I/O를 서로 다른 code로 구분하고
 실제 exception type과 실행 command를 `confirmed` evidence로 남긴다.
+
+## 브라우저 로딩·캐시 단계
+
+브라우저에서 자산을 사용할 때도 content identity와 전체 dataset 승격을
+구분한다.
+
+1. `manifest.json`은 `no-cache` 요청으로 재검증한다.
+2. schema, canonical manifest SHA-256, 고정 release dataset ID, runtime
+   호환성을 먼저 확인한다.
+3. `modes.bin`, `response.bin`, `sand-density.ktx2` 순서로 우선 가져온다.
+4. descriptor SHA-256을 URL query key에 포함하고 `force-cache`로 요청한다.
+   content-addressed `/runtime/*` 배포 파일에도 1년 immutable cache policy를
+   적용한다.
+5. byte length와 SHA-256이 통과한 각 자산에
+   `mandelhowl.asset-progress.v1` 이벤트를 보낸다. 이벤트의
+   `datasetReady`는 항상 `false`다.
+6. 나머지 atlas와 보고서를 병렬 검증하고 checksum inventory, evidence,
+   binary header, texture/mode coverage를 교차검사한다.
+7. 전체 검증이 끝났을 때만 loader가 `ready`를 반환하고 앱이
+   프로덕션 dataset으로 승격한다.
+
+진행 observer가 받은 bytes를 변경해도 loader의 검증 입력이 바뀌지 않도록
+이벤트에는 격리된 copy를 제공한다. 반대로 최종 검증된 atlas를 renderer에
+넘길 때 KTX2 decoder는 원본 `Uint8Array`의 payload `subarray` view를 사용해
+대형 픽셀 buffer를 다시 복사하지 않는다.
+
+앱은 loader에 lifecycle `AbortSignal`을 전달한다. component dispose 시
+진행 중인 manifest와 atlas 요청을 중단하며, 중단된 검증은 실패 진단이나
+`VERIFIED` 승격으로 전환되지 않는다.
+
+atlas-v1의 각 texture kind는 48 layer를 한 KTX2 파일에 담는다. 따라서 현재
+progressive loading은 파일 단위이며 개별 모드나 주파수 구간의 HTTP fetch,
+hash 검증, GPU eviction은 지원하지 않는다. 그 기능은 mode range별 chunk,
+개별 descriptor/checksum, residency policy를 정의한 atlas-v2와 새 dataset
+identity로 도입해야 한다.
+
+현재 앱은 검증된 sand atlas 이벤트를 renderer의 GPU prewarm에 사용한다.
+production mode ID를 그대로 유지하므로 prototype snapshot을 layer ordinal로
+잘못 매핑하지 않으며, 최종 source는 같은 dataset의 resident sand upload를
+재사용한다. 이 단계에서도 안전한 전체 승격 원칙은 유지한다. loader의
+`ready` 결과와 full renderer 상태 확인 전에는 runtime dataset이나 화면의
+`VERIFIED` 상태를 변경하지 않는다.

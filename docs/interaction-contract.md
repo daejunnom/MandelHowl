@@ -27,5 +27,9 @@ During observation the presenter shows `MEASURING`, progress, and the previous
 settled value. Frequency, waveform, pattern, envelope, regime, and limiter
 state explain the result but do not constitute additional outputs or controls.
 
-DOM, renderer, audio, and challenge reporting consume the same immutable
-simulation snapshot for a tick.
+DOM, renderer, audio, and challenge reporting consume the same canonical
+simulation state and sequence; none recomputes physics. Renderer and audio
+receive one shared, synchronous, non-retaining lease on every animation frame.
+DOM, challenge reporting, and diagnostics receive an owned immutable
+projection at up to 24 Hz, plus forced publication on dataset and lifecycle
+boundaries.

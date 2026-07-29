@@ -4,6 +4,7 @@ import {
   GENERATED_VOLUME_MAP_SPEC,
   type ContentAddressedId,
   type DiagnosticRecord,
+  type FrequencyResponseTable,
   type ResonanceDataset,
 } from "../../contracts/src";
 import {
@@ -56,6 +57,24 @@ export interface RuntimeModalDataset {
   /** Dataset-global transfer normalization; never frequency/value specific. */
   readonly maximumModalCoupling: number;
   readonly modes: readonly RuntimeModalMode[];
+  /**
+   * Optional baked aggregate plate-to-microphone transfer response.
+   *
+   * `mandelhowl-response-v1` contains the complex sum across every mode. It is
+   * retained for response-curve consumers and deterministic interpolation, but
+   * it cannot replace the per-mode weights used by the modal state integrator.
+   */
+  readonly response?: FrequencyResponseTable;
+}
+
+export interface InterpolatedFrequencyResponse {
+  readonly frequencyHz: number;
+  readonly real: number;
+  readonly imaginary: number;
+  readonly magnitude: number;
+  readonly phaseRadians: number;
+  readonly lowerSampleIndex: number;
+  readonly upperSampleIndex: number;
 }
 
 export interface ResonanceDrive {
@@ -192,6 +211,133 @@ function isDecodedDataset(
   return "manifest" in dataset && "response" in dataset;
 }
 
+function normalizeResponseTable(
+  response: FrequencyResponseTable,
+  frequencyRangeHz: readonly [number, number],
+): FrequencyResponseTable {
+  const { sampleCount } = response;
+  if (
+    !Number.isInteger(sampleCount) ||
+    sampleCount < 2 ||
+    response.frequenciesHz.length !== sampleCount ||
+    response.real.length !== sampleCount ||
+    response.imaginary.length !== sampleCount
+  ) {
+    throw new TypeError("Runtime response table dimensions are invalid");
+  }
+  const frequenciesHz: number[] = [];
+  const real: number[] = [];
+  const imaginary: number[] = [];
+  let previousFrequency = 0;
+  for (let index = 0; index < sampleCount; index += 1) {
+    const frequency = response.frequenciesHz[index];
+    const realValue = response.real[index];
+    const imaginaryValue = response.imaginary[index];
+    if (
+      !Number.isFinite(frequency) ||
+      !Number.isFinite(realValue) ||
+      !Number.isFinite(imaginaryValue) ||
+      frequency <= 0 ||
+      frequency <= previousFrequency
+    ) {
+      throw new TypeError(
+        `Runtime response sample ${index} violates ordering or bounds`,
+      );
+    }
+    previousFrequency = frequency;
+    frequenciesHz.push(frequency);
+    real.push(realValue);
+    imaginary.push(imaginaryValue);
+  }
+  if (
+    frequenciesHz[0] > frequencyRangeHz[0] ||
+    frequenciesHz[sampleCount - 1] < frequencyRangeHz[1]
+  ) {
+    throw new RangeError(
+      "Runtime response table does not cover the dataset frequency range",
+    );
+  }
+  return Object.freeze({
+    sampleCount,
+    frequenciesHz: Object.freeze(frequenciesHz),
+    real: Object.freeze(real),
+    imaginary: Object.freeze(imaginary),
+  });
+}
+
+/**
+ * Samples the baked aggregate complex transfer curve in logarithmic-frequency
+ * space. Out-of-range finite inputs clamp to the verified response endpoints.
+ *
+ * This is intentionally not used as a per-mode excitation score:
+ * response-v1 stores only the sum across modes, so that substitution would
+ * discard mode identity and invalidate the calibrated modal trajectories.
+ */
+export function interpolateBakedFrequencyResponse(
+  dataset: Pick<RuntimeModalDataset, "response">,
+  frequencyHz: number,
+): InterpolatedFrequencyResponse | null {
+  const response = dataset.response;
+  if (!response) return null;
+  if (!Number.isFinite(frequencyHz)) {
+    throw new TypeError("Response sample frequency must be finite");
+  }
+  const lastIndex = response.sampleCount - 1;
+  const minimumFrequency = response.frequenciesHz[0];
+  const maximumFrequency = response.frequenciesHz[lastIndex];
+  const frequency = Math.min(
+    maximumFrequency,
+    Math.max(minimumFrequency, frequencyHz),
+  );
+
+  let lowerIndex = 0;
+  let upperIndex = lastIndex;
+  if (frequency <= minimumFrequency) {
+    upperIndex = 0;
+  } else if (frequency >= maximumFrequency) {
+    lowerIndex = lastIndex;
+  } else {
+    while (upperIndex - lowerIndex > 1) {
+      const middleIndex = (lowerIndex + upperIndex) >>> 1;
+      if (response.frequenciesHz[middleIndex] <= frequency) {
+        lowerIndex = middleIndex;
+      } else {
+        upperIndex = middleIndex;
+      }
+    }
+    if (response.frequenciesHz[lowerIndex] === frequency) {
+      upperIndex = lowerIndex;
+    } else if (response.frequenciesHz[upperIndex] === frequency) {
+      lowerIndex = upperIndex;
+    }
+  }
+
+  const lowerFrequency = response.frequenciesHz[lowerIndex];
+  const upperFrequency = response.frequenciesHz[upperIndex];
+  const progress =
+    lowerIndex === upperIndex
+      ? 0
+      : (Math.log(frequency) - Math.log(lowerFrequency)) /
+        (Math.log(upperFrequency) - Math.log(lowerFrequency));
+  const real =
+    response.real[lowerIndex] +
+    (response.real[upperIndex] - response.real[lowerIndex]) * progress;
+  const imaginary =
+    response.imaginary[lowerIndex] +
+    (response.imaginary[upperIndex] -
+      response.imaginary[lowerIndex]) *
+      progress;
+  return Object.freeze({
+    frequencyHz: frequency,
+    real,
+    imaginary,
+    magnitude: Math.hypot(real, imaginary),
+    phaseRadians: Math.atan2(imaginary, real),
+    lowerSampleIndex: lowerIndex,
+    upperSampleIndex: upperIndex,
+  });
+}
+
 export function runtimeModalDatasetFromResonanceDataset(
   dataset: ResonanceDataset,
 ): RuntimeModalDataset {
@@ -209,6 +355,10 @@ export function runtimeModalDatasetFromResonanceDataset(
       dataset.manifest.frequencyRange.maximumHz,
     ] as const),
     maximumModalCoupling,
+    response: normalizeResponseTable(dataset.response, [
+      dataset.manifest.frequencyRange.minimumHz,
+      dataset.manifest.frequencyRange.maximumHz,
+    ]),
     modes: Object.freeze(
       dataset.modes.map((mode) =>
         Object.freeze({
@@ -246,20 +396,28 @@ function normalizeDataset(
       Math.abs(mode.driveCoupling * mode.microphoneCoupling),
     ),
   );
+  const frequencyRangeHz = Object.freeze([
+    ...dataset.frequencyRangeHz,
+  ] as [number, number]);
   return Object.freeze({
     datasetId: dataset.datasetId,
     modalModelId:
       "modalModelId" in dataset
         ? dataset.modalModelId
         : dataset.datasetId,
-    frequencyRangeHz: Object.freeze([...dataset.frequencyRangeHz] as [
-      number,
-      number,
-    ]),
+    frequencyRangeHz,
     maximumModalCoupling:
       "maximumModalCoupling" in dataset
         ? dataset.maximumModalCoupling
         : maximumModalCoupling,
+    ...("response" in dataset && dataset.response
+      ? {
+          response: normalizeResponseTable(
+            dataset.response,
+            frequencyRangeHz,
+          ),
+        }
+      : {}),
     modes: Object.freeze(
       dataset.modes.map((mode: RuntimeModalMode | PrototypeModeRecord, index) =>
         Object.freeze({

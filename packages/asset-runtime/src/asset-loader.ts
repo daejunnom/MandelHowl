@@ -8,14 +8,8 @@ import {
   type ResonanceManifest,
   type TextureAtlasReference,
 } from "../../contracts/src";
-import {
-  decodeModesBinaryV1,
-  decodeResponseBinaryV1,
-} from "./binary-decoders";
-import {
-  canonicalizeJson,
-  manifestIdentityPayload,
-} from "./canonical-json";
+import { decodeModesBinaryV1, decodeResponseBinaryV1 } from "./binary-decoders";
+import { canonicalizeJson, manifestIdentityPayload } from "./canonical-json";
 import {
   ASSET_DIAGNOSTIC_CODES,
   createDiagnostic,
@@ -50,6 +44,40 @@ export interface VerifiedAssetUrls {
   >;
 }
 
+export interface VerifiedTextureAssetMetadata {
+  readonly kind: TextureAssetKind;
+  readonly modeIds: readonly string[];
+  readonly widthPx: number;
+  readonly heightPx: number;
+  readonly layers: number;
+  readonly uvOrigin: TextureAtlasReference["uvOrigin"];
+}
+
+/**
+ * Progress for one descriptor-backed asset whose byte length and SHA-256 have
+ * both passed. This does not mean that the complete dataset is valid: checksum
+ * inventory, evidence, binary, and cross-asset validation still run before
+ * `loadResonanceDataset` can return `status: "ready"`.
+ *
+ * `bytes` is an isolated copy so observer code cannot mutate the loader's
+ * validation input.
+ */
+export interface VerifiedAssetProgressEvent {
+  readonly schemaVersion: "mandelhowl.asset-progress.v1";
+  readonly datasetId: `sha256:${string}`;
+  readonly datasetReady: false;
+  readonly path: string;
+  readonly url: string;
+  readonly mediaType: string;
+  readonly byteLength: number;
+  readonly sha256: string;
+  readonly textureKind: TextureAssetKind | null;
+  readonly texture: VerifiedTextureAssetMetadata | null;
+  readonly verifiedCount: number;
+  readonly totalCount: number;
+  readonly bytes: Uint8Array;
+}
+
 export interface LoadResonanceDatasetOptions {
   readonly manifestUrl?: string;
   /** Base used only when manifestUrl is relative and location is unavailable. */
@@ -58,6 +86,15 @@ export interface LoadResonanceDatasetOptions {
   readonly runtimeVersion?: string;
   readonly fetch?: typeof globalThis.fetch;
   readonly crypto?: Crypto;
+  /** Cancels manifest and asset requests when the owning runtime is disposed. */
+  readonly signal?: AbortSignal;
+  /**
+   * Receives individually verified assets while the complete dataset remains
+   * pending. Observer failures are isolated from integrity validation.
+   */
+  readonly onAssetVerified?: (
+    event: VerifiedAssetProgressEvent,
+  ) => void | Promise<void>;
 }
 
 export type ResonanceDatasetLoadResult =
@@ -94,10 +131,7 @@ function diagnosticFailure(
   });
 }
 
-function resolveManifestUrl(
-  manifestUrl: string,
-  baseUrl?: string,
-): URL {
+function resolveManifestUrl(manifestUrl: string, baseUrl?: string): URL {
   const fallbackBase =
     baseUrl ??
     (typeof location === "object" && typeof location.href === "string"
@@ -113,15 +147,52 @@ function resolveAssetUrl(manifestUrl: URL, path: string): string {
 async function readResponseBytes(
   fetcher: typeof globalThis.fetch,
   url: string,
+  cache: RequestCache,
+  signal?: AbortSignal,
 ): Promise<Uint8Array> {
   const response = await fetcher(url, {
-    cache: "no-store",
+    cache,
     credentials: "same-origin",
+    signal,
   });
   if (!response.ok) {
     throw new Error(`HTTP ${response.status}`);
   }
   return new Uint8Array(await response.arrayBuffer());
+}
+
+function immutableAssetRequestUrl(url: string, sha256: string): string {
+  const immutableUrl = new URL(url);
+  immutableUrl.searchParams.set("sha256", sha256);
+  return immutableUrl.href;
+}
+
+function prioritizedAssetReferences(
+  manifest: ResonanceManifest,
+  references: readonly AssetReference[],
+): {
+  readonly priority: readonly AssetReference[];
+  readonly remaining: readonly AssetReference[];
+} {
+  const sandPath = manifest.files.textures.find(
+    (texture) => texture.kind === "sand-density",
+  )?.path;
+  const byPath = new Map(references.map((asset) => [asset.path, asset]));
+  const priorityPaths = [
+    manifest.files.modes.path,
+    manifest.files.response.path,
+    sandPath,
+  ].filter((path): path is string => typeof path === "string");
+  const priority = priorityPaths
+    .map((path) => byPath.get(path))
+    .filter((asset): asset is AssetReference => asset !== undefined);
+  const prioritySet = new Set(priority.map((asset) => asset.path));
+  return Object.freeze({
+    priority: Object.freeze(priority),
+    remaining: Object.freeze(
+      references.filter((asset) => !prioritySet.has(asset.path)),
+    ),
+  });
 }
 
 function parseJsonBytes(bytes: Uint8Array, label: string): unknown {
@@ -141,11 +212,7 @@ function validateChecksums(
   manifest: ResonanceManifest,
 ): readonly string[] {
   const errors: string[] = [];
-  if (
-    typeof value !== "object" ||
-    value === null ||
-    Array.isArray(value)
-  ) {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
     return ["root:not-object"];
   }
   const checksums = value as Partial<ChecksumsFile>;
@@ -257,9 +324,7 @@ function validateJsonEvidenceAssets(
     errors.push("provenance:semantic-invalid");
   }
 
-  const convergence = values.get(
-    manifest.files.convergenceReport.path,
-  );
+  const convergence = values.get(manifest.files.convergenceReport.path);
   const methodConformance =
     convergence &&
     typeof convergence.methodConformance === "object" &&
@@ -275,8 +340,7 @@ function validateJsonEvidenceAssets(
       ? (convergence.independentCrossValidation as Record<string, unknown>)
       : null;
   if (
-    convergence?.schemaVersion !==
-      "mandelhowl.convergence-report.v1" ||
+    convergence?.schemaVersion !== "mandelhowl.convergence-report.v1" ||
     convergence.accepted !== true ||
     convergence.quadratureConvergenceAccepted !== true ||
     methodConformance?.handoffThinPlateMethodAllowed !== true ||
@@ -311,10 +375,7 @@ function validateJsonEvidenceAssets(
   const coveredValues = coverage?.coveredValues;
   const missingValues = coverage?.missingValues;
   const outputs = coverage?.outputs;
-  const expectedValues = Array.from(
-    { length: 101 },
-    (_, value) => value,
-  );
+  const expectedValues = Array.from({ length: 101 }, (_, value) => value);
   const coverageValuesValid =
     Array.isArray(coveredValues) &&
     coveredValues.length === expectedValues.length &&
@@ -323,11 +384,7 @@ function validateJsonEvidenceAssets(
     Array.isArray(outputs) &&
     outputs.length === expectedValues.length &&
     outputs.every((value, index) => {
-      if (
-        typeof value !== "object" ||
-        value === null ||
-        Array.isArray(value)
-      ) {
+      if (typeof value !== "object" || value === null || Array.isArray(value)) {
         return false;
       }
       const output = value as Record<string, unknown>;
@@ -393,6 +450,7 @@ function createAssetUrls(
 export async function loadResonanceDataset(
   options: LoadResonanceDatasetOptions = {},
 ): Promise<ResonanceDatasetLoadResult> {
+  options.signal?.throwIfAborted();
   const fetcher = options.fetch ?? globalThis.fetch;
   if (typeof fetcher !== "function") {
     return diagnosticFailure([
@@ -410,8 +468,16 @@ export async function loadResonanceDataset(
   );
   let manifestBytes: Uint8Array;
   try {
-    manifestBytes = await readResponseBytes(fetcher, manifestUrl.href);
+    manifestBytes = await readResponseBytes(
+      fetcher,
+      manifestUrl.href,
+      "no-cache",
+      options.signal,
+    );
   } catch (error) {
+    if (options.signal?.aborted) {
+      throw options.signal.reason ?? error;
+    }
     return diagnosticFailure([
       createDiagnostic(
         ASSET_DIAGNOSTIC_CODES.manifestFetchFailed,
@@ -526,11 +592,7 @@ export async function loadResonanceDataset(
           "confirmed",
           "dataset.identity.unexpected",
           [
-            evidence(
-              "expectedDatasetId",
-              expectedDatasetId,
-              "runtime-config",
-            ),
+            evidence("expectedDatasetId", expectedDatasetId, "runtime-config"),
             evidence("actualDatasetId", manifest.datasetId, "manifest.json"),
           ],
         ),
@@ -540,8 +602,7 @@ export async function loadResonanceDataset(
       assetUrls,
     );
   }
-  const runtimeVersion =
-    options.runtimeVersion ?? MANDELHOWL_RUNTIME_VERSION;
+  const runtimeVersion = options.runtimeVersion ?? MANDELHOWL_RUNTIME_VERSION;
   if (!isRuntimeCompatible(manifest, runtimeVersion)) {
     return diagnosticFailure(
       [
@@ -599,70 +660,128 @@ export async function loadResonanceDataset(
 
   const assets = new Map<string, Uint8Array>();
   const diagnostics: DiagnosticRecord[] = [];
-  await Promise.all(
-    references.map(async (asset) => {
-      const url = assetUrls.byPath[asset.path];
-      let bytes: Uint8Array;
-      try {
-        bytes = await readResponseBytes(fetcher, url);
-      } catch (error) {
-        diagnostics.push(
-          createDiagnostic(
-            ASSET_DIAGNOSTIC_CODES.assetFetchFailed,
-            "fatal",
-            "confirmed",
-            "dataset.asset.fetch-failed",
-            [
-              evidence("path", asset.path, "manifest.json"),
-              evidence(
-                "error",
-                error instanceof Error ? error.message : String(error),
-                "fetch",
-              ),
-            ],
-          ),
-        );
-        return;
-      }
-      if (bytes.byteLength !== asset.byteLength) {
-        diagnostics.push(
-          createDiagnostic(
-            ASSET_DIAGNOSTIC_CODES.assetByteLengthMismatch,
-            "fatal",
-            "confirmed",
-            "dataset.asset.byte-length-mismatch",
-            [
-              evidence("path", asset.path, "manifest.json"),
-              evidence("expected", asset.byteLength, "manifest.json"),
-              evidence("actual", bytes.byteLength, "fetch"),
-            ],
-          ),
-        );
-        return;
-      }
-      const digest = await sha256Hex(
-        bytes,
-        options.crypto ?? globalThis.crypto,
-      );
-      if (digest !== asset.sha256) {
-        diagnostics.push(
-          createDiagnostic(
-            ASSET_DIAGNOSTIC_CODES.assetHashMismatch,
-            "fatal",
-            "confirmed",
-            "dataset.asset.hash-mismatch",
-            [
-              evidence("path", asset.path, "manifest.json"),
-              evidence("expected", asset.sha256, "manifest.json"),
-              evidence("actual", digest, "WebCrypto"),
-            ],
-          ),
-        );
-        return;
-      }
-      assets.set(asset.path, bytes);
-    }),
+  let verifiedCount = 0;
+  const texturesByPath = new Map(
+    manifest.files.textures.map((texture) => [
+      texture.path,
+      Object.freeze({
+        kind: texture.kind,
+        modeIds: Object.freeze([...texture.modeIds]),
+        widthPx: texture.widthPx,
+        heightPx: texture.heightPx,
+        layers: texture.layers,
+        uvOrigin: texture.uvOrigin,
+      }) satisfies VerifiedTextureAssetMetadata,
+    ]),
   );
+  const fetchAndVerify = async (asset: AssetReference): Promise<void> => {
+    options.signal?.throwIfAborted();
+    const canonicalUrl = assetUrls.byPath[asset.path];
+    const requestUrl = immutableAssetRequestUrl(canonicalUrl, asset.sha256);
+    let bytes: Uint8Array;
+    try {
+      bytes = await readResponseBytes(
+        fetcher,
+        requestUrl,
+        "force-cache",
+        options.signal,
+      );
+    } catch (error) {
+      if (options.signal?.aborted) {
+        throw options.signal.reason ?? error;
+      }
+      diagnostics.push(
+        createDiagnostic(
+          ASSET_DIAGNOSTIC_CODES.assetFetchFailed,
+          "fatal",
+          "confirmed",
+          "dataset.asset.fetch-failed",
+          [
+            evidence("path", asset.path, "manifest.json"),
+            evidence(
+              "error",
+              error instanceof Error ? error.message : String(error),
+              "fetch",
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+    options.signal?.throwIfAborted();
+    if (bytes.byteLength !== asset.byteLength) {
+      diagnostics.push(
+        createDiagnostic(
+          ASSET_DIAGNOSTIC_CODES.assetByteLengthMismatch,
+          "fatal",
+          "confirmed",
+          "dataset.asset.byte-length-mismatch",
+          [
+            evidence("path", asset.path, "manifest.json"),
+            evidence("expected", asset.byteLength, "manifest.json"),
+            evidence("actual", bytes.byteLength, "fetch"),
+          ],
+        ),
+      );
+      return;
+    }
+    const digest = await sha256Hex(bytes, options.crypto ?? globalThis.crypto);
+    options.signal?.throwIfAborted();
+    if (digest !== asset.sha256) {
+      diagnostics.push(
+        createDiagnostic(
+          ASSET_DIAGNOSTIC_CODES.assetHashMismatch,
+          "fatal",
+          "confirmed",
+          "dataset.asset.hash-mismatch",
+          [
+            evidence("path", asset.path, "manifest.json"),
+            evidence("expected", asset.sha256, "manifest.json"),
+            evidence("actual", digest, "WebCrypto"),
+          ],
+        ),
+      );
+      return;
+    }
+    assets.set(asset.path, bytes);
+    verifiedCount += 1;
+    if (options.onAssetVerified) {
+      const texture = texturesByPath.get(asset.path) ?? null;
+      const progress = Object.freeze({
+        schemaVersion: "mandelhowl.asset-progress.v1",
+        datasetId: manifest.datasetId,
+        datasetReady: false,
+        path: asset.path,
+        url: requestUrl,
+        mediaType: asset.mediaType,
+        byteLength: asset.byteLength,
+        sha256: asset.sha256,
+        textureKind: texture?.kind ?? null,
+        texture,
+        verifiedCount,
+        totalCount: references.length,
+        bytes: bytes.slice(),
+      }) satisfies VerifiedAssetProgressEvent;
+      try {
+        const observerResult = options.onAssetVerified(progress);
+        if (observerResult && typeof observerResult.then === "function") {
+          void Promise.resolve(observerResult).catch(() => {
+            // Async observers are isolated exactly like synchronous ones.
+          });
+        }
+      } catch {
+        // Progress is observational and must never change fail-closed validity.
+      }
+    }
+  };
+  const prioritized = prioritizedAssetReferences(manifest, references);
+  for (const asset of prioritized.priority) {
+    options.signal?.throwIfAborted();
+    await fetchAndVerify(asset);
+  }
+  options.signal?.throwIfAborted();
+  await Promise.all(prioritized.remaining.map(fetchAndVerify));
+  options.signal?.throwIfAborted();
   if (diagnostics.length > 0) {
     return diagnosticFailure(diagnostics, manifest, assets, assetUrls);
   }
@@ -704,13 +823,7 @@ export async function loadResonanceDataset(
           "fatal",
           "confirmed",
           "dataset.evidence.invalid",
-          [
-            evidence(
-              "violations",
-              evidenceErrors.join(","),
-              "dataset",
-            ),
-          ],
+          [evidence("violations", evidenceErrors.join(","), "dataset")],
         ),
       ],
       manifest,
@@ -720,9 +833,7 @@ export async function loadResonanceDataset(
   }
 
   try {
-    const modes = decodeModesBinaryV1(
-      assets.get(manifest.files.modes.path)!,
-    );
+    const modes = decodeModesBinaryV1(assets.get(manifest.files.modes.path)!);
     const response = decodeResponseBinaryV1(
       assets.get(manifest.files.response.path)!,
     );
@@ -732,10 +843,28 @@ export async function loadResonanceDataset(
       );
     }
     const modeIds = new Set(modes.map((mode) => mode.modeId));
+    const textureLayers = new Set(modes.map((mode) => mode.textureLayer));
+    if (
+      modeIds.size !== modes.length ||
+      textureLayers.size !== modes.length ||
+      modes.some(
+        (mode) =>
+          !Number.isInteger(mode.textureLayer) ||
+          mode.textureLayer < 0 ||
+          mode.textureLayer >= modes.length,
+      )
+    ) {
+      throw new TypeError(
+        "Decoded modes do not define a unique in-range texture layer",
+      );
+    }
     for (const texture of manifest.files.textures) {
       if (
+        texture.layers !== modes.length ||
         texture.modeIds.length !== modes.length ||
-        texture.modeIds.some((modeId) => !modeIds.has(modeId))
+        new Set(texture.modeIds).size !== modes.length ||
+        texture.modeIds.some((modeId) => !modeIds.has(modeId)) ||
+        modes.some((mode) => texture.modeIds[mode.textureLayer] !== mode.modeId)
       ) {
         throw new TypeError(
           `${texture.kind} texture mode ids do not cover the modal dataset`,

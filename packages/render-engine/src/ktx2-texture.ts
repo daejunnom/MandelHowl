@@ -36,13 +36,20 @@ function hasKtx2Identifier(bytes: Uint8Array): boolean {
  * Basis/UASTC payloads require a version-pinned transcoder and are rejected
  * rather than silently rendered as unrelated procedural data.
  */
-export function decodePortableKtx2(buffer: ArrayBuffer): DecodedKtx2Array {
-  const bytes = new Uint8Array(buffer);
+export function decodePortableKtx2(
+  input: ArrayBuffer | Uint8Array,
+): DecodedKtx2Array {
+  const bytes =
+    input instanceof Uint8Array ? input : new Uint8Array(input);
   if (!hasKtx2Identifier(bytes) || bytes.byteLength < 104) {
     throw new Error("Invalid KTX2 identifier or truncated header.");
   }
 
-  const view = new DataView(buffer);
+  const view = new DataView(
+    bytes.buffer,
+    bytes.byteOffset,
+    bytes.byteLength,
+  );
   const vkFormat = view.getUint32(12, true);
   const typeSize = view.getUint32(16, true);
   const width = view.getUint32(20, true);
@@ -96,7 +103,7 @@ export function decodePortableKtx2(buffer: ArrayBuffer): DecodedKtx2Array {
     layers,
     channels,
     srgb: vkFormat === VK_FORMAT_R8G8B8A8_SRGB,
-    pixels: bytes.slice(byteOffset, byteOffset + expectedLength),
+    pixels: bytes.subarray(byteOffset, byteOffset + expectedLength),
   });
 }
 

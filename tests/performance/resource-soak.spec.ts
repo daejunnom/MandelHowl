@@ -82,12 +82,27 @@ test("keeps runtime consumers, audio nodes and buffers bounded during a soak", a
   if (!final) return;
   const finalHeap = await usedHeapBytes(page);
 
-  expect(middle.fanout.consumerCount).toBe(baseline.fanout.consumerCount);
-  expect(final.fanout.consumerCount).toBe(baseline.fanout.consumerCount);
-  expect(final.fanout.consumerCount).toBe(5);
-  expect(final.fanout.rejectedFrames).toBe(0);
-  expect(final.fanout.publishedFrames).toBeGreaterThan(
-    middle.fanout.publishedFrames,
+  expect(middle.presentationFanout.consumerCount).toBe(
+    baseline.presentationFanout.consumerCount,
+  );
+  expect(final.presentationFanout.consumerCount).toBe(
+    baseline.presentationFanout.consumerCount,
+  );
+  expect(final.presentationFanout.consumerCount).toBe(3);
+  expect(final.presentationFanout.rejectedFrames).toBe(0);
+  expect(final.presentationFanout.publishedFrames).toBeGreaterThan(
+    middle.presentationFanout.publishedFrames,
+  );
+  expect(middle.hotPathFanout.consumerCount).toBe(
+    baseline.hotPathFanout.consumerCount,
+  );
+  expect(final.hotPathFanout.consumerCount).toBe(
+    baseline.hotPathFanout.consumerCount,
+  );
+  expect(final.hotPathFanout.consumerCount).toBe(2);
+  expect(final.hotPathFanout.rejectedFrames).toBe(0);
+  expect(final.hotPathFanout.publishedFrames).toBeGreaterThan(
+    middle.hotPathFanout.publishedFrames,
   );
   expect(final.animationFrames).toBeGreaterThan(middle.animationFrames);
   expect(final.renderer?.framesRendered ?? 0).toBeGreaterThan(
@@ -97,11 +112,20 @@ test("keeps runtime consumers, audio nodes and buffers bounded during a soak", a
     final.animationFrames - baseline.animationFrames;
   const observedSeconds =
     (final.capturedAtMs - baseline.capturedAtMs) / 1_000;
+  const observedPresentationFrames =
+    final.presentationFanout.publishedFrames -
+    baseline.presentationFanout.publishedFrames;
   const observedFramesPerSecond = observedFrames / observedSeconds;
+  // One exceptional dataset-transition publication may occur after the
+  // baseline; normal presentation snapshots remain bounded to 24 Hz.
+  expect(observedPresentationFrames).toBeLessThanOrEqual(
+    Math.ceil(observedSeconds * 24) + 1,
+  );
   await testInfo.attach("performance-metrics.json", {
     body: JSON.stringify(
       {
         observedFramesPerSecond,
+        observedPresentationFrames,
         frameWorkP95Ms: final.frameWorkP95Ms,
         longestFrameWorkMs: final.longestFrameWorkMs,
         observedSeconds,

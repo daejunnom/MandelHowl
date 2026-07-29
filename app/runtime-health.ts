@@ -4,7 +4,10 @@ import type { SnapshotFanoutMetrics } from "./snapshot-fanout";
 
 export interface MandelHowlHealthSnapshot {
   readonly capturedAtMs: number;
-  readonly fanout: SnapshotFanoutMetrics;
+  /** Owned immutable presentation snapshots (React/challenge/diagnostics). */
+  readonly presentationFanout: SnapshotFanoutMetrics;
+  /** Reusable synchronous leases (renderer/audio). */
+  readonly hotPathFanout: SnapshotFanoutMetrics;
   readonly renderer: PlateRendererStatus | null;
   readonly audio: AudioSafetyTelemetry;
   readonly animationFrames: number;
@@ -13,6 +16,12 @@ export interface MandelHowlHealthSnapshot {
   readonly longestFrameDeltaMs: number;
   readonly visibilityCycles: number;
   readonly pausedGapResets: number;
+  readonly runtime: {
+    readonly sequence: number;
+    readonly simulationTimeSeconds: number;
+    readonly driveFrequencyHz: number;
+    readonly activeModeId: string | null;
+  };
 }
 
 export interface RuntimeHealthHook {

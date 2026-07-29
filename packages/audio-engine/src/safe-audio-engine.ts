@@ -24,12 +24,7 @@ export interface AudibleSnapshot {
 }
 
 export type AudioLifecycleState =
-  | "idle"
-  | "running"
-  | "fading"
-  | "suspended"
-  | "disposed"
-  | "unavailable";
+  "idle" | "running" | "fading" | "suspended" | "disposed" | "unavailable";
 
 export interface AudioSafetyTelemetry {
   readonly lifecycle: AudioLifecycleState;
@@ -58,12 +53,12 @@ export type SafeAudioEngineObservers = Pick<
 >;
 
 interface NormalizedAudibleFrame {
-  readonly frequency: number;
-  readonly envelope: number;
-  readonly activeMode: number;
-  readonly regime: RuntimeSnapshot["regime"];
-  readonly sequence: number | null;
-  readonly datasetId: string | null;
+  frequency: number;
+  envelope: number;
+  activeMode: number;
+  regime: RuntimeSnapshot["regime"];
+  sequence: number | null;
+  datasetId: string | null;
 }
 
 const MIN_AUDIBLE_FREQUENCY = 20;
@@ -94,25 +89,28 @@ function isRuntimeSnapshot(
   return "feedback" in snapshot && "dial" in snapshot;
 }
 
-function normalizeSnapshot(
+function writeNormalizedSnapshot(
   snapshot: RuntimeSnapshot | AudibleSnapshot,
-): NormalizedAudibleFrame | null {
+  target: NormalizedAudibleFrame,
+): boolean {
   const frequency = isRuntimeSnapshot(snapshot)
     ? snapshot.dial.driveFrequencyHz
     : snapshot.frequency;
   const envelope = isRuntimeSnapshot(snapshot)
     ? snapshot.feedback.envelopeNormalized
     : snapshot.feedbackEnvelope;
-  const activeMode = isRuntimeSnapshot(snapshot)
-    ? snapshot.modes.reduce(
-        (strongest, mode, index, modes) =>
-          mode.energyNormalized >
-          (modes[strongest]?.energyNormalized ?? Number.NEGATIVE_INFINITY)
-            ? index
-            : strongest,
-        0,
-      )
-    : snapshot.activeMode;
+  let activeMode = isRuntimeSnapshot(snapshot) ? 0 : snapshot.activeMode;
+  if (isRuntimeSnapshot(snapshot)) {
+    let strongestEnergy = Number.NEGATIVE_INFINITY;
+    for (let index = 0; index < snapshot.modes.length; index += 1) {
+      const energy =
+        snapshot.modes[index]?.energyNormalized ?? Number.NEGATIVE_INFINITY;
+      if (energy > strongestEnergy) {
+        strongestEnergy = energy;
+        activeMode = index;
+      }
+    }
+  }
   const sequence = isRuntimeSnapshot(snapshot)
     ? snapshot.sequence
     : (snapshot.sequence ?? null);
@@ -125,21 +123,20 @@ function normalizeSnapshot(
     !Number.isFinite(envelope) ||
     !Number.isFinite(activeMode)
   ) {
-    return null;
+    return false;
   }
 
-  return {
-    frequency: clamp(
-      frequency,
-      MIN_AUDIBLE_FREQUENCY,
-      MAX_AUDIBLE_FREQUENCY,
-    ),
-    envelope: clamp(envelope, 0, 1),
-    activeMode: Math.max(0, Math.floor(activeMode)),
-    regime: snapshot.regime,
-    sequence,
-    datasetId,
-  };
+  target.frequency = clamp(
+    frequency,
+    MIN_AUDIBLE_FREQUENCY,
+    MAX_AUDIBLE_FREQUENCY,
+  );
+  target.envelope = clamp(envelope, 0, 1);
+  target.activeMode = Math.max(0, Math.floor(activeMode));
+  target.regime = snapshot.regime;
+  target.sequence = sequence;
+  target.datasetId = datasetId;
+  return true;
 }
 
 /**
@@ -181,6 +178,14 @@ export class SafeAudioEngine {
   private exposureGuardActive = false;
   private lifecycleGeneration = 0;
   private invalidSnapshotReported = false;
+  private readonly normalizedFrame: NormalizedAudibleFrame = {
+    frequency: MIN_AUDIBLE_FREQUENCY,
+    envelope: 0,
+    activeMode: 0,
+    regime: "decaying",
+    sequence: null,
+    datasetId: null,
+  };
 
   constructor(options: SafeAudioEngineOptions = {}) {
     this.safety = options.safetySpec ?? GENERATED_AUDIO_SAFETY_SPEC;
@@ -237,10 +242,7 @@ export class SafeAudioEngine {
   }
 
   async activate(): Promise<boolean> {
-    if (
-      typeof window === "undefined" ||
-      this.lifecycle === "disposed"
-    ) {
+    if (typeof window === "undefined" || this.lifecycle === "disposed") {
       return false;
     }
 
@@ -268,10 +270,7 @@ export class SafeAudioEngine {
         attemptedContext = new AudioContextConstructor();
         this.createGraph(attemptedContext);
       } catch (error) {
-        if (
-          attemptedContext &&
-          attemptedContext.state !== "closed"
-        ) {
+        if (attemptedContext && attemptedContext.state !== "closed") {
           try {
             await attemptedContext.close();
           } catch {
@@ -326,8 +325,8 @@ export class SafeAudioEngine {
    * `applyRuntimeSnapshot` so DOM, renderer and audio receive one object.
    */
   applySnapshot(snapshot: RuntimeSnapshot | AudibleSnapshot): void {
-    const frame = normalizeSnapshot(snapshot);
-    if (!frame) {
+    const frame = this.normalizedFrame;
+    if (!writeNormalizedSnapshot(snapshot, frame)) {
       this.muteInvalidSnapshot();
       return;
     }
@@ -359,17 +358,20 @@ export class SafeAudioEngine {
     this.invalidSnapshotReported = false;
 
     this.updateExposure(frame, elapsed);
-    const partialRatios = [
-      1,
-      1.498 + (frame.activeMode % 3) * 0.006,
-      2.01,
-    ];
-    const partialWeights = [0.62, 0.25, 0.13];
-    this.oscillators.forEach((oscillator, index) => {
+    for (let index = 0; index < this.oscillators.length; index += 1) {
+      const oscillator = this.oscillators[index];
+      if (!oscillator) continue;
+      const partialRatio =
+        index === 0
+          ? 1
+          : index === 1
+            ? 1.498 + (frame.activeMode % 3) * 0.006
+            : 2.01;
+      const partialWeight = index === 0 ? 0.62 : index === 1 ? 0.25 : 0.13;
       setTarget(
         oscillator.frequency,
         clamp(
-          frame.frequency * partialRatios[index],
+          frame.frequency * partialRatio,
           MIN_AUDIBLE_FREQUENCY,
           Math.min(MAX_AUDIBLE_FREQUENCY, this.safety.bandLimiter.lowPassHz),
         ),
@@ -380,12 +382,12 @@ export class SafeAudioEngine {
       if (partialGain) {
         setTarget(
           partialGain.gain,
-          frame.envelope * partialWeights[index],
+          frame.envelope * partialWeight,
           context,
           frame.regime === "saturated" ? 0.08 : 0.035,
         );
       }
-    });
+    }
 
     setTarget(
       this.lowPass.frequency,
@@ -411,7 +413,9 @@ export class SafeAudioEngine {
     this.emitTelemetry();
   }
 
-  async suspend(reason: "hidden" | "manual" | "error" = "manual"): Promise<void> {
+  async suspend(
+    reason: "hidden" | "manual" | "error" = "manual",
+  ): Promise<void> {
     const context = this.context;
     if (!context || context.state === "closed") return;
 
@@ -518,11 +522,7 @@ export class SafeAudioEngine {
     const oscillators: OscillatorNode[] = [];
     const oscillatorGains: GainNode[] = [];
     try {
-      const oscillatorTypes: OscillatorType[] = [
-        "sine",
-        "triangle",
-        "sine",
-      ];
+      const oscillatorTypes: OscillatorType[] = ["sine", "triangle", "sine"];
       oscillatorTypes.forEach((type, index) => {
         const oscillator = context.createOscillator();
         const gain = context.createGain();
@@ -572,10 +572,7 @@ export class SafeAudioEngine {
     );
   }
 
-  private updateExposure(
-    frame: NormalizedAudibleFrame,
-    elapsed: number,
-  ): void {
+  private updateExposure(frame: NormalizedAudibleFrame, elapsed: number): void {
     const next = updateExposureState(
       {
         highFrequencySeconds: this.highFrequencySeconds,
@@ -604,11 +601,7 @@ export class SafeAudioEngine {
   private measureOutput(now: number): void {
     const analyser = this.analyser;
     const buffer = this.analyserBuffer;
-    if (
-      !analyser ||
-      !buffer ||
-      now - this.lastMeterContextTime < 0.08
-    ) {
+    if (!analyser || !buffer || now - this.lastMeterContextTime < 0.08) {
       return;
     }
     this.lastMeterContextTime = now;
@@ -657,10 +650,7 @@ export class SafeAudioEngine {
     if (!context || !masterGain) return;
     const now = context.currentTime;
     masterGain.gain.cancelScheduledValues(now);
-    masterGain.gain.setValueAtTime(
-      Math.max(0, masterGain.gain.value),
-      now,
-    );
+    masterGain.gain.setValueAtTime(Math.max(0, masterGain.gain.value), now);
     masterGain.gain.linearRampToValueAtTime(0, now + Math.max(0.001, seconds));
   }
 

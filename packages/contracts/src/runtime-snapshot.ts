@@ -55,7 +55,11 @@ export type VolumeSnapshot =
     };
 
 /**
- * The sole immutable fan-out payload shared by DOM, rendering, and audio.
+ * Canonical snapshot shape shared by every consumer.
+ *
+ * Retaining presentation consumers receive an owned immutable instance.
+ * Renderer/audio may receive a branded synchronous lease with identical
+ * values and sequence; that lease is invalidated by the next writer update.
  * Numeric property names carry their wire units; virtual normalized levels are
  * dimensionless and never represent device or operating-system volume.
  */
@@ -68,6 +72,12 @@ export interface RuntimeSnapshot {
   readonly simulationTimeSeconds: number;
   readonly dial: DialSnapshot;
   readonly modes: readonly ModalSnapshot[];
+  /**
+   * Mode captured by the current drive response, independent of residual
+   * modal-energy dominance. Null means no mode currently crosses the capture
+   * threshold.
+   */
+  readonly activeModeId: string | null;
   readonly microphone: MicrophoneSnapshot;
   readonly feedback: FeedbackSnapshot;
   readonly regime: ResonanceRegime;

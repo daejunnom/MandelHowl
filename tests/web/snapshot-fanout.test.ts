@@ -1,6 +1,15 @@
 import { describe, expect, it, vi } from "vitest";
 import type { RuntimeSnapshot } from "../../packages/contracts/src";
-import { RuntimeSnapshotFanout } from "../../app/snapshot-fanout";
+import {
+  advanceMandelHowlRuntime,
+  createMandelHowlRuntime,
+  createRuntimeSnapshotWriter,
+  getRuntimeSnapshot,
+} from "../../packages/resonance-engine/src";
+import {
+  RuntimeSnapshotFanout,
+  RuntimeSnapshotLeaseFanout,
+} from "../../app/snapshot-fanout";
 
 function snapshot(
   sequence: number,
@@ -25,6 +34,7 @@ function snapshot(
       atMaximumEndStop: false,
     },
     modes: [],
+    activeModeId: null,
     microphone: {
       rmsNormalized: 0,
       peakNormalized: 0,
@@ -87,5 +97,103 @@ describe("RuntimeSnapshotFanout", () => {
       fanout.publish(snapshot(0, `sha256:${"1".repeat(64)}`)),
     ).toBe(true);
     expect(consumer).toHaveBeenCalledTimes(2);
+  });
+
+  it("continues after both a consumer and its error observer fail", () => {
+    const laterConsumer = vi.fn();
+    let shouldFail = true;
+    const failingConsumer = () => {
+      if (shouldFail) throw new Error("consumer failed");
+    };
+    const errors = vi.fn(() => {
+      throw new Error("observer failed");
+    });
+    const fanout = new RuntimeSnapshotFanout(
+      [failingConsumer, laterConsumer],
+      errors,
+    );
+
+    expect(fanout.publish(snapshot(1))).toBe(true);
+    expect(fanout.publish(snapshot(2))).toBe(true);
+    expect(errors).toHaveBeenCalledTimes(1);
+    expect(laterConsumer).toHaveBeenCalledTimes(2);
+
+    shouldFail = false;
+    expect(fanout.publish(snapshot(3))).toBe(true);
+    shouldFail = true;
+    expect(fanout.publish(snapshot(4))).toBe(true);
+    expect(errors).toHaveBeenCalledTimes(2);
+    expect(laterConsumer).toHaveBeenCalledTimes(4);
+  });
+});
+
+describe("RuntimeSnapshotLeaseFanout", () => {
+  it("synchronously gives renderer and audio the same reusable lease", () => {
+    let runtime = createMandelHowlRuntime({
+      initialFrequencyHz: 220,
+    });
+    const writer = createRuntimeSnapshotWriter();
+    const renderer = vi.fn();
+    const audio = vi.fn();
+    const hotPath = new RuntimeSnapshotLeaseFanout([renderer, audio]);
+    const presentation = new RuntimeSnapshotFanout();
+
+    const lease = writer.write(runtime);
+    const owned = getRuntimeSnapshot(runtime);
+    expect(hotPath.publish(lease)).toBe(true);
+    expect(presentation.publish(owned)).toBe(true);
+
+    expect(renderer.mock.calls[0]?.[0]).toBe(audio.mock.calls[0]?.[0]);
+    expect(renderer.mock.calls[0]?.[0]).toBe(lease);
+    expect(lease).toEqual(owned);
+    expect(lease.sequence).toBe(owned.sequence);
+    expect(hotPath.metrics.consumerCount).toBe(2);
+    expect(presentation.metrics.consumerCount).toBe(0);
+
+    const retainedPresentationSequence = owned.sequence;
+    runtime = advanceMandelHowlRuntime(runtime, 1 / 60);
+    const nextLease = writer.write(runtime);
+    expect(nextLease).toBe(lease);
+    expect(lease.sequence).toBeGreaterThan(retainedPresentationSequence);
+    expect(owned.sequence).toBe(retainedPresentationSequence);
+  });
+
+  it("isolates a failed hot-path consumer and never retains subscribers", () => {
+    const laterConsumer = vi.fn();
+    let shouldFail = true;
+    const failingConsumer = () => {
+      if (shouldFail) throw new Error("renderer failed");
+    };
+    const errors = vi.fn(() => {
+      throw new Error("observer failed");
+    });
+    const hotPath = new RuntimeSnapshotLeaseFanout(
+      [failingConsumer, laterConsumer],
+      errors,
+    );
+    const writer = createRuntimeSnapshotWriter();
+    let runtime = createMandelHowlRuntime({
+      initialFrequencyHz: 220,
+    });
+
+    expect(hotPath.publish(writer.write(runtime))).toBe(true);
+    runtime = advanceMandelHowlRuntime(runtime, 1 / 60);
+    expect(hotPath.publish(writer.write(runtime))).toBe(true);
+    expect(errors).toHaveBeenCalledTimes(1);
+    expect(laterConsumer).toHaveBeenCalledTimes(2);
+
+    shouldFail = false;
+    runtime = advanceMandelHowlRuntime(runtime, 1 / 60);
+    expect(hotPath.publish(writer.write(runtime))).toBe(true);
+    shouldFail = true;
+    runtime = advanceMandelHowlRuntime(runtime, 1 / 60);
+    expect(hotPath.publish(writer.write(runtime))).toBe(true);
+    expect(errors).toHaveBeenCalledTimes(2);
+    expect(laterConsumer).toHaveBeenCalledTimes(4);
+    expect(hotPath.metrics.consumerCount).toBe(2);
+
+    hotPath.dispose();
+    expect(hotPath.metrics.consumerCount).toBe(0);
+    expect(hotPath.publish(writer.write(runtime))).toBe(false);
   });
 });

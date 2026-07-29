@@ -20,7 +20,9 @@ export type {
   ResonanceDatasetLoadResult,
   TextureAssetKind,
   TextureAssetUrl,
+  VerifiedAssetProgressEvent,
   VerifiedAssetUrls,
+  VerifiedTextureAssetMetadata,
 } from "./asset-loader";
 export {
   collectManifestAssets,

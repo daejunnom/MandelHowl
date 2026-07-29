@@ -1,9 +1,4 @@
-import {
-  expect,
-  test,
-  type Browser,
-  type Page,
-} from "@playwright/test";
+import { expect, test, type Browser, type Page } from "@playwright/test";
 import { waitForRuntimeReady } from "./runtime-ready";
 
 const DATASET_ID =
@@ -53,13 +48,8 @@ async function collectCoreResult(
     await expect
       .poll(() =>
         page.evaluate(() => {
-          const status =
-            window.__MANDELHOWL_HEALTH__?.getSnapshot().renderer;
-          return [
-            status?.kind,
-            status?.textureReady,
-            status?.datasetId,
-          ];
+          const status = window.__MANDELHOWL_HEALTH__?.getSnapshot().renderer;
+          return [status?.kind, status?.textureReady, status?.datasetId];
         }),
       )
       .toEqual([renderer, true, DATASET_ID]);
@@ -76,19 +66,18 @@ async function collectCoreResult(
     await expect(page.locator(".mh-output-state")).toHaveText("SETTLED", {
       timeout: 15_000,
     });
-    await expect(page.locator(".mh-volume-readout > strong")).toHaveText(
-      "000",
-    );
+    await expect(page.locator(".mh-volume-readout > strong")).toHaveText("000");
 
     return await page.evaluate(() => ({
       datasetId:
         window.__MANDELHOWL_HEALTH__?.getSnapshot().renderer?.datasetId,
-      frequency: document
-        .querySelector('[role="slider"][aria-label="Drive frequency"]')
-        ?.getAttribute("aria-valuenow") ?? null,
+      frequency:
+        document
+          .querySelector('[role="slider"][aria-label="Drive frequency"]')
+          ?.getAttribute("aria-valuenow") ?? null,
       volume:
-        document.querySelector(".mh-volume-readout > strong")
-          ?.textContent ?? null,
+        document.querySelector(".mh-volume-readout > strong")?.textContent ??
+        null,
       measurement:
         document.querySelector(".mh-output-state")?.textContent ?? null,
       regime:
@@ -140,16 +129,11 @@ test("texture upload failure cannot claim a verified production bake", async ({
   await expect
     .poll(() =>
       page.evaluate(() => {
-        const renderer =
-          window.__MANDELHOWL_HEALTH__?.getSnapshot().renderer;
-        return [
-          renderer?.kind,
-          renderer?.textureReady,
-          renderer?.datasetId,
-        ];
+        const renderer = window.__MANDELHOWL_HEALTH__?.getSnapshot().renderer;
+        return [renderer?.kind, renderer?.textureReady, renderer?.datasetId];
       }),
     )
-    .toEqual(["webgl2", false, DATASET_ID]);
+    .toEqual(["webgl2", false, null]);
   await expect(page.locator(".mh-prototype-status")).toHaveText(
     "ANALYTICAL PROTOTYPE / PRODUCTION BAKE PENDING",
   );
@@ -157,4 +141,103 @@ test("texture upload failure cannot claim a verified production bake", async ({
     "VERIFIED",
   );
   expect(pageErrors).toEqual([]);
+});
+
+test("reported WebGL upload errors cannot claim texture readiness", async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    const prototype = WebGL2RenderingContext.prototype;
+    const originalUpload = prototype.texImage3D;
+    const originalGetError = prototype.getError;
+    let uploadErrorPending = false;
+    Object.defineProperty(prototype, "texImage3D", {
+      configurable: true,
+      value: function (
+        this: WebGL2RenderingContext,
+        ...args: Parameters<WebGL2RenderingContext["texImage3D"]>
+      ) {
+        Reflect.apply(originalUpload, this, args);
+        uploadErrorPending = true;
+      },
+    });
+    Object.defineProperty(prototype, "getError", {
+      configurable: true,
+      value: function (this: WebGL2RenderingContext) {
+        if (uploadErrorPending) {
+          uploadErrorPending = false;
+          return this.OUT_OF_MEMORY;
+        }
+        return Reflect.apply(originalGetError, this, []);
+      },
+    });
+  });
+
+  await page.goto("/");
+  await waitForRuntimeReady(page);
+  await expect(
+    page.getByText("MH-DATASET-INTEGRITY", { exact: true }),
+  ).toBeVisible();
+  await expect
+    .poll(() =>
+      page.evaluate(() => {
+        const renderer = window.__MANDELHOWL_HEALTH__?.getSnapshot().renderer;
+        return [renderer?.kind, renderer?.textureReady, renderer?.datasetId];
+      }),
+    )
+    .toEqual(["webgl2", false, null]);
+  await expect(page.locator(".mh-prototype-status")).not.toContainText(
+    "VERIFIED",
+  );
+});
+
+test("context loss during texture installation cannot promote the dataset", async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    const prototype = WebGL2RenderingContext.prototype;
+    const originalUpload = prototype.texImage3D;
+    let dispatched = false;
+    Object.defineProperty(prototype, "texImage3D", {
+      configurable: true,
+      value: function (
+        this: WebGL2RenderingContext,
+        ...args: Parameters<WebGL2RenderingContext["texImage3D"]>
+      ) {
+        Reflect.apply(originalUpload, this, args);
+        if (dispatched) return;
+        dispatched = true;
+        queueMicrotask(() => {
+          (this.canvas as HTMLCanvasElement).dispatchEvent(
+            new Event("webglcontextlost", {
+              bubbles: false,
+              cancelable: true,
+            }),
+          );
+        });
+      },
+    });
+  });
+
+  await page.goto("/");
+  await waitForRuntimeReady(page);
+  await expect(
+    page.getByText("MH-RENDER-CONTEXT-LOST", { exact: true }),
+  ).toBeVisible();
+  await expect
+    .poll(() =>
+      page.evaluate(() => {
+        const renderer = window.__MANDELHOWL_HEALTH__?.getSnapshot().renderer;
+        return [
+          renderer?.kind,
+          renderer?.contextLost,
+          renderer?.textureReady,
+          renderer?.datasetId,
+        ];
+      }),
+    )
+    .toEqual(["webgl2", true, false, null]);
+  await expect(page.locator(".mh-prototype-status")).not.toContainText(
+    "VERIFIED",
+  );
 });

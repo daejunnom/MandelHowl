@@ -37,6 +37,27 @@ function simulateFrames(
 }
 
 describe("runtime contracts", () => {
+  it("publishes the immediate captured mode identity with deterministic nulls", () => {
+    let inactive = createMandelHowlRuntime({
+      initialFrequencyHz: 45,
+    });
+    expect(getRuntimeSnapshot(inactive).activeModeId).toBeNull();
+    inactive = advanceMandelHowlRuntime(inactive, 1 / 60);
+    expect(inactive.resonance.activeModeIndex).toBeNull();
+    expect(getRuntimeSnapshot(inactive).activeModeId).toBeNull();
+
+    let captured = createMandelHowlRuntime({
+      initialFrequencyHz: 221.4,
+    });
+    expect(getRuntimeSnapshot(captured).activeModeId).toBeNull();
+    captured = advanceMandelHowlRuntime(captured, 1 / 60);
+    expect(captured.resonance.activeModeIndex).toBe(4);
+    expect(getRuntimeSnapshot(captured).activeModeId).toBe("p05");
+
+    captured.resonance.activeModeIndex = Number.MAX_SAFE_INTEGER;
+    expect(getRuntimeSnapshot(captured).activeModeId).toBeNull();
+  });
+
   it("is frame-rate independent at 30, 60 and 144 Hz", () => {
     const at30 = simulateFrames(1 / 30, 240);
     const at60 = simulateFrames(1 / 60, 480);

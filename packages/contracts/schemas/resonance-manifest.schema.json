@@ -32,11 +32,7 @@
     "ownership": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "kind",
-        "generator",
-        "policy"
-      ],
+      "required": ["kind", "generator", "policy"],
       "properties": {
         "kind": {
           "const": "generated"
@@ -76,10 +72,7 @@
     "plate": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "plateId",
-        "specSha256"
-      ],
+      "required": ["plateId", "specSha256"],
       "properties": {
         "plateId": {
           "type": "string",
@@ -127,10 +120,7 @@
     "frequencyRange": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "minimumHz",
-        "maximumHz"
-      ],
+      "required": ["minimumHz", "maximumHz"],
       "properties": {
         "minimumHz": {
           "type": "number",
@@ -194,6 +184,7 @@
         "textures": {
           "type": "array",
           "minItems": 4,
+          "maxItems": 4,
           "items": {
             "$ref": "#/$defs/textureAtlas"
           }
@@ -233,12 +224,7 @@
     "asset": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "path",
-        "byteLength",
-        "sha256",
-        "mediaType"
-      ],
+      "required": ["path", "byteLength", "sha256", "mediaType"],
       "properties": {
         "path": {
           "$ref": "#/$defs/relativePath"
@@ -363,14 +349,7 @@
     "plateCoordinateSystem": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "frame",
-        "handedness",
-        "origin",
-        "xAxis",
-        "yAxis",
-        "zAxis"
-      ],
+      "required": ["frame", "handedness", "origin", "xAxis", "yAxis", "zAxis"],
       "properties": {
         "frame": {
           "const": "plate-local"

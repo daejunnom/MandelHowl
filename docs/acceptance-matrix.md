@@ -2,7 +2,7 @@
 
 기준 문서: `MandelHowl_핸드오프.md`
 
-최종 감사일: 2026-07-29
+최종 감사일: 2026-07-30
 
 고정 dataset:
 `sha256:d31d968f5812deae76626be450446e5d67cd9075515e36e3e57631204a3a8d98`
@@ -20,7 +20,7 @@
 | 4 | 안정 입력 대부분이 0/100 | coverage uniform sweep, extremes `99.5012%` | PASS |
 | 5 | 모든 1..99 도달 가능 | 101 traces + independent runtime replay | PASS |
 | 6 | 난수·값별 lookup 없음 | forbidden-runtime scan + deterministic replay | PASS |
-| 7 | Chladni 무늬가 해석 자산에 연결 | mode/atlas/coordinate/checksum + actual renderer tests | PASS |
+| 7 | Chladni 무늬가 해석 자산에 연결 | 48-layer mode/atlas/coordinate/checksum + top-K/temporal framebuffer tests | PASS |
 | 8 | 만델브로가 판 물성에 반영 | field→thickness→solver provenance + science validation | PASS |
 | 9 | 모래와 만델브로를 혼동하지 않음 | copy contract + separated asset provenance | PASS |
 | 10 | 가상 100과 실제 음량 분리 | independent gain envelope + offline peak/RMS sweep | PASS |
@@ -45,11 +45,11 @@
 | B2 | convergence·MAC·독립 참조·provenance | PASS |
 | C0 | coupling·response·nodal mask·normal/sand texture | PASS |
 | C1 | content-addressed manifest·binary·KTX2·checksum | PASS |
-| D0 | WebGL2와 Canvas2D가 같은 mode dataset 소비 | PASS |
-| D1 | 같은 immutable snapshot을 render/audio/DOM consumer에 fanout; DOM은 재계산 없이 표시 cadence만 제한 | PASS |
+| D0 | WebGL2 top-4·Canvas2D top-2 합성, 원형 변위 메시, grains, capture/residual temporal E2E | PASS |
+| D1 | 같은 canonical state·sequence를 hot reusable lease(render/audio)와 owned immutable projection(DOM/challenge/diagnostics)으로 fanout | PASS |
 | D2 | user gesture·audio chain·peak/RMS·lifecycle·fail-closed | PASS |
 | E0 | 0/100 분포와 1..99 reachability/replay | PASS |
-| E1 | 상태 전환·비팅·잔향·reduced-motion 표현 회귀 | PASS |
+| E1 | 상태 전환·비팅·잔향·reduced-motion·1 frame/50 ms/250 ms 표현 회귀 | PASS |
 | F0 | integrity/capability 진단과 접근성 fallback E2E | PASS |
 | F1 | unit·science·integration·E2E·visual·soak 전체 suite | PASS |
 | G0 | release pin·provenance·licenses·headers·archive | PASS |
@@ -66,3 +66,17 @@ npm run release:archive:check
 
 개별 결과를 강제하는 값별 분기나 lookup table, 검증되지 않은 dataset의
 프로덕션 승격, 실제 마이크 입력은 release blocker다.
+
+`response.bin`의 공진 계산 재통합, Svelte 5 UI 이전, Rust native baker는
+현재 `PASS`에 포함하지 않는다. 각각 coverage differential, 수치 A/B,
+Python oracle 검증을 통과해야 하는 별도 결정이며
+`docs/adr-runtime-rendering-and-migration.md`에 gate를 기록한다.
+
+atlas-v1은 종류별 48 layer가 monolithic이므로 per-mode/range lazy residency도
+현재 `PASS`에 포함하지 않는다. 현재 D1은 검증된 core→sand prewarm→나머지
+atlas 순서와 fail-closed 전체 dataset 승격을 뜻한다.
+
+완료 기준 18의 `PASS`는 장시간 자원이 누적되지 않고 현재 성능 예산을
+통과한다는 뜻이다. 48-mode inactive culling, 모든 short-lived allocation
+제거, runtime frame-pressure 기반 자동 60→30 FPS 전환과 전체 품질 저하
+ladder는 별도 성능 후속 항목이다.

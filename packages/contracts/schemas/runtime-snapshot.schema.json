@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://mandelhowl.dev/schemas/runtime-snapshot.v1.schema.json",
   "title": "MandelHowl runtime snapshot v1",
-  "description": "Immutable deterministic fan-out payload read by DOM, rendering, and safe audio consumers.",
+  "description": "Canonical deterministic value shape shared by all consumers. Retaining consumers receive owned immutable payloads; synchronous rendering and audio consumers may receive an equivalent non-retaining lease.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -52,6 +52,18 @@
         "$ref": "#/$defs/mode"
       }
     },
+    "activeModeId": {
+      "description": "Mode captured by the current drive response, or null when no mode crosses the capture threshold. Current producers always emit this additive v1 field; omission remains valid for stored v1 payload compatibility.",
+      "oneOf": [
+        {
+          "type": "string",
+          "minLength": 1
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
     "microphone": {
       "$ref": "#/$defs/microphone"
     },
@@ -59,12 +71,7 @@
       "$ref": "#/$defs/feedback"
     },
     "regime": {
-      "enum": [
-        "decaying",
-        "critical",
-        "growing",
-        "saturated"
-      ]
+      "enum": ["decaying", "critical", "growing", "saturated"]
     },
     "volume": {
       "oneOf": [
@@ -117,11 +124,7 @@
           "type": "number"
         },
         "approachDirection": {
-          "enum": [
-            "decreasing",
-            "stationary",
-            "increasing"
-          ]
+          "enum": ["decreasing", "stationary", "increasing"]
         },
         "stationaryTimeSeconds": {
           "type": "number",
@@ -167,11 +170,7 @@
     "microphone": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "rmsNormalized",
-        "peakNormalized",
-        "recentSamples"
-      ],
+      "required": ["rmsNormalized", "peakNormalized", "recentSamples"],
       "properties": {
         "rmsNormalized": {
           "type": "number",
@@ -226,12 +225,7 @@
     "measuringVolume": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "status",
-        "value",
-        "lastSettledValue",
-        "progress"
-      ],
+      "required": ["status", "value", "lastSettledValue", "progress"],
       "properties": {
         "status": {
           "const": "measuring"
@@ -261,12 +255,7 @@
     "settledVolume": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "status",
-        "value",
-        "lastSettledValue",
-        "progress"
-      ],
+      "required": ["status", "value", "lastSettledValue", "progress"],
       "properties": {
         "status": {
           "const": "settled"
@@ -302,18 +291,10 @@
           "pattern": "^[A-Z][A-Z0-9_]*$"
         },
         "evidenceState": {
-          "enum": [
-            "confirmed",
-            "needs_evidence",
-            "inconclusive"
-          ]
+          "enum": ["confirmed", "needs_evidence", "inconclusive"]
         },
         "severity": {
-          "enum": [
-            "info",
-            "warning",
-            "fatal"
-          ]
+          "enum": ["info", "warning", "fatal"]
         },
         "messageKey": {
           "type": "string",
@@ -324,23 +305,14 @@
           "items": {
             "type": "object",
             "additionalProperties": false,
-            "required": [
-              "key",
-              "value",
-              "source"
-            ],
+            "required": ["key", "value", "source"],
             "properties": {
               "key": {
                 "type": "string",
                 "minLength": 1
               },
               "value": {
-                "type": [
-                  "string",
-                  "number",
-                  "boolean",
-                  "null"
-                ]
+                "type": ["string", "number", "boolean", "null"]
               },
               "source": {
                 "type": "string",

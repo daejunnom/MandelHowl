@@ -5,12 +5,14 @@ export {
   estimateOpenLoopMarginAtFrequency,
   getResonanceSnapshot,
   initResonance,
+  interpolateBakedFrequencyResponse,
   replaceResonanceDataset,
   resetResonanceAfterPausedGap,
   runtimeModalDatasetFromResonanceDataset,
   stepResonance,
   volumeFromVirtualRms,
   type CreateResonanceOptions,
+  type InterpolatedFrequencyResponse,
   type ResonanceDrive,
   type ResonanceRegime,
   type ResonanceSnapshot,
@@ -26,6 +28,7 @@ export {
 export {
   advanceMandelHowlRuntime,
   createMandelHowlRuntime,
+  createRuntimeSnapshotWriter,
   dispatchRuntimeDial,
   getRuntimeSnapshot,
   replaceMandelHowlDataset,
@@ -34,6 +37,10 @@ export {
 export type {
   CreateMandelHowlRuntimeOptions,
   MandelHowlRuntimeState,
+  RuntimeSnapshotConsumer,
+  RuntimeSnapshotLease,
+  RuntimeSnapshotRebuildReason,
+  RuntimeSnapshotWriter,
 } from "./runtime-engine";
 export {
   measureStaticDistribution,
