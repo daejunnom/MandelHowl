@@ -10,6 +10,7 @@ import {
   expectedPlateTextureChannels,
   ModalBlendTracker,
   RenderFrameTracker,
+  sandVisibilityFromPresence,
   type ModalBlendSelection,
   type PlateRenderer,
   type PlateRendererOptions,
@@ -29,7 +30,7 @@ export function deterministicCanvasGrainAlpha(
     ((x * 73_856_093) ^ (y * 19_349_663) ^ (layer * 83_492_791)) >>> 0;
   const grain = (grainHash & 255) / 255;
   const occupied = grain < (Math.max(0, Math.min(255, density)) / 255) * 0.88;
-  return occupied ? Math.min(255, 178 + Math.round(density * 0.3)) : 0;
+  return occupied ? Math.min(255, 204 + Math.round(density * 0.2)) : 0;
 }
 
 export function blendCanvasSandDensity(
@@ -251,9 +252,15 @@ export class CanvasPlateRenderer implements PlateRenderer {
     const blendedSand = this.composeSandLayers(blend);
     if (blendedSand) {
       context.save();
-      context.globalAlpha = blend.presence * (0.48 + blend.presence * 0.46);
+      context.globalAlpha = sandVisibilityFromPresence(blend.presence);
       context.globalCompositeOperation = "source-over";
       context.imageSmoothingEnabled = false;
+      context.shadowColor = "rgba(45, 27, 4, 0.52)";
+      // A crisp one-pixel contact offset keeps individual grains separated
+      // without a full 128² shadow-blur pass on every Canvas fallback frame.
+      context.shadowBlur = 0;
+      context.shadowOffsetX = Math.max(0.35, radius * 0.002);
+      context.shadowOffsetY = Math.max(0.5, radius * 0.003);
       context.drawImage(blendedSand, -radius, -radius, radius * 2, radius * 2);
       context.restore();
     } else {
@@ -392,9 +399,9 @@ export class CanvasPlateRenderer implements PlateRenderer {
       const grainHash =
         ((sourceX * 73_856_093) ^ (sourceY * 19_349_663)) >>> 0;
       const grain = (grainHash & 255) / 255;
-      image.data[target] = 218 + Math.round(grain * 24);
-      image.data[target + 1] = 187 + Math.round(grain * 27);
-      image.data[target + 2] = 112 + Math.round(grain * 31);
+      image.data[target] = 244 + Math.round(grain * 11);
+      image.data[target + 1] = 203 + Math.round(grain * 18);
+      image.data[target + 2] = 74 + Math.round(grain * 22);
       image.data[target + 3] = deterministicCanvasGrainAlpha(
         density,
         sourceX,

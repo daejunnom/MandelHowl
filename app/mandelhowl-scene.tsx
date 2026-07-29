@@ -7,6 +7,7 @@ import type {
   Ref,
   WheelEventHandler,
 } from "react";
+import { presentOscilloscope } from "@/packages/presentation-model/src";
 import "./mandelhowl.css";
 
 export type MandelHowlRegime =
@@ -177,10 +178,11 @@ export function MandelHowlScene({
     "--target-volume": challengeTarget ?? 0,
   };
   const isVerifiedDataset = datasetStatus === "verified";
-  const samples =
-    microphoneSamples.length > 0
-      ? microphoneSamples.slice(-40)
-      : Array.from({ length: 40 }, () => 0);
+  const oscilloscope = presentOscilloscope({
+    recentSamples: microphoneSamples,
+    rmsNormalized: microphoneRms,
+    peakNormalized: microphonePeak,
+  });
   const stableAnnouncement =
     measurementStatus === "settled"
       ? `Volume settled at ${displayedVolume} out of 100.`
@@ -273,7 +275,6 @@ export function MandelHowlScene({
             <span className="mh-dial-pointer" aria-hidden="true">
               <span />
             </span>
-            <span className="mh-dial-cap" aria-hidden="true" />
           </div>
 
           <div className="mh-drive-footer" aria-label="Drive state">
@@ -407,39 +408,49 @@ export function MandelHowlScene({
             <div
               className="mh-oscilloscope"
               role="img"
-              aria-label={`Microphone waveform; RMS ${Math.round(
-                microphoneRms * 100,
-              )} percent, peak ${Math.round(microphonePeak * 100)} percent`}
+              aria-label={`Microphone waveform; RMS ${oscilloscope.rmsPercent} percent, peak ${oscilloscope.peakPercent} percent`}
             >
               <div className="mh-instrument-label">
                 <span>MIC SIGNAL</span>
                 <strong>OSCILLOSCOPE</strong>
               </div>
-              <div className="mh-scope-screen" aria-hidden="true">
+              <div
+                className="mh-scope-screen"
+                aria-hidden="true"
+                data-auto-gain={oscilloscope.autoGainLinear.toFixed(3)}
+                data-display-peak={oscilloscope.displayPeakNormalized.toFixed(3)}
+              >
                 <i className="mh-scope-zero" />
-                {samples.map((sample, index) => {
+                {oscilloscope.samples.map((sample, index) => {
                   const normalizedSample = Math.min(
                     1,
                     Math.max(-1, Number.isFinite(sample) ? sample : 0),
                   );
                   const sampleStyle = {
                     "--scope-magnitude": Math.abs(normalizedSample),
-                    "--scope-sign": normalizedSample < 0 ? -1 : 1,
                   } as CSSProperties;
                   return (
                     <span
                       className="mh-scope-sample"
-                      key={`${index}-${samples.length}`}
+                      data-polarity={
+                        normalizedSample < 0 ? "negative" : "positive"
+                      }
+                      key={index}
                       style={sampleStyle}
                     />
                   );
                 })}
               </div>
               <p>
-                RMS {Math.round(microphoneRms * 100).toString().padStart(3, "0")}
+                RMS {oscilloscope.rmsPercent.toString().padStart(3, "0")}
                 <span>
-                  PEAK{" "}
-                  {Math.round(microphonePeak * 100).toString().padStart(3, "0")}
+                  AUTO ×
+                  {oscilloscope.autoGainLinear < 10
+                    ? oscilloscope.autoGainLinear.toFixed(1)
+                    : Math.round(oscilloscope.autoGainLinear)}
+                </span>
+                <span>
+                  PEAK {oscilloscope.peakPercent.toString().padStart(3, "0")}
                 </span>
               </p>
             </div>

@@ -7,9 +7,13 @@ export { createPlateRenderer } from "./plate-renderer";
 export {
   expectedPlateTextureChannels,
   frameFromSnapshot,
+  ACTIVE_CAPTURE_FLOOR,
   ModalBlendTracker,
   RenderFrameTracker,
+  sandVisibilityFromPresence,
   selectRenderQuality,
+  SAND_MAX_OPACITY,
+  SAND_VISIBILITY_EXPONENT,
   type ModalBlendSelection,
   type PlateRenderer,
   type PlateRendererKind,

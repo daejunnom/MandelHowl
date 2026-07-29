@@ -333,8 +333,7 @@
 .mh-dial-scale,
 .mh-dial-track,
 .mh-dial-face,
-.mh-dial-pointer,
-.mh-dial-cap {
+.mh-dial-pointer {
   position: absolute;
   inset: 50% auto auto 50%;
   transform: translate(-50%, -50%);
@@ -452,16 +451,6 @@
   border-radius: 50%;
   background: var(--signal);
   box-shadow: 0 0 0 0.18rem var(--paper);
-}
-
-.mh-dial-cap {
-  width: 1.05rem;
-  height: 1.05rem;
-  z-index: 4;
-  border: 0.12rem solid var(--ink);
-  background: var(--signal);
-  box-shadow: 0 0 0 0.18rem var(--panel);
-  pointer-events: none;
 }
 
 .mh-dial-label {
@@ -879,7 +868,7 @@
   z-index: 2;
   border-radius: 50%;
   background:
-    linear-gradient(115deg, rgb(255 255 255 / 24%), transparent 28% 73%, rgb(0 0 0 / 15%)),
+    linear-gradient(115deg, rgb(255 255 255 / 13%), transparent 28% 73%, rgb(0 0 0 / 15%)),
     repeating-linear-gradient(
       3deg,
       transparent 0 4px,
@@ -1151,8 +1140,9 @@
 .mh-scope-screen {
   position: relative;
   height: 3.35rem;
-  display: flex;
-  align-items: center;
+  display: grid;
+  grid-template-columns: repeat(40, minmax(1px, 1fr));
+  align-items: stretch;
   gap: 1px;
   overflow: hidden;
   border: 1px solid rgb(10 13 14 / 68%);
@@ -1175,14 +1165,26 @@
 
 .mh-scope-sample {
   position: relative;
-  width: max(1px, calc((100% - 39px) / 40));
-  height: calc(var(--scope-magnitude) * 42%);
-  min-height: 1px;
-  flex: 0 1 auto;
+  min-width: 1px;
+  height: 100%;
+}
+
+.mh-scope-sample::after {
+  position: absolute;
+  right: 0;
+  left: 0;
+  height: max(1px, calc(var(--scope-magnitude) * 42%));
+  content: "";
   background: var(--signal);
   box-shadow: 0 0 0.28rem var(--signal);
-  transform: scaleY(var(--scope-sign));
-  transform-origin: center bottom;
+}
+
+.mh-scope-sample[data-polarity="positive"]::after {
+  bottom: 50%;
+}
+
+.mh-scope-sample[data-polarity="negative"]::after {
+  top: 50%;
 }
 
 .mh-oscilloscope > p,
@@ -1194,6 +1196,7 @@
 .mh-oscilloscope > p {
   grid-column: 2;
   display: flex;
+  gap: 0.45rem;
   justify-content: space-between;
 }
 

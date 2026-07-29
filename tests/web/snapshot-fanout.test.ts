@@ -9,7 +9,8 @@ import {
 import {
   RuntimeSnapshotFanout,
   RuntimeSnapshotLeaseFanout,
-} from "../../app/snapshot-fanout";
+  RuntimeSnapshotStore,
+} from "../../packages/browser-runtime/src";
 
 function snapshot(
   sequence: number,
@@ -124,6 +125,67 @@ describe("RuntimeSnapshotFanout", () => {
     expect(fanout.publish(snapshot(4))).toBe(true);
     expect(errors).toHaveBeenCalledTimes(2);
     expect(laterConsumer).toHaveBeenCalledTimes(4);
+  });
+});
+
+describe("RuntimeSnapshotStore", () => {
+  it("implements the immediate readable-store contract for React and Svelte", () => {
+    const initial = snapshot(0);
+    const store = new RuntimeSnapshotStore(initial);
+    const subscriber = vi.fn();
+    const unsubscribe = store.subscribe(subscriber);
+
+    expect(subscriber).toHaveBeenCalledWith(initial);
+    expect(store.getSnapshot()).toBe(initial);
+
+    const next = snapshot(1);
+    expect(store.publish(next)).toBe(true);
+    expect(subscriber).toHaveBeenLastCalledWith(next);
+    expect(store.getSnapshot()).toBe(next);
+
+    unsubscribe();
+    expect(store.metrics.consumerCount).toBe(0);
+  });
+
+  it("commits before notification and retains reentrant initial publications", () => {
+    const initial = snapshot(0);
+    const next = snapshot(1);
+    const store = new RuntimeSnapshotStore(initial);
+    const observed: number[] = [];
+
+    const unsubscribe = store.subscribe((value) => {
+      observed.push(value.sequence);
+      expect(store.getSnapshot()).toBe(value);
+      if (value === initial) {
+        expect(store.publish(next)).toBe(true);
+      }
+    });
+
+    expect(observed).toEqual([0, 1]);
+    expect(store.getSnapshot()).toBe(next);
+    expect(store.metrics.publishedFrames).toBe(1);
+    unsubscribe();
+  });
+
+  it("removes an initial subscriber that throws before subscribe returns", () => {
+    const errorObserver = vi.fn();
+    const failingSubscriber = vi.fn(() => {
+      throw new Error("initial delivery failed");
+    });
+    const store = new RuntimeSnapshotStore(
+      snapshot(0),
+      [],
+      errorObserver,
+    );
+
+    const unsubscribe = store.subscribe(failingSubscriber);
+    expect(failingSubscriber).toHaveBeenCalledTimes(1);
+    expect(errorObserver).toHaveBeenCalledTimes(1);
+    expect(store.metrics.consumerCount).toBe(0);
+
+    expect(store.publish(snapshot(1))).toBe(true);
+    expect(failingSubscriber).toHaveBeenCalledTimes(1);
+    unsubscribe();
   });
 });
 

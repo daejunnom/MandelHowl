@@ -2,6 +2,10 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
 import { execFileSync } from "node:child_process";
+import {
+  forbiddenRuntimeReasons,
+  isRuntimeSourcePath,
+} from "./runtime-source-policy.mjs";
 
 const projectRoot = path.resolve(process.cwd());
 const tracked = execFileSync(
@@ -12,6 +16,7 @@ const tracked = execFileSync(
     "--others",
     "--exclude-standard",
     "app",
+    "apps",
     "packages",
     "worker",
     "specs",
@@ -21,39 +26,24 @@ const tracked = execFileSync(
 )
   .split(/\r?\n/)
   .filter(Boolean)
-  .filter((file) => /\.(?:ts|tsx|js|mjs|yaml|json)$/.test(file));
-
-const forbidden = [
-  {
-    pattern: /\bMath\.random\s*\(/,
-    reason: "Math.random is forbidden in deterministic runtime source",
-  },
-  {
-    pattern: /\bgetUserMedia\s*\(/,
-    reason: "real microphone/camera permission is forbidden",
-  },
-  {
-    pattern: /\bdangerouslySetInnerHTML\b/,
-    reason: "external or untrusted HTML injection is forbidden",
-  },
-  {
-    pattern:
-      /\b(?:volume|volumeValue|settledVolume)\s*={2,3}\s*(?:[1-9]|[1-9]\d)\b/,
-    reason: "per-value runtime output exceptions are forbidden",
-  },
-  {
-    pattern: /\bswitch\s*\([^)]*\b(?:volume|settledVolume)\b[^)]*\)/,
-    reason: "per-value runtime output switches are forbidden",
-  },
-];
+  .filter(isRuntimeSourcePath);
 
 const failures = [];
+let verifiedFiles = 0;
 for (const relativePath of tracked) {
-  const source = await readFile(path.join(projectRoot, relativePath), "utf8");
-  for (const rule of forbidden) {
-    if (rule.pattern.test(source)) {
-      failures.push(`${relativePath}: ${rule.reason}`);
-    }
+  let source;
+  try {
+    source = await readFile(path.join(projectRoot, relativePath), "utf8");
+  } catch (error) {
+    // `git ls-files --cached --others` includes tracked paths deleted by a
+    // migration until the next commit. They have no runtime source left to
+    // inspect; every existing untracked replacement remains in the result.
+    if (error?.code === "ENOENT") continue;
+    throw error;
+  }
+  verifiedFiles += 1;
+  for (const reason of forbiddenRuntimeReasons(source)) {
+    failures.push(`${relativePath}: ${reason}`);
   }
 }
 
@@ -61,4 +51,4 @@ if (failures.length > 0) {
   throw new Error(failures.join("\n"));
 }
 
-process.stdout.write(`Verified ${tracked.length} runtime source files.\n`);
+process.stdout.write(`Verified ${verifiedFiles} runtime source files.\n`);

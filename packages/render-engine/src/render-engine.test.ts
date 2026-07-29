@@ -6,10 +6,12 @@ import {
 } from "./canvas-plate-renderer";
 import { decodePortableKtx2 } from "./ktx2-texture";
 import {
+  ACTIVE_CAPTURE_FLOOR,
   expectedPlateTextureChannels,
   frameFromSnapshot,
   ModalBlendTracker,
   RenderFrameTracker,
+  sandVisibilityFromPresence,
   selectRenderQuality,
 } from "./render-types";
 import type { RuntimeSnapshot } from "../../contracts/src";
@@ -273,6 +275,35 @@ describe("render-engine", () => {
   it("blends Canvas density before applying the nonlinear grain pass", () => {
     expect(blendCanvasSandDensity(240, 0.25, 80, 0.75)).toBe(120);
     expect(blendCanvasSandDensity(0, 0.5, 255, 0.5)).toBe(127.5);
+  });
+
+  it("keeps newly captured baked sand legible without inventing sand at zero", () => {
+    const tracker = new ModalBlendTracker(2);
+    const capture = tracker.update(
+      visualSnapshot(
+        0,
+        [
+          {
+            modeId: "captured",
+            amplitudeNormalized: 0,
+            phaseRad: 0,
+            energyNormalized: 0,
+          },
+        ],
+        "captured",
+      ),
+    );
+    const capturedPresence = capture.presence;
+    expect(capturedPresence).toBeCloseTo(Math.sqrt(ACTIVE_CAPTURE_FLOOR));
+    const samples = [0, 0.05, capturedPresence, 0.6, 1].map(
+      sandVisibilityFromPresence,
+    );
+
+    expect(samples[0]).toBe(0);
+    expect(samples[2]).toBeGreaterThanOrEqual(0.48);
+    expect(samples.at(-1)).toBeCloseTo(0.95);
+    expect(samples.every((value, index) => index === 0 || value >= samples[index - 1]!))
+      .toBe(true);
   });
 
   it("shows a newly captured mode immediately while retaining the old pattern", () => {

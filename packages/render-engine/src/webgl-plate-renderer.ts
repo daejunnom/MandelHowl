@@ -10,6 +10,8 @@ import {
   expectedPlateTextureChannels,
   ModalBlendTracker,
   RenderFrameTracker,
+  sandVisibilityFromPresence,
+  SAND_MAX_OPACITY,
   selectRenderQuality,
   type PlateRenderer,
   type PlateRendererOptions,
@@ -82,6 +84,7 @@ uniform float uNodalLayers[4];
 uniform float uSandWeights[4];
 uniform float uDisplacementWeights[4];
 uniform float uModalPresence;
+uniform float uSandVisibility;
 uniform float uEnvelope;
 uniform bool uHasAnalyticalShape;
 uniform float uRadialOrder;
@@ -188,11 +191,12 @@ void main() {
     density = max(density, nodalDensity * (0.48 + uModalPresence * 0.42));
   }
 
-  vec3 sand = vec3(0.91, 0.79, 0.50);
+  vec3 sand = vec3(1.0, 0.78, 0.28);
+  vec3 sandShadow = vec3(0.13, 0.075, 0.018);
   // Stable screen-space grain cells turn the baked target density into actual
   // separated particles. Density controls occupancy rather than only colour,
   // so even a saturated nodal band retains visible gaps between grains.
-  vec2 grainCoordinate = gl_FragCoord.xy * 0.72;
+  vec2 grainCoordinate = gl_FragCoord.xy * 0.48;
   uvec2 grainCell = uvec2(floor(grainCoordinate));
   vec2 grainLocal = fract(grainCoordinate) - 0.5;
   float occupancy = step(
@@ -200,19 +204,27 @@ void main() {
     grainNoise(grainCell, 0x68bc21ebu)
   );
   float grainRadius =
-    0.24 + grainNoise(grainCell, 0x02e5be93u) * 0.16;
+    0.22 + grainNoise(grainCell, 0x02e5be93u) * 0.12;
   float particle = 1.0 - smoothstep(
     grainRadius,
-    grainRadius + 0.075,
+    grainRadius + 0.06,
     length(grainLocal)
   );
   float grainCoverage = occupancy * particle;
-  float sandMix = clamp(
-    grainCoverage * uModalPresence * (0.42 + uModalPresence * 0.5),
-    0.0,
-    0.94
+  float contactShadow = occupancy * (
+    1.0 - smoothstep(
+      grainRadius + 0.025,
+      grainRadius + 0.09,
+      length(grainLocal + vec2(-0.025, -0.03))
+    )
   );
-  vec3 colour = mix(metal, sand, sandMix);
+  float sandMix = clamp(
+    grainCoverage * uSandVisibility,
+    0.0,
+    ${SAND_MAX_OPACITY.toFixed(2)}
+  );
+  vec3 colour = mix(metal, sandShadow, contactShadow * uSandVisibility * 0.46);
+  colour = mix(colour, sand, sandMix);
 
   vec3 regimeTint =
     uRegime > 2.5 ? vec3(1.0, 0.17, 0.12) :
@@ -558,6 +570,10 @@ export class WebGlPlateRenderer implements PlateRenderer {
     gl.vertexAttribPointer(position, 2, gl.FLOAT, false, 0, 0);
     gl.uniform1f(this.uniform("uEnvelope"), frame.envelope);
     gl.uniform1f(this.uniform("uModalPresence"), blend.presence);
+    gl.uniform1f(
+      this.uniform("uSandVisibility"),
+      sandVisibilityFromPresence(blend.presence),
+    );
     gl.uniform1fv(this.uniform("uSandWeights[0]"), blend.sandWeights);
     gl.uniform1fv(
       this.uniform("uDisplacementWeights[0]"),

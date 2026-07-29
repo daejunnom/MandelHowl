@@ -2,7 +2,7 @@
   "schemaVersion": "mandelhowl.third-party-license-inventory.v1",
   "source": "package-lock.json",
   "packageLockVersion": 3,
-  "packageCount": 690,
+  "packageCount": 708,
   "packages": [
     {
       "path": "node_modules/@alloc/quick-lru",
@@ -1525,6 +1525,26 @@
       "peer": false
     },
     {
+      "path": "node_modules/@sveltejs/acorn-typescript",
+      "name": "@sveltejs/acorn-typescript",
+      "version": "1.0.11",
+      "license": "MIT",
+      "integrity": "sha512-LFuZUkjJ9iF7JZye/aG5XM0SFcQ5VyL0oVX4WJ9dc0Va3R3s0OauX1BESVCb+YN/ol8TAfqGDDAQsTG627Y5kw==",
+      "developmentOnly": true,
+      "optional": false,
+      "peer": false
+    },
+    {
+      "path": "node_modules/@sveltejs/load-config",
+      "name": "@sveltejs/load-config",
+      "version": "0.2.1",
+      "license": "MIT",
+      "integrity": "sha512-5m3B2cbqQ4TbwW6Xkh66Ntw6dD7gNc77cCxABTTesWcq9jxIzMgTk97pZx5vEtvQx8iokgi7GIphqZe+PGwcZA==",
+      "developmentOnly": true,
+      "optional": false,
+      "peer": false
+    },
+    {
       "path": "node_modules/@swc/helpers",
       "name": "@swc/helpers",
       "version": "0.5.15",
@@ -1850,6 +1870,16 @@
       "version": "19.2.3",
       "license": "MIT",
       "integrity": "sha512-jp2L/eY6fn+KgVVQAOqYItbF0VY/YApe5Mz2F0aykSO8gx31bYCZyvSeYxCHKvzHG5eZjc+zyaS5BrBWya2+kQ==",
+      "developmentOnly": true,
+      "optional": false,
+      "peer": false
+    },
+    {
+      "path": "node_modules/@types/trusted-types",
+      "name": "@types/trusted-types",
+      "version": "2.0.7",
+      "license": "MIT",
+      "integrity": "sha512-ScaPdn1dQczgbl0QFTeTOmVHFULt394XJgOQNoyVhZ6r2vLnMLJfBPd53SB52T/3G36VI1/g2MZaX0cwDuXsfw==",
       "developmentOnly": true,
       "optional": false,
       "peer": false
@@ -2945,6 +2975,16 @@
       "peer": false
     },
     {
+      "path": "node_modules/chokidar",
+      "name": "chokidar",
+      "version": "4.0.3",
+      "license": "MIT",
+      "integrity": "sha512-Qgzu8kfBvo+cA4962jnP1KkS6Dop5NS6g7R5LFYJr4b8Ub94PPQXUksCw9PvXoeXPRRddRNC5C1JQUR2SMGtnA==",
+      "developmentOnly": true,
+      "optional": false,
+      "peer": false
+    },
+    {
       "path": "node_modules/chrome-trace-event",
       "name": "chrome-trace-event",
       "version": "1.0.4",
@@ -2961,6 +3001,16 @@
       "license": "MIT",
       "integrity": "sha512-IV3Ou0jSMzZrd3pZ48nLkT9DA7Ag1pnPzaiQhpW7c3RbcqqzvzzVu+L8gfqMp/8IM2MQtSiqaCxrrcfu8I8rMA==",
       "developmentOnly": false,
+      "optional": false,
+      "peer": false
+    },
+    {
+      "path": "node_modules/clsx",
+      "name": "clsx",
+      "version": "2.1.1",
+      "license": "MIT",
+      "integrity": "sha512-eYm0QWBtUrBWZWG0d386OGAw16Z995PiOVo2B7bjWSbHedGl5e0ZWaq65kOGgUSNesEIDkB9ISbTg/JK9dhCZA==",
+      "developmentOnly": true,
       "optional": false,
       "peer": false
     },
@@ -3181,6 +3231,16 @@
       "license": "Apache-2.0",
       "integrity": "sha512-Btj2BOOO83o3WyH59e8MgXsxEQVcarkUOpEYrubB0urwnN10yQ364rsiByU11nZlqWYZm05i/of7io4mzihBtQ==",
       "developmentOnly": false,
+      "optional": false,
+      "peer": false
+    },
+    {
+      "path": "node_modules/devalue",
+      "name": "devalue",
+      "version": "5.8.2",
+      "license": "MIT",
+      "integrity": "sha512-DObPPAfdtFbXjxLqK8s2Xk9ZuWz5+ZoFEhC7J76es4GU/rEiXwHTmbImoCdyoCOcBH1UF3+Cz6Z2sYD4hyl5TA==",
+      "developmentOnly": true,
       "optional": false,
       "peer": false
     },
@@ -3545,6 +3605,16 @@
       "peer": false
     },
     {
+      "path": "node_modules/esm-env",
+      "name": "esm-env",
+      "version": "1.2.2",
+      "license": "MIT",
+      "integrity": "sha512-Epxrv+Nr/CaL4ZcFGPJIYLWFom+YeV1DqMLHJoEd9SYRxNbaFruBwfEX/kkHUJf55j2+TUbmDcmuilbP1TmXHA==",
+      "developmentOnly": true,
+      "optional": false,
+      "peer": false
+    },
+    {
       "path": "node_modules/espree",
       "name": "espree",
       "version": "10.4.0",
@@ -3570,6 +3640,16 @@
       "version": "1.7.0",
       "license": "BSD-3-Clause",
       "integrity": "sha512-Ap6G0WQwcU/LHsvLwON1fAQX9Zp0A2Y6Y/cJBl9r/JbW90Zyg4/zbG6zzKa2OTALELarYHmKu0GhpM5EO+7T0g==",
+      "developmentOnly": true,
+      "optional": false,
+      "peer": false
+    },
+    {
+      "path": "node_modules/esrap",
+      "name": "esrap",
+      "version": "2.3.0",
+      "license": "MIT",
+      "integrity": "sha512-GQ/7RN8uOtEfNpzZzBMTzW9JBcX42oaSVtPzdF+6cEL8pqIL094iUpr9jzYGn4O4P/1S60dJ6izyT8F4LYARng==",
       "developmentOnly": true,
       "optional": false,
       "peer": false
@@ -4285,6 +4365,16 @@
       "peer": false
     },
     {
+      "path": "node_modules/is-reference",
+      "name": "is-reference",
+      "version": "3.0.3",
+      "license": "MIT",
+      "integrity": "sha512-ixkJoqQvAP88E6wLydLGGqCJsrFUnqoH6HnaczB8XmDH1oaWU+xxdptvikTgaEhtZ53Ky6YXiBuUI2WXLMCwjw==",
+      "developmentOnly": true,
+      "optional": false,
+      "peer": false
+    },
+    {
       "path": "node_modules/is-regex",
       "name": "is-regex",
       "version": "1.2.1",
@@ -4705,6 +4795,16 @@
       "peer": true
     },
     {
+      "path": "node_modules/locate-character",
+      "name": "locate-character",
+      "version": "3.0.0",
+      "license": "MIT",
+      "integrity": "sha512-SW13ws7BjaeJ6p7Q6CO2nchbYEc3X3J6WrmTTDto7yMPqVSZTUyY5Tjbid+Ab8gLnATtygYtiDIJGQRRn2ZOiA==",
+      "developmentOnly": true,
+      "optional": false,
+      "peer": false
+    },
+    {
       "path": "node_modules/locate-path",
       "name": "locate-path",
       "version": "6.0.0",
@@ -4830,6 +4930,16 @@
       "version": "1.2.8",
       "license": "MIT",
       "integrity": "sha512-2yyAR8qBkN3YuheJanUpWC5U3bb5osDywNB8RzDVlDwDHbocAJveqqj1u8+SVD7jkWT4yvsHCpWqqWqAxb0zCA==",
+      "developmentOnly": true,
+      "optional": false,
+      "peer": false
+    },
+    {
+      "path": "node_modules/mri",
+      "name": "mri",
+      "version": "1.2.0",
+      "license": "MIT",
+      "integrity": "sha512-tzzskb3bG8LvYGFF/mDTpq3jpI6Q9wc3LEmBaghu+DdCssd1FakN7Bc0hVNmEyGq1bq3RgfkCb3cmQLpNPOroA==",
       "developmentOnly": true,
       "optional": false,
       "peer": false
@@ -5545,6 +5655,16 @@
       "peer": false
     },
     {
+      "path": "node_modules/readdirp",
+      "name": "readdirp",
+      "version": "4.1.2",
+      "license": "MIT",
+      "integrity": "sha512-GDhwkLfywWL2s6vEjyhri+eXmfH6j1L7JE27WhqLeYzoh/A3DBaYGEj2H/HFZCn/kMfim73FXxEJTw06WtxQwg==",
+      "developmentOnly": true,
+      "optional": false,
+      "peer": false
+    },
+    {
       "path": "node_modules/reflect.getprototypeof",
       "name": "reflect.getprototypeof",
       "version": "1.0.10",
@@ -5630,6 +5750,16 @@
       "version": "1.2.0",
       "license": "MIT",
       "integrity": "sha512-5l4VyZR86LZ/lDxZTR6jqL8AFE2S0IFLMP26AbjsLVADxHdhB/c0GUsH+y39UfCi3dzz8OlQuPmnaJOMoDHQBA==",
+      "developmentOnly": true,
+      "optional": false,
+      "peer": false
+    },
+    {
+      "path": "node_modules/sade",
+      "name": "sade",
+      "version": "1.8.1",
+      "license": "MIT",
+      "integrity": "sha512-xal3CZX1Xlo/k4ApwCFrHVACi9fBqJ7V+mwhBsuf/1IOKbBy098Fex+Wa/5QMubw09pSZ/u8EY8PWgevJsXp1A==",
       "developmentOnly": true,
       "optional": false,
       "peer": false
@@ -6090,6 +6220,46 @@
       "version": "1.0.0",
       "license": "MIT",
       "integrity": "sha512-ot0WnXS9fgdkgIcePe6RHNk1WA8+muPa6cSjeR3V8K27q9BB1rTE3R1p7Hv0z1ZyAc8s6Vvv8DIyWf681MAt0w==",
+      "developmentOnly": true,
+      "optional": false,
+      "peer": false
+    },
+    {
+      "path": "node_modules/svelte",
+      "name": "svelte",
+      "version": "5.56.8",
+      "license": "MIT",
+      "integrity": "sha512-PY8LOw7xP6c8IOiVqdo0sbbZVYhXRSfklOQLAUyGBKqjTX0wx/z4l/9J+PmBpmlLnxzEb1NqltxQ5/wZme/Cmg==",
+      "developmentOnly": true,
+      "optional": false,
+      "peer": false
+    },
+    {
+      "path": "node_modules/svelte-check",
+      "name": "svelte-check",
+      "version": "4.7.4",
+      "license": "MIT",
+      "integrity": "sha512-IW9ot9YqAoyv8FvyN+eb4ZTe8zgcKZrJLNYU6dzSKkGwEBsSPc4K7lmQ8bKn8W2YMXM6WDfZSSVOaGtekyUfOQ==",
+      "developmentOnly": true,
+      "optional": false,
+      "peer": false
+    },
+    {
+      "path": "node_modules/svelte-check/node_modules/fdir",
+      "name": "fdir",
+      "version": "6.5.0",
+      "license": "MIT",
+      "integrity": "sha512-tIbYtZbucOs0BRGqPJkshJUYdL+SDH7dVM8gjy+ERp3WAUjLEFJE+02kanyHtwjWOnwrKYBiwAmM0p4kLJAnXg==",
+      "developmentOnly": true,
+      "optional": false,
+      "peer": false
+    },
+    {
+      "path": "node_modules/svelte/node_modules/aria-query",
+      "name": "aria-query",
+      "version": "5.3.1",
+      "license": "Apache-2.0",
+      "integrity": "sha512-Z/ZeOgVl7bcSYZ/u/rh0fOpvEpq//LZmdbkXyc7syVzjPAhfOa9ebsdTSjEBDU4vs5nC98Kfduj1uFo0qyET3g==",
       "developmentOnly": true,
       "optional": false,
       "peer": false
@@ -6880,6 +7050,16 @@
       "version": "0.3.3",
       "license": "MIT",
       "integrity": "sha512-ho7XuGjLaJ2hWHoK8yFnsUGy2Y5uDpqSTq1FkHLK4/oqKtyUU1AFbOOxY4IpC9f0fTLjwYbslUz0Po5BpD1wrA==",
+      "developmentOnly": true,
+      "optional": false,
+      "peer": false
+    },
+    {
+      "path": "node_modules/zimmerframe",
+      "name": "zimmerframe",
+      "version": "1.1.4",
+      "license": "MIT",
+      "integrity": "sha512-B58NGBEoc8Y9MWWCQGl/gq9xBCe4IiKM0a2x7GZdQKOW5Exr8S1W24J6OgM1njK8xCRGvAJIL/MxXHf6SkmQKQ==",
       "developmentOnly": true,
       "optional": false,
       "peer": false

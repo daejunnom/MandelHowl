@@ -16,6 +16,26 @@
 
 프로젝트 루트명은 `mandelhowl/`을 사용한다. 아래 주석은 각 파일이 단일 책임을 갖도록 구분한 예상 역할이다.
 
+### 현재 구현 보정 (2026-07-30)
+
+아래 트리는 초기 예상안이며 현재 저장소는 npm + React/Vinext 프로덕션
+shell을 사용한다. 구현체 교체를 위해 다음 실제 경계를 추가했다.
+
+- `packages/browser-runtime/`: UI 프레임워크와 독립적인 snapshot store,
+  fanout, challenge/health host 및 Svelte가 구현할 runtime port
+- `packages/presentation-model/`: React와 Svelte가 공유하는 오실로스코프
+  auto-range 표시 모델
+- `apps/svelte-prototype/`: 동일 store·CSS·ARIA 계약을 소비하는 Svelte 5
+  control 수직 slice
+- `tools/physics-baker-rs/`: Python oracle과 병행하는 Rust native binary
+  validator 및 향후 generator 이식 위치
+- 루트 `Cargo.toml`, `rust-toolchain.toml`: native baker workspace와 toolchain
+  재현성 경계
+
+과학 알고리즘은 UI 구현체 안으로 옮기지 않는다. React shell과 Python
+generator를 제거할 수 있는 시점은 각각 Svelte 성능/동작 회귀 gate와
+Rust differential gate를 통과한 뒤다.
+
 ---
 
 ## 2. 전체 트리

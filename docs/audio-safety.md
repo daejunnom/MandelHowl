@@ -30,6 +30,9 @@ bounded modal source
 The independent exposure guard attenuates prolonged high-frequency or saturated
 operation. Invalid numbers immediately request a mute state and a structured
 diagnostic. No alternate graph may bypass the limiter or master gain.
+The canonical master-gain slew limit is `40 dB/s`, so even the full transition
+from the internal `-100 dB` silence floor to the `-20 dB` maximum safe gain is
+bounded to two seconds. Frequency automation remains independently responsive.
 
 Automated safety sweeps verify the parameter mapper, maximum requested gain,
 peak ceiling, RMS target, exposure attenuation, and lifecycle node counts.

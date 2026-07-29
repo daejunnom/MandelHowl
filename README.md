@@ -22,6 +22,9 @@ MandelHowl은 하나의 `DRIVE FREQUENCY` 다이얼로 만델브로 물성판과
   challenge host 경계
 - 단위·과학·통합·E2E·시각 회귀·오디오 안전·장시간 soak와 재현 가능한
   릴리스 검증
+- React와 독립적인 browser-runtime/store 계약, Svelte 5 control의
+  compile-only 수직 slice, Rust native modes/response validator와 Python
+  oracle parity gate
 
 프로덕션 데이터셋은 다음 ID로 고정한다.
 
@@ -55,6 +58,7 @@ npm run dev
 ```bash
 npm run verify
 npm run physics:validate
+npm run physics:validate:strict # policy-compatible CI에서 Rust 실행 필수
 npm run release:verify -- --require-clean
 npm run release:archive
 npm run release:archive:check
@@ -64,3 +68,5 @@ npm run release:archive:check
 `docs/asset-pipeline.md`, `docs/audio-safety.md`에 기록한다.
 `MandelHowl_핸드오프.md`의 요구와 구현 증거의 최종 대응은
 `docs/handoff-coverage.md`와 `docs/acceptance-matrix.md`에서 확인한다.
+Svelte/Rust 기본 구현체 교체의 현재 경계와 남은 gate는
+`docs/migration-seams.md`에 기록한다.

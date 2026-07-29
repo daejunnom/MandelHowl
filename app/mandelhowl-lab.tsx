@@ -51,16 +51,12 @@ import {
 import {
   createChallengeHostBridge,
   type ChallengeHostBridge,
-} from "./challenge-host";
-import { MandelHowlScene } from "./mandelhowl-scene";
-import {
   installRuntimeHealthHook,
-  type MandelHowlHealthSnapshot,
-} from "./runtime-health";
-import {
-  RuntimeSnapshotFanout,
   RuntimeSnapshotLeaseFanout,
-} from "./snapshot-fanout";
+  RuntimeSnapshotStore,
+  type MandelHowlHealthSnapshot,
+} from "@/packages/browser-runtime/src";
+import { MandelHowlScene } from "./mandelhowl-scene";
 
 interface ViewState {
   readonly snapshot: RuntimeSnapshot;
@@ -527,7 +523,8 @@ export function MandelHowlLab() {
     // React, challenge reporting, and diagnostics receive owned immutable
     // snapshots only. This fan-out is published at no more than 24 Hz during
     // normal animation so presentation work cannot starve the fixed-step loop.
-    const presentationFanout = new RuntimeSnapshotFanout(
+    const presentationFanout = new RuntimeSnapshotStore(
+      getRuntimeSnapshot(runtimeRef.current),
       [
         (snapshot) => {
           const runtime = runtimeRef.current;

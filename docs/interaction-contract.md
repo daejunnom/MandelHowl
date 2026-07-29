@@ -19,6 +19,9 @@ same final frequency can retain a different physically meaningful history.
 Audio activation is a side effect of the user's first dial gesture, not a
 second conceptual control. Challenge targets, diagnostics, meters, and
 provenance displays are read-only.
+Audible frequency follows the shared per-frame drive state. Its independent
+master-gain safety smoother limits level changes to `40 dB/s`, bounding the
+largest silence-to-safe-maximum transition to two seconds.
 
 ## One output
 

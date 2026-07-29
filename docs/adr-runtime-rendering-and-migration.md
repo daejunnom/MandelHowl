@@ -164,10 +164,18 @@ critical 폭, 0/100 극단 비율, 1..99 전체 도달 trace가 함께 달라질
 
 ### React에서 Svelte 5
 
-현재 React/Vinext 앱을 즉시 교체하지 않는다. 동일한 TypeScript 엔진,
-WebGL2 renderer, CSS, dataset과 입력 trace를 쓰는 Svelte 5 수직
-프로토타입을 먼저 만든다. 동일 기기·동일 production build에서 다음 중 하나
-이상을 만족할 때만 전체 이전 후보로 승인한다.
+현재 React/Vinext 프로덕션 entry를 즉시 교체하지 않는다. 다만
+snapshot fanout, challenge host, health hook은 React 앱에서
+`packages/browser-runtime`으로 이동했고, Svelte-readable
+`RuntimeSnapshotStore`와 `MandelHowlBrowserRuntimePort`를 공개한다.
+`apps/svelte-prototype`의 Svelte 5 수직 slice는 같은 TypeScript 엔진,
+presentation model, CSS와 ARIA 계약을 사용하며 `svelte-check`를 통과해야
+한다. 이 slice는 아직 compile-only다. production orchestration adapter와
+pointer gesture, mount smoke가 추가되기 전에는 runnable migration으로
+승격하지 않는다.
+
+동일 기기·동일 production build에서 다음 중 하나 이상을 만족할 때만 전체
+entry 이전 후보로 승인한다.
 
 - 초기 client JavaScript transfer 또는 parse 대상 20% 이상 감소
 - 다이얼 조작 구간 UI commit CPU 30% 이상 감소
@@ -180,10 +188,23 @@ WebGL2 renderer, CSS, dataset과 입력 trace를 쓰는 Svelte 5 수직
 ### Python baker에서 Rust native
 
 Python baker는 브라우저 UI hot path가 아니라 오프라인 생성 도구다. 장기
-후보는 Cython이나 런타임 WASM이 아니라 Rust native baker다. Rust 구현은
-Python을 독립 oracle로 유지하면서 field, 질량, 고유주파수, mode sign,
-texture, coverage와 content hash의 differential 검증을 통과해야 한다.
-provenance에는 Rust toolchain과 binary digest를 기록한다.
+후보는 Cython이나 런타임 WASM이 아니라 Rust native baker다. 루트 Cargo
+workspace와 `tools/physics-baker-rs`가 `modes-v1`·`response-v1` 독립
+validator를 제공하며 pinned dataset 검증에서 Python oracle 뒤에 실행된다.
+native `generate`는 아직 fail-closed다. Rust 구현은 Python을 독립 oracle로
+유지하면서 field, 질량, 고유주파수, mode sign, texture와 coverage의
+differential 검증을 통과해야 한다. provenance에는 Rust toolchain과 binary
+digest를 기록한다.
+
+로컬 application-control 정책이 새 Rust executable을 막는 경우 기본
+`physics:validate`는 skip을 명시하고, `physics:validate:strict`는 실패한다.
+따라서 native parity의 release 증거는 policy-compatible CI에서 strict
+command로 남긴다. compile/clippy 성공을 native 실행 성공으로 대체하지 않는다.
+
+backend provenance가 다르면 전체 dataset content hash도 달라지는 것이
+정상이다. 따라서 cross-backend gate는 scientific payload의 semantic digest와
+수치·pixel parity를 비교하고, full dataset hash 결정성은 backend별 반복
+실행으로 검증한다.
 
 런타임 Rust/WASM은 현재 도입하지 않는다. representative trace에서
 시뮬레이션 step이 `2 ms p95`를 넘거나 시뮬레이션이 메인 스레드 CPU의
@@ -214,8 +235,11 @@ screenshot hash로 비교해 실제 입력 뒤 근접 paint, 50 ms, 250 ms의 �
 - runtime frame-pressure를 입력으로 한 자동 `60→30 FPS` 전환과
   핸드오프 15.3의 전체 단계적 품질 저하. 현재는 startup hardware tier,
   reduced-motion, forced-colors만 적용한다.
-- Svelte 5 전체 UI 이전
-- Rust native baker와 Rust/WASM 런타임
+- Svelte 5 전체 UI entry 이전. browser-runtime store/port 계약과 compile-only
+  control slice는 구현했지만 production adapter, pointer gesture,
+  route/fixture/hosting shell은 아직 React다.
+- Rust native 전체 generator와 Rust/WASM 런타임. Cargo workspace와 binary
+  validator는 구현했지만 Python generator를 대체하지 않는다.
 
 이 항목은 누락을 완료로 표시하지 않고 위 검증 게이트가 충족될 때 별도
 변경으로 추적한다.

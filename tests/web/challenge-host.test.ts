@@ -3,7 +3,7 @@ import {
   CHALLENGE_TARGET_MESSAGE,
   normalizeChallengeTarget,
   parseChallengeTargetMessage,
-} from "../../app/challenge-host";
+} from "../../packages/browser-runtime/src";
 
 describe("challenge host contract", () => {
   it("accepts only integer targets in the virtual output range", () => {

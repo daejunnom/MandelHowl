@@ -13,6 +13,24 @@ export function expectedPlateTextureChannels(
   return kind === "normal" ? 2 : 1;
 }
 
+export const SAND_VISIBILITY_EXPONENT = 0.55;
+export const SAND_MAX_OPACITY = 0.95;
+
+/**
+ * Presentation-only transfer curve for the already blended sand density.
+ *
+ * Modal weights and residuals remain untouched. The sub-linear exponent keeps
+ * a newly captured, pre-baked pattern legible while preserving zero as truly
+ * empty and retaining a hard opacity ceiling.
+ */
+export function sandVisibilityFromPresence(presence: number): number {
+  if (!Number.isFinite(presence) || presence <= 0) return 0;
+  return (
+    SAND_MAX_OPACITY *
+    Math.pow(Math.min(1, presence), SAND_VISIBILITY_EXPONENT)
+  );
+}
+
 export interface PlateTextureAtlasSource {
   readonly kind: PlateTextureKind;
   readonly url: string;
@@ -150,7 +168,7 @@ type MutableModalBlendSelection = {
 
 const VISUAL_ATTACK_SECONDS = 0.035;
 const VISUAL_RELEASE_SECONDS = 0.58;
-const ACTIVE_CAPTURE_FLOOR = 0.085;
+export const ACTIVE_CAPTURE_FLOOR = 0.085;
 const MAX_VISUAL_STEP_SECONDS = 0.1;
 const MIN_MODAL_WEIGHT = 1e-6;
 

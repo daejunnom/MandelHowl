@@ -53,12 +53,15 @@
 | F0 | integrity/capability 진단과 접근성 fallback E2E | PASS |
 | F1 | unit·science·integration·E2E·visual·soak 전체 suite | PASS |
 | G0 | release pin·provenance·licenses·headers·archive | PASS |
+| M0 | framework-neutral store/port contract + Svelte 5 control slice | PARTIAL — compile-only, production host/mount 미구현 |
+| M1 | Rust workspace + pinned modes/response 독립 validator | PASS — unit + strict pinned parity |
 
 ## 최종 gate
 
 ```bash
 npm run verify
 npm run physics:validate
+npm run physics:validate:strict
 npm run release:verify -- --require-clean
 npm run release:archive
 npm run release:archive:check
@@ -67,9 +70,11 @@ npm run release:archive:check
 개별 결과를 강제하는 값별 분기나 lookup table, 검증되지 않은 dataset의
 프로덕션 승격, 실제 마이크 입력은 release blocker다.
 
-`response.bin`의 공진 계산 재통합, Svelte 5 UI 이전, Rust native baker는
-현재 `PASS`에 포함하지 않는다. 각각 coverage differential, 수치 A/B,
-Python oracle 검증을 통과해야 하는 별도 결정이며
+`response.bin`의 공진 계산 재통합, Svelte 5 전체 UI entry 이전, Rust native
+전체 generator는 현재 `PASS`에 포함하지 않는다. M0는 compile-only 교체
+경계, M1은 독립 validator 구현과 compile gate를 뜻한다. 기본 구현체
+교체에는 production host/mount smoke, coverage differential, 수치 A/B와
+policy-compatible host의 Python/Rust strict parity가 추가로 필요하다.
 `docs/adr-runtime-rendering-and-migration.md`에 gate를 기록한다.
 
 atlas-v1은 종류별 48 layer가 monolithic이므로 per-mode/range lazy residency도

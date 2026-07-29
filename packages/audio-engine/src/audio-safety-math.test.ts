@@ -35,6 +35,31 @@ describe("audio safety math", () => {
     expect(first).toBeLessThan(0.1);
   });
 
+  it("reaches the safe maximum in two seconds independent of render cadence", () => {
+    const maximumGain =
+      GENERATED_AUDIO_SAFETY_SPEC.sourceMapping.maximumOutputGainLinear;
+    const maximumChangeDbPerSecond =
+      GENERATED_AUDIO_SAFETY_SPEC.gainSmoothing.maximumChangeDbPerSecond;
+
+    for (const framesPerSecond of [30, 60, 120, 144, 240]) {
+      let gain = 0;
+      for (let frame = 1; frame <= framesPerSecond * 2; frame += 1) {
+        gain = rateLimitGain(
+          gain,
+          maximumGain,
+          1 / framesPerSecond,
+          maximumChangeDbPerSecond,
+          maximumGain,
+        );
+        expect(gain).toBeLessThanOrEqual(maximumGain);
+        if (frame === framesPerSecond) {
+          expect(gain).toBeCloseTo(0.001, 8);
+        }
+      }
+      expect(gain).toBeCloseTo(maximumGain, 8);
+    }
+  });
+
   it("measures finite RMS and peak while rejecting invalid samples", () => {
     const measured = measureAudioSamples([1, -1, Number.NaN, 0]);
     expect(measured.peakLinear).toBe(1);

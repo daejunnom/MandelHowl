@@ -26,7 +26,8 @@ jobs:
       - run: npm ci
       - run: npx playwright install chromium
       - run: npm run verify
-      - run: npm run physics:validate
+      - run: npm run baker:rust:test
+      - run: npm run physics:validate:strict
       - run: npm run release:verify -- --require-clean
       - run: npm run release:archive
       - run: npm run release:archive:check

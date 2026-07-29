@@ -9,7 +9,7 @@ export const RUNTIME_SPEC_SOURCE_HASHES = Object.freeze({
   "dial": "925137e2e598491618d5b598e6b53e4f4a449d1bfdb35ab220ae868c9b59970b",
   "feedback": "b8ed42cb36648b68eb079515a7bb90fccb8d6258ef6c51786f30815cf7643b49",
   "volumeMap": "7fda34e109a98993a818e488aa5e0e81566659e085aec921f1e575822539c90a",
-  "audioSafety": "78a17d3d655a2742c6fd12eafa8f39bab5ff3513c1801d93779de8f273a74f7c",
+  "audioSafety": "1fef8451c07dfbf361b4c609d5e40604d923c9a2392b6b379133ed57ab77e8bc",
   "datasetRelease": "fc63800c9ec1c14e7581df90af717719ac22d20a105753a703fdf9b67227c8b3"
 } as const);
 
@@ -307,7 +307,7 @@ export const GENERATED_AUDIO_SAFETY_SPEC = Object.freeze({
     "releaseSeconds": 0.08
   },
   "gainSmoothing": {
-    "maximumChangeDbPerSecond": 12,
+    "maximumChangeDbPerSecond": 40,
     "startupFadeSeconds": 0.08,
     "hiddenFadeSeconds": 0.03,
     "errorFadeSeconds": 0.015

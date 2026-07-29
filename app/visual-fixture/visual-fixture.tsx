@@ -253,6 +253,8 @@ interface FixtureSnapshotOptions {
 interface RenderObservation {
   readonly stage: TemporalStage | "new-only" | "static" | "pending";
   readonly pixelSignature: string;
+  readonly sandLikeSamples: number;
+  readonly sandContrast: number;
   readonly snapshotSignature: string;
   readonly activeModeId: string;
   readonly oldModeId: string;
@@ -263,6 +265,8 @@ interface RenderObservation {
 const PENDING_OBSERVATION: RenderObservation = Object.freeze({
   stage: "pending",
   pixelSignature: "pending",
+  sandLikeSamples: 0,
+  sandContrast: 0,
   snapshotSignature: "pending",
   activeModeId: "none",
   oldModeId: "pending",
@@ -275,12 +279,17 @@ function angleForFrequency(frequency: number): number {
   return -Math.PI * 3 + normalized * Math.PI * 6;
 }
 
-function microphoneSamples(phase: number): readonly number[] {
+function microphoneSamples(
+  phase: number,
+  indicatedPeak: number,
+): readonly number[] {
+  const physicalScale = Math.max(0, Math.min(1, indicatedPeak)) * 0.08;
   return Array.from({ length: 40 }, (_, index) => {
     const time = index / 39;
     return (
-      Math.sin(time * Math.PI * 8 + phase) * 0.7 +
-      Math.sin(time * Math.PI * 13 - phase * 0.5) * 0.3
+      (Math.sin(time * Math.PI * 8 + phase) * 0.7 +
+        Math.sin(time * Math.PI * 13 - phase * 0.5) * 0.3) *
+      physicalScale
     );
   });
 }
@@ -360,7 +369,7 @@ function rendererSnapshot(
     microphone: Object.freeze({
       rmsNormalized: state.microphoneRms,
       peakNormalized: state.microphonePeak,
-      recentSamples: microphoneSamples(state.phase),
+      recentSamples: microphoneSamples(state.phase, state.microphonePeak),
     }),
     feedback: Object.freeze({
       envelopeNormalized: state.envelope,
@@ -402,17 +411,29 @@ function snapshotSignature(snapshot: RuntimeSnapshot): string {
   return `${serialized.length}:${fnv1a32(bytes)}`;
 }
 
-function platePixelSignature(
+function platePixelMetrics(
   canvas: HTMLCanvasElement,
   rendererKind: "webgl2" | "canvas2d",
-): string {
+): {
+  readonly signature: string;
+  readonly sandLikeSamples: number;
+  readonly sandContrast: number;
+} {
   const { width, height } = canvas;
-  if (width < 1 || height < 1) return "empty";
+  if (width < 1 || height < 1) {
+    return { signature: "empty", sandLikeSamples: 0, sandContrast: 0 };
+  }
 
   let pixels: Uint8Array | Uint8ClampedArray;
   if (rendererKind === "webgl2") {
     const context = canvas.getContext("webgl2");
-    if (!context) return "webgl2-unavailable";
+    if (!context) {
+      return {
+        signature: "webgl2-unavailable",
+        sandLikeSamples: 0,
+        sandContrast: 0,
+      };
+    }
     pixels = new Uint8Array(width * height * 4);
     context.readPixels(
       0,
@@ -425,7 +446,13 @@ function platePixelSignature(
     );
   } else {
     const context = canvas.getContext("2d");
-    if (!context) return "canvas2d-unavailable";
+    if (!context) {
+      return {
+        signature: "canvas2d-unavailable",
+        sandLikeSamples: 0,
+        sandContrast: 0,
+      };
+    }
     pixels = context.getImageData(0, 0, width, height).data;
   }
 
@@ -440,6 +467,8 @@ function platePixelSignature(
   let writeIndex = 0;
   let opaqueSamples = 0;
   let lumaTotal = 0;
+  let sandLikeSamples = 0;
+  let sandContrast = 0;
   for (let y = 0; y < height; y += pixelStride) {
     for (let x = 0; x < width; x += pixelStride) {
       const offset = (y * width + x) * 4;
@@ -453,16 +482,30 @@ function platePixelSignature(
       sampled[writeIndex + 3] = alpha;
       writeIndex += 4;
       if (alpha > 0) opaqueSamples += 1;
+      const redGreenChroma = red - green;
+      const greenBlueChroma = green - blue;
+      const sampleContrast = Math.min(redGreenChroma, greenBlueChroma);
+      // The plate is neutral gray; baked grains are deliberately warm gold.
+      // This metric verifies actual framebuffer contrast for both renderers,
+      // rather than only checking that any pixels changed over time.
+      if (alpha > 0 && redGreenChroma >= 22 && greenBlueChroma >= 45) {
+        sandLikeSamples += 1;
+        sandContrast = Math.max(sandContrast, sampleContrast);
+      }
       lumaTotal = (lumaTotal + red * 3 + green * 6 + blue + alpha) >>> 0;
     }
   }
 
-  return [
-    `${width}x${height}`,
-    fnv1a32(sampled.subarray(0, writeIndex)),
-    opaqueSamples.toString(16),
-    lumaTotal.toString(16),
-  ].join(":");
+  return {
+    signature: [
+      `${width}x${height}`,
+      fnv1a32(sampled.subarray(0, writeIndex)),
+      opaqueSamples.toString(16),
+      lumaTotal.toString(16),
+    ].join(":"),
+    sandLikeSamples,
+    sandContrast,
+  };
 }
 
 function temporalSnapshot(
@@ -589,9 +632,12 @@ function renderAndObserve(
       : snapshot.modes[TEMPORAL_NEW_STATE.activeMode]?.modeId;
   const rendererKind =
     renderer.status.kind === "webgl2" ? "webgl2" : "canvas2d";
+  const pixelMetrics = platePixelMetrics(canvas, rendererKind);
   return Object.freeze({
     stage,
-    pixelSignature: platePixelSignature(canvas, rendererKind),
+    pixelSignature: pixelMetrics.signature,
+    sandLikeSamples: pixelMetrics.sandLikeSamples,
+    sandContrast: pixelMetrics.sandContrast,
     snapshotSignature: snapshotSignature(snapshot),
     activeModeId: snapshot.activeModeId ?? "none",
     oldModeId: oldModeId ?? "none",
@@ -774,7 +820,10 @@ export function MandelHowlVisualFixture({
         measurementStatus={presentedState.measurementStatus}
         microphoneRms={presentedState.microphoneRms}
         microphonePeak={presentedState.microphonePeak}
-        microphoneSamples={microphoneSamples(presentedState.phase)}
+        microphoneSamples={microphoneSamples(
+          presentedState.phase,
+          presentedState.microphonePeak,
+        )}
         activeModePhase={presentedState.phase}
         audioEnabled={presentedState.audioEnabled}
         rendererKind={rendererStatus?.kind ?? presentedState.rendererKind}
@@ -798,6 +847,8 @@ export function MandelHowlVisualFixture({
         data-texture-ready={String(rendererStatus?.textureReady ?? false)}
         data-temporal-stage={observation.stage}
         data-pixel-signature={observation.pixelSignature}
+        data-sand-like-samples={observation.sandLikeSamples}
+        data-sand-contrast={observation.sandContrast}
         data-snapshot-signature={observation.snapshotSignature}
         data-active-mode-id={observation.activeModeId}
         data-old-mode-id={observation.oldModeId}

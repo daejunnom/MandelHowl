@@ -45,5 +45,7 @@ next-env.d.ts
 /playwright-report/
 /test-results/
 /public/runtime/
+/target/
+/tools/physics-baker-rs/target/
 __pycache__/
 *.py[cod]

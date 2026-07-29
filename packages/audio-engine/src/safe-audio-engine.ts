@@ -631,7 +631,10 @@ export class SafeAudioEngine {
     const nextGain = rateLimitGain(
       this.appliedGain,
       target,
-      Math.max(elapsed, 1 / 120),
+      // Use AudioContext time exactly. A synthetic minimum frame duration
+      // makes the dB-per-second contract refresh-rate dependent (for example,
+      // 240 Hz would otherwise ramp twice as fast as specified).
+      Math.min(0.25, Math.max(0, elapsed)),
       this.safety.gainSmoothing.maximumChangeDbPerSecond,
       this.safety.sourceMapping.maximumOutputGainLinear,
     );

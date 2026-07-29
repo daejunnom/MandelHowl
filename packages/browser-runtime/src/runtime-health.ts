@@ -1,5 +1,5 @@
-import type { AudioSafetyTelemetry } from "@/packages/audio-engine/src";
-import type { PlateRendererStatus } from "@/packages/render-engine/src";
+import type { AudioSafetyTelemetry } from "../../audio-engine/src";
+import type { PlateRendererStatus } from "../../render-engine/src";
 import type { SnapshotFanoutMetrics } from "./snapshot-fanout";
 
 export interface MandelHowlHealthSnapshot {

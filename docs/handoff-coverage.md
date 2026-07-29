@@ -144,8 +144,11 @@ range       45..6000 Hz
   선택한다. runtime frame-pressure 기반 자동 `60→30 FPS` 전환과 핸드오프
   15.3의 전체 degradation ladder는 구현하지 않았다. 현재 기기 예산 통과와
   물리 결과 불변은 soak/performance suite로 검증한다.
-- Svelte 5 UI와 Rust native baker는 구현 완료 항목이 아니다. 수치 기반
-  A/B·differential gate를 통과할 때만 별도 이전한다.
+- framework-neutral browser-runtime store/port 계약, Svelte 5 compile-only
+  control slice와 Rust binary validator는 구현했다. 다만 Svelte production
+  adapter/entry와 Rust generator는 구현 완료 항목이 아니며 mount smoke,
+  strict native parity, 수치 기반 A/B·differential gate를 통과할 때만
+  기본 구현체를 교체한다.
 
 이 한계들은 미구현 항목을 문구로 덮은 것이 아니라, 검증된 구현이 주장할 수
 있는 범위를 고정한다.

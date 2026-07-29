@@ -50,7 +50,8 @@ peakLimiter:
   releaseSeconds: 0.08
 
 gainSmoothing:
-  maximumChangeDbPerSecond: 12
+  # The -100 dB silence floor can reach the -20 dB maximum safe gain in 2 s.
+  maximumChangeDbPerSecond: 40
   startupFadeSeconds: 0.08
   hiddenFadeSeconds: 0.03
   errorFadeSeconds: 0.015

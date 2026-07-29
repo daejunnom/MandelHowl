@@ -8,6 +8,8 @@ import { waitForRuntimeReady } from "./runtime-ready";
 interface TemporalObservation {
   readonly stage: string | null;
   readonly pixelSignature: string | null;
+  readonly sandLikeSamples: number;
+  readonly sandContrast: number;
   readonly snapshotSignature: string | null;
   readonly activeModeId: string | null;
   readonly oldModeId: string | null;
@@ -39,6 +41,10 @@ async function observe(page: Page): Promise<TemporalObservation> {
     .evaluate((element) => ({
       stage: element.getAttribute("data-temporal-stage"),
       pixelSignature: element.getAttribute("data-pixel-signature"),
+      sandLikeSamples: Number(
+        element.getAttribute("data-sand-like-samples") ?? 0,
+      ),
+      sandContrast: Number(element.getAttribute("data-sand-contrast") ?? 0),
       snapshotSignature: element.getAttribute(
         "data-snapshot-signature",
       ),
@@ -91,6 +97,8 @@ for (const fixture of [
     expect(baseline.oldModeId).not.toBe("none");
     expect(baseline.newModeId).not.toBe(baseline.oldModeId);
     expect(baseline.frequency).toBe("4629.35");
+    expect(baseline.sandLikeSamples).toBeGreaterThan(100);
+    expect(baseline.sandContrast).toBeGreaterThanOrEqual(22);
 
     const oneFrame = await advance(
       page,
@@ -102,6 +110,7 @@ for (const fixture of [
     expect(oneFrame.pixelSignature).not.toBe(
       baseline.pixelSignature,
     );
+    expect(oneFrame.sandLikeSamples).toBeGreaterThan(100);
 
     const referencePage = await context.newPage();
     try {
@@ -257,6 +266,7 @@ async function actualPlateSignature(page: Page): Promise<string> {
 test("actual dial transition repaints the plate near-term, at 50 ms, and at 250 ms", async ({
   page,
 }) => {
+  test.setTimeout(60_000);
   // mode-045's natural frequency is dominated by mode-046 after coupling
   // normalization, so use two production modes that are independently
   // capturable under the canonical active-mode score.
@@ -271,7 +281,7 @@ test("actual dial transition repaints the plate near-term, at 50 ms, and at 250 
   );
   // Hold the baseline long enough for the dial's velocity estimator to decay.
   // Otherwise pointer-up inertia can cross a nearby capture boundary.
-  await rotateActualDial(page, initialFrequency, oldFrequency, 40);
+  await rotateActualDial(page, initialFrequency, oldFrequency, 90);
   await expect
     .poll(() =>
       page.evaluate(
@@ -282,6 +292,7 @@ test("actual dial transition repaints the plate near-term, at 50 ms, and at 250 
           return activeModeId !== null && activeModeId !== "mode-046";
         },
       ),
+      { timeout: 15_000 },
     )
     .toBe(true);
   const baselineRuntime = await page.evaluate(

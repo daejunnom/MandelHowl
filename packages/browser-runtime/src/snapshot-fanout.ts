@@ -1,8 +1,8 @@
-import type { RuntimeSnapshot } from "@/packages/contracts/src";
+import type { RuntimeSnapshot } from "../../contracts/src";
 import type {
   RuntimeSnapshotConsumer,
   RuntimeSnapshotLease,
-} from "@/packages/resonance-engine/src";
+} from "../../resonance-engine/src";
 
 export interface SnapshotFanoutMetrics {
   readonly publishedFrames: number;
@@ -73,7 +73,10 @@ export class RuntimeSnapshotFanout {
     };
   }
 
-  publish(snapshot: RuntimeSnapshot): boolean {
+  publish(
+    snapshot: RuntimeSnapshot,
+    commitBeforeNotify?: (snapshot: RuntimeSnapshot) => void,
+  ): boolean {
     if (
       this.disposed ||
       !Number.isInteger(snapshot.sequence) ||
@@ -88,6 +91,7 @@ export class RuntimeSnapshotFanout {
     this.lastSequence = snapshot.sequence;
     this.lastDatasetId = snapshot.datasetId;
     this.publishedFrames += 1;
+    commitBeforeNotify?.(snapshot);
     for (const consumer of this.consumers) {
       try {
         consumer(snapshot);
