@@ -1,0 +1,67 @@
+# Canonical owner of audible Web Audio limits. Virtual VOLUME 100 never bypasses
+# this chain and is never mapped directly to output gain.
+schemaVersion: mandelhowl.audio-safety.v1
+canonicalOwner:
+  path: specs/runtime/audio-safety.v1.yaml
+  policy: edit-source-regenerate-derived
+
+units:
+  time: s
+  frequency: Hz
+  level: dBFS
+  gain: linear
+
+activation:
+  requiresUserGesture: true
+  microphonePermission: forbidden
+  simulationRunsBeforeActivation: true
+
+sourceMapping:
+  source: feedback-envelope-normalized
+  directVirtualVolumeMapping: forbidden
+  maximumOutputGainLinear: 0.1
+  exponent: 0.72
+
+chain:
+  - dc-blocker
+  - band-limiter
+  - soft-clipper
+  - rms-limiter
+  - peak-limiter
+  - gain-smoother
+
+bandLimiter:
+  highPassHz: 55
+  lowPassHz: 6500
+  q: 0.7071067811865476
+
+softClipper:
+  drive: 1.4
+
+rmsLimiter:
+  maximumRmsDbfs: -24
+  windowSeconds: 0.4
+  attackSeconds: 0.02
+  releaseSeconds: 0.35
+
+peakLimiter:
+  ceilingDbfs: -8
+  lookAheadSeconds: 0.005
+  releaseSeconds: 0.08
+
+gainSmoothing:
+  maximumChangeDbPerSecond: 12
+  startupFadeSeconds: 0.08
+  hiddenFadeSeconds: 0.03
+  errorFadeSeconds: 0.015
+
+exposureGuard:
+  highFrequencyThresholdHz: 3000
+  maximumContinuousHighFrequencySeconds: 8
+  attenuationDb: 12
+  maximumContinuousSaturationSeconds: 15
+
+lifecycle:
+  suspendWhenDocumentHidden: true
+  fadeBeforeSuspend: true
+  invalidNumberPolicy: mute-and-diagnose

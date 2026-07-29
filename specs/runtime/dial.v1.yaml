@@ -1,0 +1,66 @@
+# Canonical owner of every angle-to-frequency and dial-motion constant.
+schemaVersion: mandelhowl.dial-config.v1
+canonicalOwner:
+  path: specs/runtime/dial.v1.yaml
+  policy: edit-source-regenerate-derived
+
+units:
+  angle: rad
+  angularVelocity: rad/s
+  frequency: Hz
+  time: s
+  pointerRadius: dial-radius-ratio
+
+mapping:
+  type: logarithmic
+  minimumFrequencyHz: 45
+  maximumFrequencyHz: 6000
+  minimumUnwrappedAngleRad: -9.42477796076938
+  maximumUnwrappedAngleRad: 9.42477796076938
+  initialUnwrappedAngleRad: 0
+  clampFrequencyAtEndStops: true
+  formula: "f=minHz*(maxHz/minHz)^((clamp(angle,minAngle,maxAngle)-minAngle)/(maxAngle-minAngle))"
+
+pointerSampling:
+  unwrapPeriodRad: 6.283185307179586
+  minimumRadiusRatio: 0.22
+  maximumSampleGapSeconds: 0.08
+  maximumAngularDeltaPerSampleRad: 1.2
+
+velocityEstimator:
+  historyWindowSeconds: 0.12
+  maximumAbsoluteRadPerSecond: 18
+  stationaryThresholdRadPerSecond: 0.025
+  approachDirectionThresholdHzPerSecond: 0.1
+
+inertia:
+  enabled: true
+  maximumInitialRadPerSecond: 8
+  frictionRadPerSecondSquared: 7.5
+  stopThresholdRadPerSecond: 0.03
+  maximumDurationSeconds: 0.9
+
+endStops:
+  maximumOverscrollRad: 0.22
+  springStiffnessPerSecondSquared: 34
+  dampingPerSecond: 11
+
+keyboard:
+  arrowStepRad: 0.035
+  pageStepRad: 0.35
+  homeEndMoveToPhysicalLimits: true
+
+wheel:
+  radiansPerDeltaPixel: 0.0015
+  maximumDeltaRadPerEvent: 0.24
+
+# These affect tactile/visual presentation only; they may not change the
+# canonical frequency or resonance state.
+resonanceResistance:
+  maximumCounterTorqueNormalized: 0.18
+  maximumVisualJitterRad: 0.012
+
+determinism:
+  timestampUnit: s
+  tieBreak: input-sequence
+  randomSource: forbidden

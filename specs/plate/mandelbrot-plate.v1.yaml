@@ -1,0 +1,160 @@
+# Canonical physical source. Generated meshes, modes, textures, and manifests
+# are immutable derivatives and must be regenerated after this file changes.
+$schema: ../../packages/contracts/schemas/plate-spec.schema.json
+schemaVersion: mandelhowl.plate-spec.v1
+plateId: mandelhowl-al6061-circular-360-v1
+canonicalOwner:
+  path: specs/plate/mandelbrot-plate.v1.yaml
+  policy: edit-source-regenerate-derived
+
+units:
+  system: SI
+  length: m
+  mass: kg
+  time: s
+  frequency: Hz
+  angle: rad
+  pressure: Pa
+  density: kg/m^3
+
+# Right-handed plate-local frame. The sand-facing front is z=0; material
+# thickness extends into -z. x/y also define the Mandelbrot real/imaginary axes.
+coordinateSystem:
+  frame: plate-local
+  handedness: right
+  origin: plate-centre-front-surface
+  xAxis: mandelbrot-real-positive
+  yAxis: mandelbrot-imaginary-positive
+  zAxis: front-normal
+
+geometry:
+  frontShape: circle
+  radiusM: 0.18
+  frontSurfaceZM: 0
+  hub:
+    shape: circle
+    radiusM: 0.018
+    centreM:
+      x: 0
+      y: 0
+      z: 0
+
+boundaryCondition:
+  hub: clamped
+  outerEdge: free
+  description: The circular centre hub is fixed in all degrees of freedom; the outer rim is free.
+
+material:
+  materialId: al-6061-t6
+  name: Aluminium 6061-T6
+  densityKgPerM3: 2700
+  youngsModulusPa: 68900000000
+  poissonRatio: 0.33
+  nominalModalDampingRatio: 0.004
+
+mandelbrotField:
+  algorithm: escape-time
+  maximumIterations: 256
+  escapeRadius: 2
+  complexBounds:
+    realMin: -2.15
+    realMax: 0.85
+    imaginaryMin: -1.5
+    imaginaryMax: 1.5
+  coordinateMap: linear-plate-diameter-to-complex-bounds
+  sampleResolution:
+    widthPx: 1024
+    heightPx: 1024
+  normalization:
+    method: continuous-log-log
+    insideValue: 1
+    escapedRange: [0, 1]
+  manufacturingFilter:
+    method: gaussian-close-open
+    minimumFeatureM: 0.0025
+    radiusM: 0.00125
+    quantizationLevels: 12
+
+thicknessMapping:
+  source: filtered-normalized-mandelbrot-field
+  minimumThicknessM: 0.0018
+  maximumThicknessM: 0.0042
+  curve: smoothstep
+  direction: higher-field-is-thicker
+  frontSurfaceRemainsPlanar: true
+
+# v1 encodes the field through thickness only. There is no independent hidden
+# attached-mass field.
+massMapping:
+  type: none
+  addedArealDensityKgPerM2: [0, 0]
+
+manufacturingLimits:
+  minimumConnectedThicknessM: 0.0018
+  maximumThicknessGradient: 0.45
+  totalMassRangeKg: [0.45, 1.45]
+  centreOfMassOffsetMaximumM: 0.003
+
+actuator:
+  model: normal-point-force-with-circular-footprint
+  positionM:
+    x: 0.082
+    y: -0.047
+    z: 0
+  direction:
+    x: 0
+    y: 0
+    z: 1
+  footprintRadiusM: 0.006
+
+virtualMicrophone:
+  model: virtual-normal-velocity-probe
+  positionM:
+    x: -0.072
+    y: 0.061
+    z: 0.12
+  aimDirection:
+    x: 0
+    y: 0
+    z: -1
+  apertureRadiusM: 0.01
+
+frequencyRange:
+  minimumHz: 45
+  maximumHz: 6000
+
+solverRequest:
+  analysis: undamped-eigenmodes-with-modal-damping
+  elementFamily: shell
+  requestedModeCount: 48
+  frequencyRangeHz: [45, 6000]
+  normalization: unit-modal-mass
+  signReference: positive-at-actuator-or-first-nonzero-node
+  meshLevels:
+    - name: coarse
+      targetElementSizeM: 0.006
+    - name: medium
+      targetElementSizeM: 0.003
+    - name: fine
+      targetElementSizeM: 0.0015
+  convergence:
+    maximumRelativeFrequencyChange: 0.02
+    minimumModalAssuranceCriterion: 0.95
+
+textureRequest:
+  widthPx: 1024
+  heightPx: 1024
+  container: KTX2
+  uvOrigin: negative-x-negative-y
+  uvXAxis: positive-x
+  uvYAxis: positive-y
+  channels:
+    - signed-displacement-r16f
+    - normal-rg16f
+    - nodal-mask-r8
+    - sand-density-r8
+
+determinism:
+  randomSource: forbidden
+  offlineFloatPrecision: float64
+  modeSort: frequency-then-mode-id

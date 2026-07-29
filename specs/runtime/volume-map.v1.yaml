@@ -1,0 +1,35 @@
+# The resonance engine's volume mapper is the sole consumer/implementer of this
+# canonical virtual-RMS-to-integer rule.
+schemaVersion: mandelhowl.volume-map.v1
+canonicalOwner:
+  path: specs/runtime/volume-map.v1.yaml
+  policy: edit-source-regenerate-derived
+
+units:
+  input: virtual-normalized-rms
+  output: integer-0-to-100
+  time: s
+  level: dB-relative-to-virtual-limiter
+
+measurement:
+  rmsWindowSeconds: 0.32
+  minimumObservationSeconds: 0.75
+  stabilityWindowSeconds: 0.5
+  maximumRelativeRmsSlopePerSecond: 0.02
+  confirmationHoldSeconds: 0.2
+
+mapping:
+  noiseFloorRms: 0.003
+  saturationRms: 0.62
+  curve: logarithmic-db
+  rounding: nearest-integer
+  belowNoiseFloor: 0
+  atOrAboveSaturation: 100
+  intermediateRange: [1, 99]
+  dbDefinition: "20*log10(x)"
+  formula: "round(1+98*clamp(db(rms/noiseFloor)/db(saturation/noiseFloor),0,1))"
+
+display:
+  widthDigits: 3
+  measuringLabel: MEASURING
+  preserveLastSettledValueWhileMeasuring: true

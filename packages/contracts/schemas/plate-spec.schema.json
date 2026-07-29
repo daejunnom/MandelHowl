@@ -1,0 +1,738 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mandelhowl.dev/schemas/plate-spec.v1.schema.json",
+  "title": "MandelHowl plate specification v1",
+  "description": "Canonical SI-unit definition of the finite-resolution Mandelbrot-encoded Chladni plate.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "plateId",
+    "canonicalOwner",
+    "units",
+    "coordinateSystem",
+    "geometry",
+    "boundaryCondition",
+    "material",
+    "mandelbrotField",
+    "thicknessMapping",
+    "massMapping",
+    "manufacturingLimits",
+    "actuator",
+    "virtualMicrophone",
+    "frequencyRange",
+    "solverRequest",
+    "textureRequest",
+    "determinism"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "schemaVersion": {
+      "const": "mandelhowl.plate-spec.v1"
+    },
+    "plateId": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+    },
+    "canonicalOwner": {
+      "$ref": "#/$defs/canonicalOwner"
+    },
+    "units": {
+      "$ref": "#/$defs/siUnits"
+    },
+    "coordinateSystem": {
+      "$ref": "#/$defs/plateCoordinateSystem"
+    },
+    "geometry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "frontShape",
+        "radiusM",
+        "frontSurfaceZM",
+        "hub"
+      ],
+      "properties": {
+        "frontShape": {
+          "const": "circle"
+        },
+        "radiusM": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "frontSurfaceZM": {
+          "const": 0
+        },
+        "hub": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "shape",
+            "radiusM",
+            "centreM"
+          ],
+          "properties": {
+            "shape": {
+              "const": "circle"
+            },
+            "radiusM": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "centreM": {
+              "$ref": "#/$defs/vector3"
+            }
+          }
+        }
+      }
+    },
+    "boundaryCondition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "hub",
+        "outerEdge",
+        "description"
+      ],
+      "properties": {
+        "hub": {
+          "const": "clamped"
+        },
+        "outerEdge": {
+          "const": "free"
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "material": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "materialId",
+        "name",
+        "densityKgPerM3",
+        "youngsModulusPa",
+        "poissonRatio",
+        "nominalModalDampingRatio"
+      ],
+      "properties": {
+        "materialId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "densityKgPerM3": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "youngsModulusPa": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "poissonRatio": {
+          "type": "number",
+          "minimum": 0,
+          "exclusiveMaximum": 0.5
+        },
+        "nominalModalDampingRatio": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 0.2
+        }
+      }
+    },
+    "mandelbrotField": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "algorithm",
+        "maximumIterations",
+        "escapeRadius",
+        "complexBounds",
+        "coordinateMap",
+        "sampleResolution",
+        "normalization",
+        "manufacturingFilter"
+      ],
+      "properties": {
+        "algorithm": {
+          "const": "escape-time"
+        },
+        "maximumIterations": {
+          "type": "integer",
+          "minimum": 16,
+          "maximum": 65536
+        },
+        "escapeRadius": {
+          "type": "number",
+          "minimum": 2
+        },
+        "complexBounds": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "realMin",
+            "realMax",
+            "imaginaryMin",
+            "imaginaryMax"
+          ],
+          "properties": {
+            "realMin": {
+              "type": "number"
+            },
+            "realMax": {
+              "type": "number"
+            },
+            "imaginaryMin": {
+              "type": "number"
+            },
+            "imaginaryMax": {
+              "type": "number"
+            }
+          }
+        },
+        "coordinateMap": {
+          "const": "linear-plate-diameter-to-complex-bounds"
+        },
+        "sampleResolution": {
+          "$ref": "#/$defs/resolution"
+        },
+        "normalization": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "method",
+            "insideValue",
+            "escapedRange"
+          ],
+          "properties": {
+            "method": {
+              "const": "continuous-log-log"
+            },
+            "insideValue": {
+              "const": 1
+            },
+            "escapedRange": {
+              "$ref": "#/$defs/unitIntervalTuple"
+            }
+          }
+        },
+        "manufacturingFilter": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "method",
+            "minimumFeatureM",
+            "radiusM",
+            "quantizationLevels"
+          ],
+          "properties": {
+            "method": {
+              "const": "gaussian-close-open"
+            },
+            "minimumFeatureM": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "radiusM": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "quantizationLevels": {
+              "type": "integer",
+              "minimum": 2,
+              "maximum": 256
+            }
+          }
+        }
+      }
+    },
+    "thicknessMapping": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source",
+        "minimumThicknessM",
+        "maximumThicknessM",
+        "curve",
+        "direction",
+        "frontSurfaceRemainsPlanar"
+      ],
+      "properties": {
+        "source": {
+          "const": "filtered-normalized-mandelbrot-field"
+        },
+        "minimumThicknessM": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "maximumThicknessM": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "curve": {
+          "const": "smoothstep"
+        },
+        "direction": {
+          "const": "higher-field-is-thicker"
+        },
+        "frontSurfaceRemainsPlanar": {
+          "const": true
+        }
+      }
+    },
+    "massMapping": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "addedArealDensityKgPerM2"
+      ],
+      "properties": {
+        "type": {
+          "const": "none"
+        },
+        "addedArealDensityKgPerM2": {
+          "type": "array",
+          "prefixItems": [
+            {
+              "const": 0
+            },
+            {
+              "const": 0
+            }
+          ],
+          "minItems": 2,
+          "maxItems": 2
+        }
+      }
+    },
+    "manufacturingLimits": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "minimumConnectedThicknessM",
+        "maximumThicknessGradient",
+        "totalMassRangeKg",
+        "centreOfMassOffsetMaximumM"
+      ],
+      "properties": {
+        "minimumConnectedThicknessM": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "maximumThicknessGradient": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "totalMassRangeKg": {
+          "type": "array",
+          "prefixItems": [
+            {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            {
+              "type": "number",
+              "exclusiveMinimum": 0
+            }
+          ],
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "centreOfMassOffsetMaximumM": {
+          "type": "number",
+          "minimum": 0
+        }
+      }
+    },
+    "actuator": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "model",
+        "positionM",
+        "direction",
+        "footprintRadiusM"
+      ],
+      "properties": {
+        "model": {
+          "const": "normal-point-force-with-circular-footprint"
+        },
+        "positionM": {
+          "$ref": "#/$defs/vector3"
+        },
+        "direction": {
+          "$ref": "#/$defs/unitVector3"
+        },
+        "footprintRadiusM": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        }
+      }
+    },
+    "virtualMicrophone": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "model",
+        "positionM",
+        "aimDirection",
+        "apertureRadiusM"
+      ],
+      "properties": {
+        "model": {
+          "const": "virtual-normal-velocity-probe"
+        },
+        "positionM": {
+          "$ref": "#/$defs/vector3"
+        },
+        "aimDirection": {
+          "$ref": "#/$defs/unitVector3"
+        },
+        "apertureRadiusM": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        }
+      }
+    },
+    "frequencyRange": {
+      "$ref": "#/$defs/frequencyRange"
+    },
+    "solverRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "analysis",
+        "elementFamily",
+        "requestedModeCount",
+        "frequencyRangeHz",
+        "normalization",
+        "signReference",
+        "meshLevels",
+        "convergence"
+      ],
+      "properties": {
+        "analysis": {
+          "const": "undamped-eigenmodes-with-modal-damping"
+        },
+        "elementFamily": {
+          "const": "shell"
+        },
+        "requestedModeCount": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "frequencyRangeHz": {
+          "type": "array",
+          "prefixItems": [
+            {
+              "type": "number",
+              "minimum": 0
+            },
+            {
+              "type": "number",
+              "exclusiveMinimum": 0
+            }
+          ],
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "normalization": {
+          "const": "unit-modal-mass"
+        },
+        "signReference": {
+          "const": "positive-at-actuator-or-first-nonzero-node"
+        },
+        "meshLevels": {
+          "type": "array",
+          "minItems": 2,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "name",
+              "targetElementSizeM"
+            ],
+            "properties": {
+              "name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "targetElementSizeM": {
+                "type": "number",
+                "exclusiveMinimum": 0
+              }
+            }
+          }
+        },
+        "convergence": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "maximumRelativeFrequencyChange",
+            "minimumModalAssuranceCriterion"
+          ],
+          "properties": {
+            "maximumRelativeFrequencyChange": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "maximum": 1
+            },
+            "minimumModalAssuranceCriterion": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            }
+          }
+        }
+      }
+    },
+    "textureRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "widthPx",
+        "heightPx",
+        "container",
+        "uvOrigin",
+        "uvXAxis",
+        "uvYAxis",
+        "channels"
+      ],
+      "properties": {
+        "widthPx": {
+          "type": "integer",
+          "minimum": 16
+        },
+        "heightPx": {
+          "type": "integer",
+          "minimum": 16
+        },
+        "container": {
+          "const": "KTX2"
+        },
+        "uvOrigin": {
+          "const": "negative-x-negative-y"
+        },
+        "uvXAxis": {
+          "const": "positive-x"
+        },
+        "uvYAxis": {
+          "const": "positive-y"
+        },
+        "channels": {
+          "type": "array",
+          "uniqueItems": true,
+          "minItems": 1,
+          "items": {
+            "enum": [
+              "signed-displacement-r16f",
+              "normal-rg16f",
+              "nodal-mask-r8",
+              "sand-density-r8"
+            ]
+          }
+        }
+      }
+    },
+    "determinism": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "randomSource",
+        "offlineFloatPrecision",
+        "modeSort"
+      ],
+      "properties": {
+        "randomSource": {
+          "const": "forbidden"
+        },
+        "offlineFloatPrecision": {
+          "const": "float64"
+        },
+        "modeSort": {
+          "const": "frequency-then-mode-id"
+        }
+      }
+    },
+    "canonicalSha256": {
+      "$ref": "#/$defs/sha256"
+    }
+  },
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "canonicalOwner": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "policy"
+      ],
+      "properties": {
+        "path": {
+          "const": "specs/plate/mandelbrot-plate.v1.yaml"
+        },
+        "policy": {
+          "const": "edit-source-regenerate-derived"
+        }
+      }
+    },
+    "siUnits": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "system",
+        "length",
+        "mass",
+        "time",
+        "frequency",
+        "angle",
+        "pressure",
+        "density"
+      ],
+      "properties": {
+        "system": {
+          "const": "SI"
+        },
+        "length": {
+          "const": "m"
+        },
+        "mass": {
+          "const": "kg"
+        },
+        "time": {
+          "const": "s"
+        },
+        "frequency": {
+          "const": "Hz"
+        },
+        "angle": {
+          "const": "rad"
+        },
+        "pressure": {
+          "const": "Pa"
+        },
+        "density": {
+          "const": "kg/m^3"
+        }
+      }
+    },
+    "plateCoordinateSystem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "frame",
+        "handedness",
+        "origin",
+        "xAxis",
+        "yAxis",
+        "zAxis"
+      ],
+      "properties": {
+        "frame": {
+          "const": "plate-local"
+        },
+        "handedness": {
+          "const": "right"
+        },
+        "origin": {
+          "const": "plate-centre-front-surface"
+        },
+        "xAxis": {
+          "const": "mandelbrot-real-positive"
+        },
+        "yAxis": {
+          "const": "mandelbrot-imaginary-positive"
+        },
+        "zAxis": {
+          "const": "front-normal"
+        }
+      }
+    },
+    "vector3": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "x",
+        "y",
+        "z"
+      ],
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        },
+        "z": {
+          "type": "number"
+        }
+      }
+    },
+    "unitVector3": {
+      "$ref": "#/$defs/vector3",
+      "description": "A unit-length vector; norm validation is performed by the physics baker."
+    },
+    "resolution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "widthPx",
+        "heightPx"
+      ],
+      "properties": {
+        "widthPx": {
+          "type": "integer",
+          "minimum": 16
+        },
+        "heightPx": {
+          "type": "integer",
+          "minimum": 16
+        }
+      }
+    },
+    "unitIntervalTuple": {
+      "type": "array",
+      "prefixItems": [
+        {
+          "const": 0
+        },
+        {
+          "const": 1
+        }
+      ],
+      "minItems": 2,
+      "maxItems": 2
+    },
+    "frequencyRange": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "minimumHz",
+        "maximumHz"
+      ],
+      "properties": {
+        "minimumHz": {
+          "type": "number",
+          "minimum": 0
+        },
+        "maximumHz": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        }
+      }
+    }
+  }
+}

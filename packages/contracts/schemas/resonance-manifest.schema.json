@@ -1,0 +1,396 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mandelhowl.dev/schemas/resonance-manifest.v1.schema.json",
+  "title": "MandelHowl resonance dataset manifest v1",
+  "description": "Content-addressed inventory and compatibility contract for a baked resonance dataset.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "datasetId",
+    "ownership",
+    "contentAddressing",
+    "plate",
+    "runtimeCompatibility",
+    "units",
+    "coordinateSystem",
+    "modeCount",
+    "frequencyRange",
+    "solverProvenance",
+    "files"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "schemaVersion": {
+      "const": "mandelhowl.resonance-manifest.v1"
+    },
+    "datasetId": {
+      "$ref": "#/$defs/contentId"
+    },
+    "ownership": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "generator",
+        "policy"
+      ],
+      "properties": {
+        "kind": {
+          "const": "generated"
+        },
+        "generator": {
+          "const": "tools/physics-baker"
+        },
+        "policy": {
+          "const": "immutable-regenerate"
+        }
+      }
+    },
+    "contentAddressing": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "algorithm",
+        "canonicalization",
+        "identityScope",
+        "directoryName"
+      ],
+      "properties": {
+        "algorithm": {
+          "const": "sha256"
+        },
+        "canonicalization": {
+          "const": "RFC8785"
+        },
+        "identityScope": {
+          "const": "manifest-with-datasetId-omitted-and-all-referenced-file-digests"
+        },
+        "directoryName": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    },
+    "plate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "plateId",
+        "specSha256"
+      ],
+      "properties": {
+        "plateId": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+        },
+        "specSha256": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    },
+    "runtimeCompatibility": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "minimumRuntimeVersion",
+        "maximumRuntimeVersionExclusive",
+        "modeBinaryFormat",
+        "responseBinaryFormat"
+      ],
+      "properties": {
+        "minimumRuntimeVersion": {
+          "$ref": "#/$defs/semver"
+        },
+        "maximumRuntimeVersionExclusive": {
+          "$ref": "#/$defs/semver"
+        },
+        "modeBinaryFormat": {
+          "const": "mandelhowl-modes-v1"
+        },
+        "responseBinaryFormat": {
+          "const": "mandelhowl-response-v1"
+        }
+      }
+    },
+    "units": {
+      "$ref": "#/$defs/siUnits"
+    },
+    "coordinateSystem": {
+      "$ref": "#/$defs/plateCoordinateSystem"
+    },
+    "modeCount": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "frequencyRange": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "minimumHz",
+        "maximumHz"
+      ],
+      "properties": {
+        "minimumHz": {
+          "type": "number",
+          "minimum": 0
+        },
+        "maximumHz": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        }
+      }
+    },
+    "solverProvenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "solverName",
+        "solverVersion",
+        "containerImageDigest",
+        "optionsSha256"
+      ],
+      "properties": {
+        "solverName": {
+          "type": "string",
+          "minLength": 1
+        },
+        "solverVersion": {
+          "type": "string",
+          "minLength": 1
+        },
+        "containerImageDigest": {
+          "$ref": "#/$defs/contentId"
+        },
+        "optionsSha256": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    },
+    "files": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "plateSpec",
+        "modes",
+        "response",
+        "textures",
+        "provenance",
+        "convergenceReport",
+        "coverageReport",
+        "checksums"
+      ],
+      "properties": {
+        "plateSpec": {
+          "$ref": "#/$defs/asset"
+        },
+        "modes": {
+          "$ref": "#/$defs/asset"
+        },
+        "response": {
+          "$ref": "#/$defs/asset"
+        },
+        "textures": {
+          "type": "array",
+          "minItems": 4,
+          "items": {
+            "$ref": "#/$defs/textureAtlas"
+          }
+        },
+        "provenance": {
+          "$ref": "#/$defs/asset"
+        },
+        "convergenceReport": {
+          "$ref": "#/$defs/asset"
+        },
+        "coverageReport": {
+          "$ref": "#/$defs/asset"
+        },
+        "checksums": {
+          "$ref": "#/$defs/asset"
+        }
+      }
+    }
+  },
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "contentId": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$"
+    },
+    "semver": {
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?$"
+    },
+    "relativePath": {
+      "type": "string",
+      "pattern": "^(?!/)(?!.*\\\\)(?!.*(?:^|/)\\.\\.(?:/|$))[A-Za-z0-9][A-Za-z0-9._/-]*$"
+    },
+    "asset": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "byteLength",
+        "sha256",
+        "mediaType"
+      ],
+      "properties": {
+        "path": {
+          "$ref": "#/$defs/relativePath"
+        },
+        "byteLength": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "mediaType": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "textureAtlas": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "byteLength",
+        "sha256",
+        "mediaType",
+        "kind",
+        "modeIds",
+        "widthPx",
+        "heightPx",
+        "layers",
+        "uvOrigin"
+      ],
+      "properties": {
+        "path": {
+          "$ref": "#/$defs/relativePath"
+        },
+        "byteLength": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "mediaType": {
+          "type": "string",
+          "minLength": 1
+        },
+        "kind": {
+          "enum": [
+            "signed-displacement",
+            "normal",
+            "nodal-mask",
+            "sand-density"
+          ]
+        },
+        "modeIds": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "widthPx": {
+          "type": "integer",
+          "minimum": 16
+        },
+        "heightPx": {
+          "type": "integer",
+          "minimum": 16
+        },
+        "layers": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "uvOrigin": {
+          "const": "negative-x-negative-y"
+        }
+      }
+    },
+    "siUnits": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "system",
+        "length",
+        "mass",
+        "time",
+        "frequency",
+        "angle",
+        "pressure",
+        "density"
+      ],
+      "properties": {
+        "system": {
+          "const": "SI"
+        },
+        "length": {
+          "const": "m"
+        },
+        "mass": {
+          "const": "kg"
+        },
+        "time": {
+          "const": "s"
+        },
+        "frequency": {
+          "const": "Hz"
+        },
+        "angle": {
+          "const": "rad"
+        },
+        "pressure": {
+          "const": "Pa"
+        },
+        "density": {
+          "const": "kg/m^3"
+        }
+      }
+    },
+    "plateCoordinateSystem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "frame",
+        "handedness",
+        "origin",
+        "xAxis",
+        "yAxis",
+        "zAxis"
+      ],
+      "properties": {
+        "frame": {
+          "const": "plate-local"
+        },
+        "handedness": {
+          "const": "right"
+        },
+        "origin": {
+          "const": "plate-centre-front-surface"
+        },
+        "xAxis": {
+          "const": "mandelbrot-real-positive"
+        },
+        "yAxis": {
+          "const": "mandelbrot-imaginary-positive"
+        },
+        "zAxis": {
+          "const": "front-normal"
+        }
+      }
+    }
+  }
+}

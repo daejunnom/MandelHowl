@@ -1,0 +1,77 @@
+# Canonical owner of the virtual speaker-plate-microphone loop. Per-frequency
+# exceptions and random forcing are intentionally absent.
+schemaVersion: mandelhowl.feedback-spec.v1
+canonicalOwner:
+  path: specs/runtime/feedback.v1.yaml
+  policy: edit-source-regenerate-derived
+
+units:
+  time: s
+  frequency: Hz
+  phase: rad
+  amplitude: normalized
+  gain: linear
+
+simulation:
+  stateRepresentation: rotating-complex-envelope
+  integrator: exponential-euler
+  fixedStepSeconds: 0.004166666666666667
+  maximumCatchUpSeconds: 0.1
+  maximumStepsPerFrame: 24
+  pausedGapResetSeconds: 0.5
+
+drive:
+  amplitudeNormalized: 0.08
+  phaseContinuity: continuous-across-frequency-changes
+
+modalSelection:
+  maximumActiveModes: 12
+  activationBandwidthRatio: 0.08
+  residualEnergyThreshold: 0.000001
+
+loop:
+  delaySeconds: 0.0175
+  gainLinear: 1.16
+  polarity: 1
+  phaseOffsetRad: -0.18
+  filter:
+    type: band-pass-biquad-cascade
+    highPassHz: 45
+    lowPassHz: 5200
+    q: 0.7071067811865476
+
+noiseGate:
+  openThresholdNormalized: 0.003
+  closeThresholdNormalized: 0.0015
+  attackSeconds: 0.012
+  releaseSeconds: 0.18
+  closedAttenuationLinear: 0
+
+softClipper:
+  function: normalized-tanh
+  drive: 2.2
+
+virtualSpeaker:
+  maximumDisplacementNormalized: 1
+
+limiter:
+  thresholdNormalized: 0.82
+  ceilingNormalized: 0.95
+  attackSeconds: 0.003
+  releaseSeconds: 0.24
+  holdSeconds: 0.06
+
+envelopeFollower:
+  attackSeconds: 0.012
+  releaseSeconds: 0.42
+
+regimeThresholds:
+  decayingMaximumEnvelope: 0.004
+  growingMinimumSlopePerSecond: 0.08
+  saturatedMinimumEnvelope: 0.78
+  saturatedMinimumGainReductionDb: 0.5
+
+determinism:
+  randomSource: forbidden
+  clock: injected-fixed-step
+  delayedSamples: preallocated-ring-buffer

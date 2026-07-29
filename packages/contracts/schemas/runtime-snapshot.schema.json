@@ -1,0 +1,355 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mandelhowl.dev/schemas/runtime-snapshot.v1.schema.json",
+  "title": "MandelHowl runtime snapshot v1",
+  "description": "Immutable deterministic fan-out payload read by DOM, rendering, and safe audio consumers.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "unitSystem",
+    "datasetId",
+    "sequence",
+    "simulationStep",
+    "simulationTimeSeconds",
+    "dial",
+    "modes",
+    "microphone",
+    "feedback",
+    "regime",
+    "volume",
+    "diagnostics"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "mandelhowl.runtime-snapshot.v1"
+    },
+    "unitSystem": {
+      "const": "SI"
+    },
+    "datasetId": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$"
+    },
+    "sequence": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "simulationStep": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "simulationTimeSeconds": {
+      "type": "number",
+      "minimum": 0
+    },
+    "dial": {
+      "$ref": "#/$defs/dial"
+    },
+    "modes": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/mode"
+      }
+    },
+    "microphone": {
+      "$ref": "#/$defs/microphone"
+    },
+    "feedback": {
+      "$ref": "#/$defs/feedback"
+    },
+    "regime": {
+      "enum": [
+        "decaying",
+        "critical",
+        "growing",
+        "saturated"
+      ]
+    },
+    "volume": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/measuringVolume"
+        },
+        {
+          "$ref": "#/$defs/settledVolume"
+        }
+      ]
+    },
+    "diagnostics": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/diagnostic"
+      }
+    }
+  },
+  "$defs": {
+    "dial": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "unwrappedAngleRad",
+        "angularVelocityRadPerSecond",
+        "driveFrequencyHz",
+        "previousDriveFrequencyHz",
+        "sweepRateHzPerSecond",
+        "approachDirection",
+        "stationaryTimeSeconds",
+        "atMinimumEndStop",
+        "atMaximumEndStop"
+      ],
+      "properties": {
+        "unwrappedAngleRad": {
+          "type": "number"
+        },
+        "angularVelocityRadPerSecond": {
+          "type": "number"
+        },
+        "driveFrequencyHz": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "previousDriveFrequencyHz": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "sweepRateHzPerSecond": {
+          "type": "number"
+        },
+        "approachDirection": {
+          "enum": [
+            "decreasing",
+            "stationary",
+            "increasing"
+          ]
+        },
+        "stationaryTimeSeconds": {
+          "type": "number",
+          "minimum": 0
+        },
+        "atMinimumEndStop": {
+          "type": "boolean"
+        },
+        "atMaximumEndStop": {
+          "type": "boolean"
+        }
+      }
+    },
+    "mode": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "modeId",
+        "amplitudeNormalized",
+        "phaseRad",
+        "energyNormalized"
+      ],
+      "properties": {
+        "modeId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "amplitudeNormalized": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "phaseRad": {
+          "type": "number"
+        },
+        "energyNormalized": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
+      }
+    },
+    "microphone": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "rmsNormalized",
+        "peakNormalized",
+        "recentSamples"
+      ],
+      "properties": {
+        "rmsNormalized": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "peakNormalized": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "recentSamples": {
+          "type": "array",
+          "maxItems": 512,
+          "items": {
+            "type": "number",
+            "minimum": -1,
+            "maximum": 1
+          }
+        }
+      }
+    },
+    "feedback": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "envelopeNormalized",
+        "loopSignalNormalized",
+        "limiterGainReductionDb",
+        "limiterActive"
+      ],
+      "properties": {
+        "envelopeNormalized": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "loopSignalNormalized": {
+          "type": "number",
+          "minimum": -1,
+          "maximum": 1
+        },
+        "limiterGainReductionDb": {
+          "type": "number",
+          "minimum": 0
+        },
+        "limiterActive": {
+          "type": "boolean"
+        }
+      }
+    },
+    "measuringVolume": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "value",
+        "lastSettledValue",
+        "progress"
+      ],
+      "properties": {
+        "status": {
+          "const": "measuring"
+        },
+        "value": {
+          "type": "null"
+        },
+        "lastSettledValue": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100
+            }
+          ]
+        },
+        "progress": {
+          "type": "number",
+          "minimum": 0,
+          "exclusiveMaximum": 1
+        }
+      }
+    },
+    "settledVolume": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "value",
+        "lastSettledValue",
+        "progress"
+      ],
+      "properties": {
+        "status": {
+          "const": "settled"
+        },
+        "value": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "lastSettledValue": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "progress": {
+          "const": 1
+        }
+      }
+    },
+    "diagnostic": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "code",
+        "evidenceState",
+        "severity",
+        "messageKey",
+        "evidence"
+      ],
+      "properties": {
+        "code": {
+          "type": "string",
+          "pattern": "^[A-Z][A-Z0-9_]*$"
+        },
+        "evidenceState": {
+          "enum": [
+            "confirmed",
+            "needs_evidence",
+            "inconclusive"
+          ]
+        },
+        "severity": {
+          "enum": [
+            "info",
+            "warning",
+            "fatal"
+          ]
+        },
+        "messageKey": {
+          "type": "string",
+          "minLength": 1
+        },
+        "evidence": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "key",
+              "value",
+              "source"
+            ],
+            "properties": {
+              "key": {
+                "type": "string",
+                "minLength": 1
+              },
+              "value": {
+                "type": [
+                  "string",
+                  "number",
+                  "boolean",
+                  "null"
+                ]
+              },
+              "source": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
