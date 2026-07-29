@@ -1,0 +1,139 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mandelhowl.dev/schemas/dial-gesture-trace.v1.schema.json",
+  "title": "MandelHowl deterministic dial gesture trace v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "traceId",
+    "initialFrequencyHz",
+    "durationSeconds",
+    "events"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "mandelhowl.dial-gesture-trace.v1"
+    },
+    "traceId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "initialFrequencyHz": {
+      "type": "number",
+      "exclusiveMinimum": 0
+    },
+    "durationSeconds": {
+      "type": "number",
+      "minimum": 0
+    },
+    "events": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/event"
+      }
+    }
+  },
+  "$defs": {
+    "point": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["x", "y"],
+      "properties": {
+        "x": { "type": "number" },
+        "y": { "type": "number" }
+      }
+    },
+    "event": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sequence", "atSeconds", "command"],
+      "properties": {
+        "sequence": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "atSeconds": {
+          "type": "number",
+          "minimum": 0
+        },
+        "command": {
+          "oneOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["type", "point", "center"],
+              "properties": {
+                "type": { "enum": ["pointer-start", "pointer-move"] },
+                "point": { "$ref": "#/$defs/point" },
+                "center": { "$ref": "#/$defs/point" },
+                "deadZoneRadius": {
+                  "type": "number",
+                  "minimum": 0
+                }
+              }
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["type"],
+              "properties": {
+                "type": { "enum": ["pointer-end", "pointer-cancel"] }
+              }
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["type", "key"],
+              "properties": {
+                "type": { "const": "keyboard" },
+                "key": {
+                  "enum": [
+                    "ArrowLeft",
+                    "ArrowRight",
+                    "ArrowDown",
+                    "ArrowUp",
+                    "PageDown",
+                    "PageUp",
+                    "Home",
+                    "End"
+                  ]
+                }
+              }
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["type", "deltaY"],
+              "properties": {
+                "type": { "const": "wheel" },
+                "deltaY": { "type": "number" }
+              }
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["type", "deltaRadians"],
+              "properties": {
+                "type": { "const": "nudge" },
+                "deltaRadians": { "type": "number" }
+              }
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["type", "frequencyHz"],
+              "properties": {
+                "type": { "const": "set-frequency" },
+                "frequencyHz": {
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                }
+              }
+            }
+          ]
+        }
+      }
+    }
+  }
+}

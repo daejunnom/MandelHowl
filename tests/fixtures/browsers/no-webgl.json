@@ -1,0 +1,9 @@
+{
+  "schemaVersion": "mandelhowl.browser-capability-fixture.v1",
+  "webgl2": false,
+  "canvas2d": true,
+  "audioContext": true,
+  "expectedRenderer": "canvas-data",
+  "simulationMayChange": false,
+  "volumeMayChange": false
+}

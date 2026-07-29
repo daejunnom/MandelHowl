@@ -1,0 +1,26 @@
+schemaVersion: mandelhowl.motion-safety.v1
+canonicalOwner:
+  path: specs/visual/motion-safety.v1.yaml
+  policy: edit-source-regenerate-derived
+
+limits:
+  maximumFlashHz: 2.5
+  maximumFullFieldLuminanceDelta: 0.18
+  maximumPlateDisplacementPx: 3
+  maximumCablePulseHz: 2
+
+reducedMotion:
+  plateDisplacementScale: 0.18
+  disableCableTravel: true
+  disableCameraMotion: true
+  preserve:
+    - regime-label
+    - settled-volume
+    - measurement-progress
+    - nodal-pattern
+    - limiter-state
+
+forcedColors:
+  preserveOutlines: true
+  minimumBorderWidthPx: 1
+  doNotUseColorAsSoleSignal: true

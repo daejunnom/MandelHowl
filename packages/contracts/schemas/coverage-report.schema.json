@@ -1,0 +1,121 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mandelhowl.dev/schemas/coverage-report.v1.schema.json",
+  "title": "MandelHowl reachability coverage report v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "modalModelId",
+    "generatedBy",
+    "perValueRuntimeExceptionTable",
+    "verificationStatus",
+    "runtimeSpecSha256",
+    "staticDistribution",
+    "replayVerified",
+    "coveredValues",
+    "missingValues",
+    "traces",
+    "outputs"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "mandelhowl.coverage-report.v1" },
+    "modalModelId": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$"
+    },
+    "generatedBy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "algorithm",
+        "perValueRuntimeLookup",
+        "randomSource"
+      ],
+      "properties": {
+        "algorithm": {
+          "const": "deterministic-global-trajectory-search-v1"
+        },
+        "perValueRuntimeLookup": { "const": "forbidden" },
+        "randomSource": { "const": "forbidden" }
+      }
+    },
+    "perValueRuntimeExceptionTable": { "const": false },
+    "verificationStatus": { "const": "runtime-replay-verified" },
+    "runtimeSpecSha256": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["dial", "feedback", "volumeMap"],
+      "properties": {
+        "dial": { "$ref": "#/$defs/sha256" },
+        "feedback": { "$ref": "#/$defs/sha256" },
+        "volumeMap": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "staticDistribution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sampleCount",
+        "zeroCount",
+        "hundredCount",
+        "intermediateCount",
+        "extremeFraction",
+        "requiredExtremeFraction",
+        "passed"
+      ],
+      "properties": {
+        "sampleCount": { "type": "integer", "minimum": 1 },
+        "zeroCount": { "type": "integer", "minimum": 0 },
+        "hundredCount": { "type": "integer", "minimum": 0 },
+        "intermediateCount": { "type": "integer", "minimum": 0 },
+        "extremeFraction": { "type": "number", "minimum": 0, "maximum": 1 },
+        "requiredExtremeFraction": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "passed": { "const": true }
+      }
+    },
+    "replayVerified": { "const": true },
+    "coveredValues": {
+      "type": "array",
+      "minItems": 101,
+      "maxItems": 101,
+      "uniqueItems": true,
+      "items": { "type": "integer", "minimum": 0, "maximum": 100 }
+    },
+    "missingValues": { "type": "array", "maxItems": 0 },
+    "traces": {
+      "type": "array",
+      "minItems": 101,
+      "maxItems": 101,
+      "items": { "$ref": "resonance-trajectory-trace.v1.schema.json" }
+    },
+    "outputs": {
+      "type": "array",
+      "minItems": 101,
+      "maxItems": 101,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["target", "verification", "verified", "trace"],
+        "properties": {
+          "target": { "type": "integer", "minimum": 0, "maximum": 100 },
+          "verification": { "const": "runtime-replay-verified" },
+          "verified": { "const": true },
+          "trace": {
+            "$ref": "resonance-trajectory-trace.v1.schema.json"
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    }
+  }
+}

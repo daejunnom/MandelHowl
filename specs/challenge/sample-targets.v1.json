@@ -1,0 +1,10 @@
+{
+  "schemaVersion": "mandelhowl.challenge-samples.v1",
+  "targets": [
+    { "challengeId": "decay", "targetVolume": 0 },
+    { "challengeId": "low-critical", "targetVolume": 25 },
+    { "challengeId": "mid-critical", "targetVolume": 50 },
+    { "challengeId": "high-critical", "targetVolume": 75 },
+    { "challengeId": "saturation", "targetVolume": 100 }
+  ]
+}

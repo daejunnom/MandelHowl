@@ -32,7 +32,7 @@ export interface ResonanceManifest {
     readonly algorithm: "sha256";
     readonly canonicalization: "RFC8785";
     readonly identityScope:
-      "manifest-with-datasetId-omitted-and-all-referenced-file-digests";
+      "manifest-with-datasetId-and-directoryName-omitted-and-all-referenced-file-digests";
     readonly directoryName: Sha256Hex;
   };
   readonly plate: {

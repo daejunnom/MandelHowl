@@ -48,6 +48,18 @@
   margin: 0;
 }
 
+.mh-sr-only {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
 .mh-header {
   min-height: 5.75rem;
   display: flex;
@@ -525,7 +537,7 @@
 
 .mh-apparatus-panel {
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto;
+  grid-template-rows: auto minmax(0, 1fr) auto auto;
   overflow: hidden;
 }
 
@@ -1084,6 +1096,175 @@
   font-size: 0.48rem;
 }
 
+.mh-instrumentation {
+  min-height: 6.3rem;
+  display: grid;
+  grid-template-columns: minmax(12rem, 1fr) minmax(8rem, 0.44fr);
+  gap: 0.55rem;
+  padding: 0.55rem 1rem;
+  border-top: 1px solid var(--line);
+  background: rgb(10 13 14 / 4%);
+}
+
+.mh-oscilloscope,
+.mh-phase-meter {
+  min-width: 0;
+  display: grid;
+  align-items: center;
+  gap: 0.38rem;
+}
+
+.mh-oscilloscope {
+  grid-template-columns: minmax(4.8rem, 0.45fr) minmax(8rem, 1fr);
+}
+
+.mh-phase-meter {
+  grid-template-columns: minmax(4.8rem, 1fr) 3.6rem;
+  border-left: 1px solid var(--line);
+  padding-left: 0.7rem;
+}
+
+.mh-instrument-label {
+  display: grid;
+  align-content: center;
+}
+
+.mh-instrument-label span,
+.mh-instrument-label strong,
+.mh-oscilloscope > p,
+.mh-phase-meter > p {
+  font-family: var(--font-geist-mono), "Courier New", monospace;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.mh-instrument-label span {
+  color: rgb(10 13 14 / 44%);
+  font-size: 0.41rem;
+}
+
+.mh-instrument-label strong {
+  margin-top: 0.15rem;
+  font-size: 0.54rem;
+}
+
+.mh-scope-screen {
+  position: relative;
+  height: 3.35rem;
+  display: flex;
+  align-items: center;
+  gap: 1px;
+  overflow: hidden;
+  border: 1px solid rgb(10 13 14 / 68%);
+  background:
+    linear-gradient(rgb(143 216 223 / 10%) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(143 216 223 / 10%) 1px, transparent 1px),
+    #111616;
+  background-size: 0.72rem 0.72rem;
+  box-shadow: inset 0 0 0.8rem #000;
+}
+
+.mh-scope-zero {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 1px;
+  background: rgb(143 216 223 / 25%);
+}
+
+.mh-scope-sample {
+  position: relative;
+  width: max(1px, calc((100% - 39px) / 40));
+  height: calc(var(--scope-magnitude) * 42%);
+  min-height: 1px;
+  flex: 0 1 auto;
+  background: var(--signal);
+  box-shadow: 0 0 0.28rem var(--signal);
+  transform: scaleY(var(--scope-sign));
+  transform-origin: center bottom;
+}
+
+.mh-oscilloscope > p,
+.mh-phase-meter > p {
+  color: rgb(10 13 14 / 52%);
+  font-size: 0.42rem;
+}
+
+.mh-oscilloscope > p {
+  grid-column: 2;
+  display: flex;
+  justify-content: space-between;
+}
+
+.mh-phase-meter > p {
+  grid-column: 2;
+  text-align: center;
+}
+
+.mh-phase-face {
+  position: relative;
+  grid-column: 2;
+  grid-row: 1;
+  width: 3.25rem;
+  aspect-ratio: 1;
+  border: 1px solid var(--ink);
+  border-radius: 50%;
+  background:
+    linear-gradient(90deg, transparent 49%, rgb(10 13 14 / 18%) 50% 51%, transparent 52%),
+    linear-gradient(transparent 49%, rgb(10 13 14 / 18%) 50% 51%, transparent 52%),
+    var(--panel);
+}
+
+.mh-phase-face::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 0.34rem;
+  height: 0.34rem;
+  translate: -50% -50%;
+  border-radius: 50%;
+  background: var(--ink);
+}
+
+.mh-phase-face > i {
+  position: absolute;
+  inset: 0.24rem;
+  border-radius: 50%;
+  transform: rotate(var(--phase-angle));
+}
+
+.mh-phase-face > i::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 0;
+  width: 0.13rem;
+  height: 43%;
+  translate: -50% 0;
+  border-radius: 1rem;
+  background: var(--signal);
+  box-shadow: 0 0 0.45rem var(--signal);
+}
+
+.mh-phase-face > span {
+  position: absolute;
+  top: 50%;
+  translate: 0 -50%;
+  color: rgb(10 13 14 / 45%);
+  font-family: var(--font-geist-mono), "Courier New", monospace;
+  font-size: 0.35rem;
+}
+
+.mh-phase-face > span:nth-of-type(1) {
+  right: 0.18rem;
+}
+
+.mh-phase-face > span:nth-of-type(2) {
+  left: 0.18rem;
+}
+
 .mh-measurement > div:first-child {
   display: grid;
 }
@@ -1106,6 +1287,15 @@
   height: 100%;
   background: var(--signal);
   transition: width 120ms linear;
+}
+
+.mh-measurement-measuring .mh-measurement-track {
+  background:
+    repeating-linear-gradient(
+      -45deg,
+      transparent 0 0.22rem,
+      rgb(10 13 14 / 7%) 0.22rem 0.44rem
+    );
 }
 
 .mh-measurement p {
@@ -1132,6 +1322,38 @@
   padding: clamp(1.4rem, 2.4vw, 2.5rem) 1rem 1.6rem;
   border-bottom: 1px solid var(--line);
   text-align: center;
+}
+
+.mh-output-state {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 5.6rem;
+  margin-top: 0.7rem;
+  padding: 0.28rem 0.45rem;
+  border: 1px solid currentColor;
+  color: var(--signal);
+  font-family: var(--font-geist-mono), "Courier New", monospace;
+  font-size: 0.48rem;
+  font-weight: 720;
+  letter-spacing: 0.1em;
+}
+
+.mh-challenge-readonly {
+  display: block;
+  margin-top: 0.55rem;
+  color: var(--warning);
+  font-family: var(--font-geist-mono), "Courier New", monospace;
+  font-size: 0.42rem;
+  letter-spacing: 0.08em;
+}
+
+.mh-measurement-measuring .mh-volume-readout strong {
+  opacity: 0.72;
+}
+
+.mh-measurement-settled .mh-output-state {
+  color: rgb(10 13 14 / 48%);
 }
 
 .mh-output-label {
@@ -1218,6 +1440,39 @@
     transparent 0 0.48rem,
     rgb(237 240 233 / 10%) 0.48rem 0.64rem
   );
+}
+
+.mh-target-line {
+  position: absolute;
+  z-index: 4;
+  left: -0.7rem;
+  right: -2.2rem;
+  bottom: calc(var(--target-volume) * 1%);
+  border-top: 1px dashed var(--warning);
+}
+
+.mh-target-line::before {
+  content: "";
+  position: absolute;
+  left: -0.1rem;
+  top: -0.25rem;
+  width: 0.42rem;
+  height: 0.42rem;
+  border: 1px solid var(--warning);
+  background: var(--panel);
+  transform: rotate(45deg);
+}
+
+.mh-target-line i {
+  position: absolute;
+  left: calc(100% + 0.25rem);
+  top: -0.38rem;
+  color: var(--warning);
+  font-family: var(--font-geist-mono), "Courier New", monospace;
+  font-size: 0.38rem;
+  font-style: normal;
+  font-weight: 800;
+  white-space: nowrap;
 }
 
 .mh-meter-mark {
@@ -1308,6 +1563,51 @@
   color: rgb(10 13 14 / 53%);
   font-size: 0.47rem;
   line-height: 1.55;
+}
+
+.mh-diagnostic {
+  display: grid;
+  gap: 0.25rem;
+  margin: auto 1rem 0;
+  padding: 0.8rem;
+  border: 1px solid var(--line);
+  border-left: 0.22rem solid var(--signal);
+  background: rgb(10 13 14 / 5%);
+}
+
+.mh-diagnostic > span {
+  color: rgb(10 13 14 / 48%);
+  font-family: var(--font-geist-mono), "Courier New", monospace;
+  font-size: 0.4rem;
+  letter-spacing: 0.09em;
+}
+
+.mh-diagnostic > strong {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+}
+
+.mh-diagnostic > p {
+  color: rgb(10 13 14 / 62%);
+  font-size: 0.61rem;
+  line-height: 1.38;
+}
+
+.mh-diagnostic-detail {
+  display: block;
+  overflow-wrap: anywhere;
+  color: rgb(10 13 14 / 43%);
+  font-family: var(--font-geist-mono), "Courier New", monospace;
+  font-size: 0.36rem;
+  line-height: 1.35;
+}
+
+.mh-diagnostic-warning {
+  border-left-color: #a76c00;
+}
+
+.mh-diagnostic-fatal {
+  border-left-color: #c22218;
 }
 
 .mh-safety-note > span {
@@ -1440,10 +1740,19 @@
   }
 
   .mh-safety-note {
+    grid-column: 1 / -1;
+    grid-row: 3;
     align-self: stretch;
     align-items: center;
-    border-top: 0;
-    border-left: 1px solid var(--line);
+    border-top: 1px solid var(--line);
+    border-left: 0;
+  }
+
+  .mh-output-panel .mh-diagnostic {
+    grid-column: 3;
+    grid-row: 2;
+    align-self: center;
+    margin: 1rem;
   }
 }
 
@@ -1518,8 +1827,14 @@
 
   .mh-safety-note {
     grid-column: 1 / -1;
+    grid-row: auto;
     border-top: 1px solid var(--line);
     border-left: 0;
+  }
+
+  .mh-output-panel .mh-diagnostic {
+    grid-column: 1 / -1;
+    grid-row: auto;
   }
 
   .mh-footer p:first-child {
@@ -1631,6 +1946,18 @@
     gap: 0.7rem;
   }
 
+  .mh-instrumentation {
+    grid-template-columns: 1fr;
+  }
+
+  .mh-phase-meter {
+    grid-template-columns: minmax(5rem, 1fr) 3.6rem;
+    border-top: 1px solid var(--line);
+    border-left: 0;
+    padding-top: 0.55rem;
+    padding-left: 0;
+  }
+
   .mh-measurement p {
     grid-column: 1 / -1;
   }
@@ -1641,6 +1968,7 @@
 
   .mh-volume-readout,
   .mh-meter-block,
+  .mh-diagnostic,
   .mh-safety-note {
     grid-column: 1;
   }
@@ -1664,8 +1992,7 @@
   .mh-shell *::before,
   .mh-shell *::after {
     scroll-behavior: auto !important;
-    animation-duration: 0.001ms !important;
-    animation-iteration-count: 1 !important;
+    animation: none !important;
     transition-duration: 0.001ms !important;
   }
 
@@ -1748,5 +2075,15 @@
   .mh-envelope-dot,
   .mh-regime-card strong i {
     background: Highlight;
+  }
+
+  .mh-scope-screen {
+    border-color: CanvasText;
+    background: Canvas;
+    box-shadow: none;
+  }
+
+  .mh-target-line {
+    border-color: Highlight;
   }
 }

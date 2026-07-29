@@ -1,0 +1,11 @@
+{
+  "name": "minimatch",
+  "version": "10.2.6",
+  "private": true,
+  "description": "CommonJS callable bridge for legacy ESLint consumers",
+  "main": "index.cjs",
+  "license": "MIT",
+  "dependencies": {
+    "minimatch-modern": "npm:minimatch@10.2.6"
+  }
+}

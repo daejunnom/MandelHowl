@@ -4,6 +4,10 @@ export interface PlateRenderSnapshot {
   frequency: number;
   regime: "decaying" | "critical" | "growing" | "saturated";
   simulationTime: number;
+  /** Geometry supplied by the canonical modal dataset, never inferred here. */
+  radialOrder?: number;
+  angularOrder?: number;
+  modePhaseRadians?: number;
 }
 
 export interface PlatePainterOptions {
@@ -68,7 +72,8 @@ function fitCanvas(canvas: HTMLCanvasElement): {
 /**
  * Draws a deterministic, mode-parameterized prototype plate. The geometry is
  * intentionally supplied by a mode record rather than generated randomly so
- * that an offline FEM texture atlas can replace this painter behind the same
+ * that an offline thin-plate texture atlas can replace this painter behind the
+ * same
  * snapshot boundary.
  */
 export function paintPrototypePlate(
@@ -88,9 +93,11 @@ export function paintPrototypePlate(
   const centerX = width * 0.5;
   const centerY = height * 0.5;
   const modeIndex = Math.max(0, Math.floor(snapshot.activeMode));
-  const radialOrder = 2 + (modeIndex % 4);
-  const angularOrder = 2 + ((modeIndex * 3) % 7);
-  const phase = (modeIndex % 5) * 0.31;
+  const radialOrder = Math.max(1, Math.floor(snapshot.radialOrder ?? 3));
+  const angularOrder = Math.max(0, Math.floor(snapshot.angularOrder ?? 4));
+  const phase = Number.isFinite(snapshot.modePhaseRadians)
+    ? (snapshot.modePhaseRadians ?? 0)
+    : 0;
   const motionScale = options.reducedMotion ? 0.18 : 1;
   const pulse =
     Math.sin(snapshot.simulationTime * Math.min(snapshot.frequency, 220) * 0.035) *

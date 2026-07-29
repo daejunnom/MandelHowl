@@ -1,0 +1,42 @@
+schemaVersion: mandelhowl.render-quality-tiers.v1
+canonicalOwner:
+  path: specs/visual/quality-tiers.v1.yaml
+  policy: edit-source-regenerate-derived
+
+tiers:
+  - id: webgl-full
+    requires: [webgl2, float-texture]
+    maximumDevicePixelRatio: 2
+    maximumTextureModesResident: 12
+    sandParticleBudget: 1200
+    oscilloscopeSamples: 256
+  - id: webgl-safe
+    requires: [webgl2]
+    maximumDevicePixelRatio: 1.5
+    maximumTextureModesResident: 6
+    sandParticleBudget: 640
+    oscilloscopeSamples: 128
+  - id: canvas-data
+    requires: [canvas2d]
+    maximumDevicePixelRatio: 1.25
+    maximumTextureModesResident: 2
+    sandParticleBudget: 360
+    oscilloscopeSamples: 96
+  - id: static-safe
+    requires: []
+    maximumDevicePixelRatio: 1
+    maximumTextureModesResident: 0
+    sandParticleBudget: 0
+    oscilloscopeSamples: 0
+
+degradationOrder:
+  - disable-post-processing
+  - reduce-sand-particles
+  - reduce-oscilloscope-samples
+  - reduce-internal-resolution
+  - switch-to-canvas-data
+  - switch-to-static-safe
+
+invariant:
+  simulationSnapshotMayChange: false
+  volumeMayChange: false

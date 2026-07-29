@@ -1,0 +1,53 @@
+{
+  "domain": "annulus from clamped hub radius to free outer rim",
+  "levels": [
+    {
+      "angularDivisions": 189,
+      "connectedComponentCount": 1,
+      "fingerprintSha256": "463176fbd86a7972458e28dde37390da44a658cb60f39b1881ee0a2c6cad5388",
+      "invertedTriangleCount": 0,
+      "levelName": "coarse",
+      "maximumAspectRatio": 2.0335591094475207,
+      "minimumEdgeM": 0.0005983710451101258,
+      "minimumSignedAreaM2": 1.8006660030121778e-07,
+      "nodeCount": 13419,
+      "radialDivisions": 70,
+      "targetElementSizeM": 0.006,
+      "triangleCount": 26460
+    },
+    {
+      "angularDivisions": 377,
+      "connectedComponentCount": 1,
+      "fingerprintSha256": "1dfb5050c0d9c8a565663799cf6a658e794743f7b52511228daaeec40530920d",
+      "invertedTriangleCount": 0,
+      "levelName": "medium",
+      "maximumAspectRatio": 2.0167410864227135,
+      "minimumEdgeM": 0.00029998946047349036,
+      "minimumSignedAreaM2": 4.5095831969603e-08,
+      "nodeCount": 52780,
+      "radialDivisions": 139,
+      "targetElementSizeM": 0.003,
+      "triangleCount": 104806
+    },
+    {
+      "angularDivisions": 754,
+      "connectedComponentCount": 1,
+      "fingerprintSha256": "069209b91ffdfed187191a40dd44f198bda57bb06358c9f3b149e0cad6675126",
+      "invertedTriangleCount": 0,
+      "levelName": "fine",
+      "maximumAspectRatio": 2.0083534095713773,
+      "minimumEdgeM": 0.00014999603222239538,
+      "minimumSignedAreaM2": 1.1268360559369594e-08,
+      "nodeCount": 209612,
+      "radialDivisions": 277,
+      "targetElementSizeM": 0.0015,
+      "triangleCount": 417716
+    }
+  ],
+  "qualityPolicy": {
+    "disconnectedComponentsAllowed": false,
+    "fingerprint": "sha256 over float64 node positions and uint32 triangle indices",
+    "negativeAreaAllowed": false
+  },
+  "schemaVersion": "mandelhowl.mesh-evidence.v1"
+}

@@ -1,0 +1,16 @@
+schemaVersion: mandelhowl.performance-budget.v1
+canonicalOwner:
+  path: specs/visual/performance-budget.v1.yaml
+  policy: edit-source-update-tests
+
+desktopTargetFramesPerSecond: 60
+lowTierMinimumFramesPerSecond: 30
+lowTierMaximumFrameWorkMs: 33.333333333333336
+headlessSchedulerLivenessFramesPerSecond: 10
+browserSoak:
+  minimumSeconds: 5
+  maximumHeapGrowthBytes: 33554432
+  expectedSnapshotConsumers: 5
+simulationSoak:
+  durationSeconds: 3600
+  fixedBuffersMustRetainIdentity: true

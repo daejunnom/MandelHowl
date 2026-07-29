@@ -425,7 +425,7 @@
           "const": "undamped-eigenmodes-with-modal-damping"
         },
         "elementFamily": {
-          "const": "shell"
+          "const": "kirchhoff-love-thin-plate"
         },
         "requestedModeCount": {
           "type": "integer",
@@ -535,8 +535,8 @@
           "minItems": 1,
           "items": {
             "enum": [
-              "signed-displacement-r16f",
-              "normal-rg16f",
+              "signed-displacement-r8",
+              "normal-rg8",
               "nodal-mask-r8",
               "sand-density-r8"
             ]

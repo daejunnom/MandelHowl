@@ -29,6 +29,16 @@ test("server-renders the MandelHowl experiment shell", async () => {
   const response = await render();
   assert.equal(response.status, 200);
   assert.match(response.headers.get("content-type") ?? "", /^text\/html\b/i);
+  assert.match(
+    response.headers.get("content-security-policy") ?? "",
+    /default-src 'self'/,
+  );
+  assert.match(
+    response.headers.get("permissions-policy") ?? "",
+    /microphone=\(\)/,
+  );
+  assert.equal(response.headers.get("x-content-type-options"), "nosniff");
+  assert.equal(response.headers.get("x-frame-options"), "SAMEORIGIN");
 
   const html = await response.text();
   assert.match(html, /<title>MandelHowl — Resonance Volume Instrument<\/title>/i);
@@ -52,8 +62,10 @@ test("removes starter-only source and metadata", async () => {
 
   assert.match(page, /MandelHowlLab/);
   assert.match(layout, /MandelHowl — Resonance Volume Instrument/);
-  assert.match(scene, /aria-valuemin=\{52\}/);
-  assert.match(scene, /aria-valuemax=\{1250\}/);
+  assert.match(scene, /frequencyMin = 45/);
+  assert.match(scene, /frequencyMax = 6_000/);
+  assert.match(scene, /aria-valuemin=\{frequencyMin\}/);
+  assert.match(scene, /aria-valuemax=\{frequencyMax\}/);
   assert.match(packageJson, /"name": "mandelhowl"/);
   assert.doesNotMatch(packageJson, /react-loading-skeleton/);
   assert.doesNotMatch(page + layout, /codex-preview|_sites-preview/);

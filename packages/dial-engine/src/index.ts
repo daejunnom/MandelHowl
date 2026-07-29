@@ -38,3 +38,13 @@ export {
   accumulateUnwrappedAngle,
   unwrapAngleDelta,
 } from "./unwrap-angle";
+export {
+  createDialGestureTrace,
+  recordDialTraceCommand,
+  replayDialGestureTrace,
+  validateDialGestureTrace,
+} from "./gesture-trace";
+export type {
+  CreateDialGestureTraceOptions,
+  DialTraceReplayResult,
+} from "./gesture-trace";

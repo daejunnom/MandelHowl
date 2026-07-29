@@ -43,10 +43,24 @@ export default defineConfig(async () => {
   // Wrangler snapshots its log path while the Cloudflare plugin is imported.
   const { cloudflare } = await import("@cloudflare/vite-plugin");
 
+  const ignoredRuntimeArtifacts = [
+    "**/playwright-report/**",
+    "**/test-results/**",
+    "**/coverage/**",
+    "**/release/archives/**",
+    "**/.wrangler/**",
+    "**/.codex-dev-*.log",
+  ];
+
   return {
-    server: isCodexSeatbeltSandbox
-      ? { watch: { useFsEvents: false, usePolling: true } }
-      : undefined,
+    server: {
+      watch: {
+        ignored: ignoredRuntimeArtifacts,
+        ...(isCodexSeatbeltSandbox
+          ? { useFsEvents: false, usePolling: true }
+          : {}),
+      },
+    },
     plugins: [
       vinext(),
       sites(),

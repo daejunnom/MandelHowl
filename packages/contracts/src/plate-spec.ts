@@ -103,7 +103,7 @@ export interface PlateSpec {
   };
   readonly solverRequest: {
     readonly analysis: "undamped-eigenmodes-with-modal-damping";
-    readonly elementFamily: "shell";
+    readonly elementFamily: "kirchhoff-love-thin-plate";
     readonly requestedModeCount: number;
     readonly frequencyRangeHz: readonly [number, number];
     readonly normalization: "unit-modal-mass";
@@ -125,8 +125,8 @@ export interface PlateSpec {
     readonly uvXAxis: "positive-x";
     readonly uvYAxis: "positive-y";
     readonly channels: readonly (
-      | "signed-displacement-r16f"
-      | "normal-rg16f"
+      | "signed-displacement-r8"
+      | "normal-rg8"
       | "nodal-mask-r8"
       | "sand-density-r8"
     )[];

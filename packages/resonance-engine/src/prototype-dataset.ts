@@ -1,3 +1,5 @@
+import type { ContentAddressedId } from "../../contracts/src";
+
 export interface PrototypeModeRecord {
   readonly id: string;
   readonly frequencyHz: number;
@@ -11,10 +13,10 @@ export interface PrototypeModeRecord {
 
 export interface PrototypeModalDataset {
   readonly schemaVersion: "mandelhowl.prototype-modal-dataset.v1";
-  readonly datasetId: "prototype-analytical-plate-v1";
+  readonly datasetId: ContentAddressedId;
   readonly provenance: {
     readonly kind: "analytical-prototype";
-    readonly productionFemRequired: true;
+    readonly productionBakeRequired: true;
     readonly note: string;
   };
   readonly frequencyRangeHz: readonly [number, number];
@@ -25,19 +27,21 @@ export interface PrototypeModalDataset {
  * A deterministic analytical fixture for the first vertical slice.
  *
  * It intentionally declares itself as a prototype. Production releases can
- * replace this object with decoded FEM data without changing the runtime
+ * replace this object with decoded thin-plate analysis data without changing
+ * the runtime
  * engine or snapshot consumers.
  */
 export const PROTOTYPE_MODAL_DATASET: PrototypeModalDataset = Object.freeze({
   schemaVersion: "mandelhowl.prototype-modal-dataset.v1",
-  datasetId: "prototype-analytical-plate-v1",
+  datasetId:
+    "sha256:05d96831a2709af244b324942a952ddff4f4f3524dfb12f53730fe74dc5bf9ad",
   provenance: Object.freeze({
     kind: "analytical-prototype",
-    productionFemRequired: true,
+    productionBakeRequired: true,
     note:
-      "Deterministic modal fixture for interaction, feedback and rendering integration; not a finite-element result.",
+      "Deterministic modal fixture for interaction, feedback and rendering integration; not the verified production thin-plate dataset.",
   }),
-  frequencyRangeHz: Object.freeze([52, 1_250] as const),
+  frequencyRangeHz: Object.freeze([45, 6_000] as const),
   modes: Object.freeze([
     {
       id: "p01",

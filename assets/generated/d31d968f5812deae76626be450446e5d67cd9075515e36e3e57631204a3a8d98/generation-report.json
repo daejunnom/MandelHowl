@@ -1,0 +1,10 @@
+{
+  "convergenceChecksPassed": true,
+  "coverageSource": "external-runtime-replay-report",
+  "deterministic": true,
+  "knownContractDeviations": [],
+  "manufacturingChecksPassed": true,
+  "meshChecksPassed": true,
+  "releaseBake": true,
+  "schemaVersion": "mandelhowl.generation-report.v1"
+}

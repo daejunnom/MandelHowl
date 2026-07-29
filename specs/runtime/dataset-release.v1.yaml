@@ -1,0 +1,13 @@
+# Canonical production dataset pin. The manifest owns its complete asset
+# inventory; this runtime spec only selects the immutable release.
+schemaVersion: mandelhowl.dataset-release.v1
+canonicalOwner:
+  path: specs/runtime/dataset-release.v1.yaml
+  policy: edit-source-regenerate-derived
+
+manifestUrl: /runtime/manifest.json
+datasetId: sha256:d31d968f5812deae76626be450446e5d67cd9075515e36e3e57631204a3a8d98
+manifestSha256: 50e0df50dbd64b17324d62197bb53750a2bb9cd7bb69a9d918bb75e75ebc90ad
+modalModelId: sha256:db567968bc4d628ebeb5f3a1fbce46ecf20881f83e0d0c9b0e501e1927b40953
+sourceDirectory: assets/generated/d31d968f5812deae76626be450446e5d67cd9075515e36e3e57631204a3a8d98
+loadingPolicy: verified-before-activation-with-analytical-fallback

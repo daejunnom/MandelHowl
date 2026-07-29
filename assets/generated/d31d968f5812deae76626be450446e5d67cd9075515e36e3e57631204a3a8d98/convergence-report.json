@@ -1,0 +1,293 @@
+{
+  "accepted": true,
+  "comparisons": [
+    {
+      "coarseFrequencyHz": 101.85154420338543,
+      "fineFrequencyHz": 101.69942020726128,
+      "frequencyConverged": true,
+      "mediumFrequencyHz": 101.68707328330409,
+      "mediumToFineModalAssuranceCriterion": 0.9999997157377306,
+      "mediumToFineRelativeChange": 0.0001214060407820741,
+      "modeId": "mode-001",
+      "shapeConverged": true
+    },
+    {
+      "coarseFrequencyHz": 103.08423182387435,
+      "fineFrequencyHz": 102.95912879707369,
+      "frequencyConverged": true,
+      "mediumFrequencyHz": 102.96367382614676,
+      "mediumToFineModalAssuranceCriterion": 0.9999987283418085,
+      "mediumToFineRelativeChange": 4.41440125433587e-05,
+      "modeId": "mode-002",
+      "shapeConverged": true
+    },
+    {
+      "coarseFrequencyHz": 132.27890129319985,
+      "fineFrequencyHz": 132.0787256153119,
+      "frequencyConverged": true,
+      "mediumFrequencyHz": 132.04565437906518,
+      "mediumToFineModalAssuranceCriterion": 0.9999983693152956,
+      "mediumToFineRelativeChange": 0.0002503903341938252,
+      "modeId": "mode-003",
+      "shapeConverged": true
+    },
+    {
+      "coarseFrequencyHz": 141.80364164491033,
+      "fineFrequencyHz": 141.6651977837433,
+      "frequencyConverged": true,
+      "mediumFrequencyHz": 141.69149135881625,
+      "mediumToFineModalAssuranceCriterion": 0.9999997214897437,
+      "mediumToFineRelativeChange": 0.00018560363084431784,
+      "modeId": "mode-004",
+      "shapeConverged": true
+    },
+    {
+      "coarseFrequencyHz": 148.76945856324917,
+      "fineFrequencyHz": 148.65944808917368,
+      "frequencyConverged": true,
+      "mediumFrequencyHz": 148.70412051990232,
+      "mediumToFineModalAssuranceCriterion": 0.9999999076194173,
+      "mediumToFineRelativeChange": 0.0003005017932115687,
+      "modeId": "mode-005",
+      "shapeConverged": true
+    },
+    {
+      "coarseFrequencyHz": 229.49045919243247,
+      "fineFrequencyHz": 229.12359399476048,
+      "frequencyConverged": true,
+      "mediumFrequencyHz": 229.09604745141982,
+      "mediumToFineModalAssuranceCriterion": 0.9999990654312613,
+      "mediumToFineRelativeChange": 0.00012022569505125794,
+      "modeId": "mode-006",
+      "shapeConverged": true
+    },
+    {
+      "coarseFrequencyHz": 231.29234550932887,
+      "fineFrequencyHz": 231.00003908308358,
+      "frequencyConverged": true,
+      "mediumFrequencyHz": 230.97694407481322,
+      "mediumToFineModalAssuranceCriterion": 0.9999994244020181,
+      "mediumToFineRelativeChange": 9.997837386535454e-05,
+      "modeId": "mode-007",
+      "shapeConverged": true
+    },
+    {
+      "coarseFrequencyHz": 364.8705875533236,
+      "fineFrequencyHz": 364.34096761587807,
+      "frequencyConverged": true,
+      "mediumFrequencyHz": 364.29301580222034,
+      "mediumToFineModalAssuranceCriterion": 0.9999984720018832,
+      "mediumToFineRelativeChange": 0.00013161246722133053,
+      "modeId": "mode-008",
+      "shapeConverged": true
+    },
+    {
+      "coarseFrequencyHz": 365.173258398344,
+      "fineFrequencyHz": 364.51575477841726,
+      "frequencyConverged": true,
+      "mediumFrequencyHz": 364.5299892621973,
+      "mediumToFineModalAssuranceCriterion": 0.9999994707960759,
+      "mediumToFineRelativeChange": 3.905039382649116e-05,
+      "modeId": "mode-009",
+      "shapeConverged": true
+    },
+    {
+      "coarseFrequencyHz": 518.8293573408417,
+      "fineFrequencyHz": 518.2208268326234,
+      "frequencyConverged": true,
+      "mediumFrequencyHz": 518.2101366609558,
+      "mediumToFineModalAssuranceCriterion": 0.9999877551291997,
+      "mediumToFineRelativeChange": 2.0628602931661533e-05,
+      "modeId": "mode-010",
+      "shapeConverged": true
+    },
+    {
+      "coarseFrequencyHz": 527.7242285707347,
+      "fineFrequencyHz": 526.8193027523438,
+      "frequencyConverged": true,
+      "mediumFrequencyHz": 526.9390817264589,
+      "mediumToFineModalAssuranceCriterion": 0.9999930776033201,
+      "mediumToFineRelativeChange": 0.00022736253870978698,
+      "modeId": "mode-011",
+      "shapeConverged": true
+    },
+    {
+      "coarseFrequencyHz": 535.6782212921792,
+      "fineFrequencyHz": 534.9700379621904,
+      "frequencyConverged": true,
+      "mediumFrequencyHz": 535.0870995363332,
+      "mediumToFineModalAssuranceCriterion": 0.9999941683042485,
+      "mediumToFineRelativeChange": 0.0002188189353345699,
+      "modeId": "mode-012",
+      "shapeConverged": true
+    },
+    {
+      "coarseFrequencyHz": 573.294721206514,
+      "fineFrequencyHz": 572.3423907045222,
+      "frequencyConverged": true,
+      "mediumFrequencyHz": 572.3810630736451,
+      "mediumToFineModalAssuranceCriterion": 0.9999900968034031,
+      "mediumToFineRelativeChange": 6.756859137285726e-05,
+      "modeId": "mode-013",
+      "shapeConverged": true
+    },
+    {
+      "coarseFrequencyHz": 641.0743743533717,
+      "fineFrequencyHz": 640.0212862150677,
+      "frequencyConverged": true,
+      "mediumFrequencyHz": 639.8700580200718,
+      "mediumToFineModalAssuranceCriterion": 0.9999829602088011,
+      "mediumToFineRelativeChange": 0.00023628619587039845,
+      "modeId": "mode-014",
+      "shapeConverged": true
+    },
+    {
+      "coarseFrequencyHz": 719.0821301503025,
+      "fineFrequencyHz": 717.973654065163,
+      "frequencyConverged": true,
+      "mediumFrequencyHz": 718.1963986669849,
+      "mediumToFineModalAssuranceCriterion": 0.9999909135468005,
+      "mediumToFineRelativeChange": 0.0003102406342638177,
+      "modeId": "mode-015",
+      "shapeConverged": true
+    },
+    {
+      "coarseFrequencyHz": 720.220466950313,
+      "fineFrequencyHz": 718.8930139638114,
+      "frequencyConverged": true,
+      "mediumFrequencyHz": 719.1535583381173,
+      "mediumToFineModalAssuranceCriterion": 0.9999372532903219,
+      "mediumToFineRelativeChange": 0.0003624244070327532,
+      "modeId": "mode-016",
+      "shapeConverged": true
+    }
+  ],
+  "criteria": {
+    "maximumRelativeFrequencyChange": 0.02,
+    "minimumModalAssuranceCriterion": 0.95
+  },
+  "independentCrossValidation": {
+    "accepted": true,
+    "criterion": {
+      "maximumRelativeFrequencyDifference": 0.15
+    },
+    "frequencyChecks": [
+      {
+        "finiteDifferenceRayleighFrequencyHz": 106.49445453444952,
+        "modeId": "mode-001",
+        "rayleighRitzFrequencyHz": 101.69942020726128,
+        "relativeDifference": 0.04714908224074487
+      },
+      {
+        "finiteDifferenceRayleighFrequencyHz": 382.67589196647947,
+        "modeId": "mode-008",
+        "rayleighRitzFrequencyHz": 364.34096761587807,
+        "relativeDifference": 0.050323532021608317
+      },
+      {
+        "finiteDifferenceRayleighFrequencyHz": 753.7685107981486,
+        "modeId": "mode-016",
+        "rayleighRitzFrequencyHz": 718.8930139638114,
+        "relativeDifference": 0.048512777502234476
+      },
+      {
+        "finiteDifferenceRayleighFrequencyHz": 1988.3215028344557,
+        "modeId": "mode-032",
+        "rayleighRitzFrequencyHz": 1976.2860442578008,
+        "relativeDifference": 0.006089937543011337
+      },
+      {
+        "finiteDifferenceRayleighFrequencyHz": 5397.761172575781,
+        "modeId": "mode-048",
+        "rayleighRitzFrequencyHz": 5513.904244609427,
+        "relativeDifference": 0.021063672287597642
+      }
+    ],
+    "independentReferenceMethod": "nine-point finite-difference Hessian Kirchhoff-Love Rayleigh quotient on the rasterized mode; independent spatial discretization, not a second certified solver",
+    "sandDensityMeanContrastLowMinusHighVelocity": 0.8136274427734013,
+    "textureCoordinateAlignment": {
+      "allAtlasesShareDimensions": true,
+      "allAtlasesShareLayerOrder": true,
+      "physicalPixel00M": [
+        -0.17859375,
+        -0.17859375
+      ],
+      "xDirection": "increasing-column",
+      "yDirection": "increasing-row"
+    }
+  },
+  "levels": [
+    {
+      "angularSamples": 64,
+      "name": "coarse",
+      "pointCount": 1536,
+      "radialSamples": 24
+    },
+    {
+      "angularSamples": 80,
+      "name": "medium",
+      "pointCount": 2560,
+      "radialSamples": 32
+    },
+    {
+      "angularSamples": 96,
+      "name": "fine",
+      "pointCount": 3840,
+      "radialSamples": 40
+    }
+  ],
+  "meshEvidence": [
+    {
+      "angularDivisions": 189,
+      "connectedComponentCount": 1,
+      "fingerprintSha256": "463176fbd86a7972458e28dde37390da44a658cb60f39b1881ee0a2c6cad5388",
+      "invertedTriangleCount": 0,
+      "levelName": "coarse",
+      "maximumAspectRatio": 2.0335591094475207,
+      "minimumEdgeM": 0.0005983710451101258,
+      "minimumSignedAreaM2": 1.8006660030121778e-07,
+      "nodeCount": 13419,
+      "radialDivisions": 70,
+      "targetElementSizeM": 0.006,
+      "triangleCount": 26460
+    },
+    {
+      "angularDivisions": 377,
+      "connectedComponentCount": 1,
+      "fingerprintSha256": "1dfb5050c0d9c8a565663799cf6a658e794743f7b52511228daaeec40530920d",
+      "invertedTriangleCount": 0,
+      "levelName": "medium",
+      "maximumAspectRatio": 2.0167410864227135,
+      "minimumEdgeM": 0.00029998946047349036,
+      "minimumSignedAreaM2": 4.5095831969603e-08,
+      "nodeCount": 52780,
+      "radialDivisions": 139,
+      "targetElementSizeM": 0.003,
+      "triangleCount": 104806
+    },
+    {
+      "angularDivisions": 754,
+      "connectedComponentCount": 1,
+      "fingerprintSha256": "069209b91ffdfed187191a40dd44f198bda57bb06358c9f3b149e0cad6675126",
+      "invertedTriangleCount": 0,
+      "levelName": "fine",
+      "maximumAspectRatio": 2.0083534095713773,
+      "minimumEdgeM": 0.00014999603222239538,
+      "minimumSignedAreaM2": 1.1268360559369594e-08,
+      "nodeCount": 209612,
+      "radialDivisions": 277,
+      "targetElementSizeM": 0.0015,
+      "triangleCount": 417716
+    }
+  ],
+  "method": "variable-thickness-kirchhoff-love-rayleigh-ritz",
+  "methodConformance": {
+    "canonicalRequestedElementFamily": "kirchhoff-love-thin-plate",
+    "executedElementFamily": "global-rayleigh-ritz-thin-plate-basis",
+    "handoffThinPlateMethodAllowed": true,
+    "matchesCanonicalElementFamily": true,
+    "note": "The global Rayleigh-Ritz basis is the numerical adapter used for the canonical Kirchhoff-Love thin-plate family. It is not shell FEM."
+  },
+  "quadratureConvergenceAccepted": true,
+  "schemaVersion": "mandelhowl.convergence-report.v1"
+}

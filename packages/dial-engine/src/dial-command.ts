@@ -20,7 +20,7 @@ export type DialCommand =
       readonly deadZoneRadius?: number;
     }
   | {
-      readonly type: "pointer-end";
+      readonly type: "pointer-end" | "pointer-cancel";
       readonly timestampMs: number;
     }
   | {

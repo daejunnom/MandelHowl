@@ -1,0 +1,985 @@
+{
+  "canonicalInput": {
+    "canonicalJsonSha256": "e8d3a19314dee680e4b5f393f39f04028aa2e3535caf8b4f35569e52f6ae58c7",
+    "path": "specs/plate/mandelbrot-plate.v1.yaml",
+    "plateId": "mandelhowl-al6061-circular-360-v1"
+  },
+  "convergenceReport": "convergence-report.json",
+  "coverage": {
+    "path": "coverage-report.json",
+    "releaseBake": true,
+    "source": "external-runtime-replay-report"
+  },
+  "extraEvidenceFiles": [
+    "field/mandelbrot-field.bin",
+    "mesh/mesh-evidence.json",
+    "mesh/fine-polar-mesh.mhmz",
+    "science/solver-evidence.bin"
+  ],
+  "generator": {
+    "dependencies": "Python 3.10+ standard library only",
+    "name": "tools/physics-baker",
+    "randomSource": "forbidden",
+    "version": "1.0.0"
+  },
+  "manufacturing": {
+    "actualMinimumFeatureM": 0.0028125,
+    "analysisResolutionPx": 1024,
+    "centreOfMassOffsetM": 0.00985422303160239,
+    "centreOfMassWithinLimit": true,
+    "centreOfMassXM": 0.00985422303160239,
+    "centreOfMassYM": -1.6519766060254712e-16,
+    "filterRadiusPx": 4,
+    "gradientWithinLimit": true,
+    "manufacturingBevelPasses": 10,
+    "massWithinLimits": true,
+    "maximumThicknessGradient": 0.4136646119734884,
+    "maximumThicknessM": 0.0042,
+    "minimumFeatureMeasurement": "conservative close/open structuring-element diameter on the sampled field",
+    "minimumFeatureWithinLimit": true,
+    "minimumThicknessM": 0.0018,
+    "minimumThicknessWithinLimit": true,
+    "pixelPitchM": 0.0003515625,
+    "quantizationLevels": 12,
+    "totalMassKg": 0.6418442030842223
+  },
+  "mesh": {
+    "domain": "annulus from clamped hub radius to free outer rim",
+    "levels": [
+      {
+        "angularDivisions": 189,
+        "connectedComponentCount": 1,
+        "fingerprintSha256": "463176fbd86a7972458e28dde37390da44a658cb60f39b1881ee0a2c6cad5388",
+        "invertedTriangleCount": 0,
+        "levelName": "coarse",
+        "maximumAspectRatio": 2.0335591094475207,
+        "minimumEdgeM": 0.0005983710451101258,
+        "minimumSignedAreaM2": 1.8006660030121778e-07,
+        "nodeCount": 13419,
+        "radialDivisions": 70,
+        "targetElementSizeM": 0.006,
+        "triangleCount": 26460
+      },
+      {
+        "angularDivisions": 377,
+        "connectedComponentCount": 1,
+        "fingerprintSha256": "1dfb5050c0d9c8a565663799cf6a658e794743f7b52511228daaeec40530920d",
+        "invertedTriangleCount": 0,
+        "levelName": "medium",
+        "maximumAspectRatio": 2.0167410864227135,
+        "minimumEdgeM": 0.00029998946047349036,
+        "minimumSignedAreaM2": 4.5095831969603e-08,
+        "nodeCount": 52780,
+        "radialDivisions": 139,
+        "targetElementSizeM": 0.003,
+        "triangleCount": 104806
+      },
+      {
+        "angularDivisions": 754,
+        "connectedComponentCount": 1,
+        "fingerprintSha256": "069209b91ffdfed187191a40dd44f198bda57bb06358c9f3b149e0cad6675126",
+        "invertedTriangleCount": 0,
+        "levelName": "fine",
+        "maximumAspectRatio": 2.0083534095713773,
+        "minimumEdgeM": 0.00014999603222239538,
+        "minimumSignedAreaM2": 1.1268360559369594e-08,
+        "nodeCount": 209612,
+        "radialDivisions": 277,
+        "targetElementSizeM": 0.0015,
+        "triangleCount": 417716
+      }
+    ],
+    "qualityPolicy": {
+      "disconnectedComponentsAllowed": false,
+      "fingerprint": "sha256 over float64 node positions and uint32 triangle indices",
+      "negativeAreaAllowed": false
+    },
+    "schemaVersion": "mandelhowl.mesh-evidence.v1"
+  },
+  "modes": [
+    {
+      "actuatorCoupling": 0.10564687758840634,
+      "dampingRatio": 0.004,
+      "dominantBasis": {
+        "angularOrder": 1,
+        "radialOrder": 0,
+        "symmetry": "sine"
+      },
+      "microphoneCoupling": -0.3212575039465538,
+      "modeId": "mode-001",
+      "naturalFrequencyHz": 101.69942020726128,
+      "ordinal": 1,
+      "radiationEfficiency": 0.3952581476906689,
+      "signReference": "actuator-positive",
+      "textureLayer": 0
+    },
+    {
+      "actuatorCoupling": 0.04572612423052937,
+      "dampingRatio": 0.004048,
+      "dominantBasis": {
+        "angularOrder": 1,
+        "radialOrder": 0,
+        "symmetry": "cosine"
+      },
+      "microphoneCoupling": -0.34760059890965495,
+      "modeId": "mode-002",
+      "naturalFrequencyHz": 102.95912879707369,
+      "ordinal": 2,
+      "radiationEfficiency": 0.9993174381338144,
+      "signReference": "actuator-positive",
+      "textureLayer": 1
+    },
+    {
+      "actuatorCoupling": 0.07259581458977749,
+      "dampingRatio": 0.004096,
+      "dominantBasis": {
+        "angularOrder": 2,
+        "radialOrder": 0,
+        "symmetry": "cosine"
+      },
+      "microphoneCoupling": -0.042201513478903614,
+      "modeId": "mode-003",
+      "naturalFrequencyHz": 132.0787256153119,
+      "ordinal": 3,
+      "radiationEfficiency": 0.6524725930842348,
+      "signReference": "actuator-positive",
+      "textureLayer": 2
+    },
+    {
+      "actuatorCoupling": 0.3973976885156937,
+      "dampingRatio": 0.004144,
+      "dominantBasis": {
+        "angularOrder": 2,
+        "radialOrder": 0,
+        "symmetry": "sine"
+      },
+      "microphoneCoupling": 0.22337787558619532,
+      "modeId": "mode-004",
+      "naturalFrequencyHz": 141.6651977837433,
+      "ordinal": 4,
+      "radiationEfficiency": 0.4269268949754582,
+      "signReference": "actuator-positive",
+      "textureLayer": 3
+    },
+    {
+      "actuatorCoupling": 0.6751157322270079,
+      "dampingRatio": 0.004192,
+      "dominantBasis": {
+        "angularOrder": 1,
+        "radialOrder": 0,
+        "symmetry": "cosine"
+      },
+      "microphoneCoupling": -0.003958742357420446,
+      "modeId": "mode-005",
+      "naturalFrequencyHz": 148.65944808917368,
+      "ordinal": 5,
+      "radiationEfficiency": 0.92683587946707,
+      "signReference": "actuator-positive",
+      "textureLayer": 4
+    },
+    {
+      "actuatorCoupling": 0.3677186950527813,
+      "dampingRatio": 0.004240000000000001,
+      "dominantBasis": {
+        "angularOrder": 3,
+        "radialOrder": 0,
+        "symmetry": "sine"
+      },
+      "microphoneCoupling": -0.16819481494534566,
+      "modeId": "mode-006",
+      "naturalFrequencyHz": 229.12359399476048,
+      "ordinal": 6,
+      "radiationEfficiency": 0.39905446848159803,
+      "signReference": "actuator-positive",
+      "textureLayer": 5
+    },
+    {
+      "actuatorCoupling": 0.11929330114070655,
+      "dampingRatio": 0.004288,
+      "dominantBasis": {
+        "angularOrder": 3,
+        "radialOrder": 0,
+        "symmetry": "cosine"
+      },
+      "microphoneCoupling": 0.1377332147085847,
+      "modeId": "mode-007",
+      "naturalFrequencyHz": 231.00003908308358,
+      "ordinal": 7,
+      "radiationEfficiency": 0.47586857124589527,
+      "signReference": "actuator-positive",
+      "textureLayer": 6
+    },
+    {
+      "actuatorCoupling": 0.2924187478043797,
+      "dampingRatio": 0.0043360000000000004,
+      "dominantBasis": {
+        "angularOrder": 4,
+        "radialOrder": 1,
+        "symmetry": "sine"
+      },
+      "microphoneCoupling": -0.010009413732514115,
+      "modeId": "mode-008",
+      "naturalFrequencyHz": 364.34096761587807,
+      "ordinal": 8,
+      "radiationEfficiency": 0.3732519082649036,
+      "signReference": "actuator-positive",
+      "textureLayer": 7
+    },
+    {
+      "actuatorCoupling": 0.011433543470125273,
+      "dampingRatio": 0.004384000000000001,
+      "dominantBasis": {
+        "angularOrder": 4,
+        "radialOrder": 1,
+        "symmetry": "cosine"
+      },
+      "microphoneCoupling": 0.19081072037523508,
+      "modeId": "mode-009",
+      "naturalFrequencyHz": 364.51575477841726,
+      "ordinal": 9,
+      "radiationEfficiency": 0.41723397974423193,
+      "signReference": "actuator-positive",
+      "textureLayer": 8
+    },
+    {
+      "actuatorCoupling": 0.10588708560849498,
+      "dampingRatio": 0.004432,
+      "dominantBasis": {
+        "angularOrder": 0,
+        "radialOrder": 1,
+        "symmetry": "axisymmetric"
+      },
+      "microphoneCoupling": 0.7720047710176492,
+      "modeId": "mode-010",
+      "naturalFrequencyHz": 518.2208268326234,
+      "ordinal": 10,
+      "radiationEfficiency": 0.9521474457651454,
+      "signReference": "actuator-positive",
+      "textureLayer": 9
+    },
+    {
+      "actuatorCoupling": 0.16050030566437073,
+      "dampingRatio": 0.0044800000000000005,
+      "dominantBasis": {
+        "angularOrder": 5,
+        "radialOrder": 1,
+        "symmetry": "sine"
+      },
+      "microphoneCoupling": 0.2110213504665598,
+      "modeId": "mode-011",
+      "naturalFrequencyHz": 526.8193027523438,
+      "ordinal": 11,
+      "radiationEfficiency": 0.3769911566486992,
+      "signReference": "actuator-positive",
+      "textureLayer": 10
+    },
+    {
+      "actuatorCoupling": 0.0726988744479225,
+      "dampingRatio": 0.004528000000000001,
+      "dominantBasis": {
+        "angularOrder": 1,
+        "radialOrder": 1,
+        "symmetry": "cosine"
+      },
+      "microphoneCoupling": -0.8385074635797566,
+      "modeId": "mode-012",
+      "naturalFrequencyHz": 534.9700379621904,
+      "ordinal": 12,
+      "radiationEfficiency": 0.791215400596126,
+      "signReference": "actuator-positive",
+      "textureLayer": 11
+    },
+    {
+      "actuatorCoupling": 0.19142361129293975,
+      "dampingRatio": 0.004576,
+      "dominantBasis": {
+        "angularOrder": 1,
+        "radialOrder": 1,
+        "symmetry": "sine"
+      },
+      "microphoneCoupling": -0.9595019073754792,
+      "modeId": "mode-013",
+      "naturalFrequencyHz": 572.3423907045222,
+      "ordinal": 13,
+      "radiationEfficiency": 0.5164588396737125,
+      "signReference": "actuator-positive",
+      "textureLayer": 12
+    },
+    {
+      "actuatorCoupling": 0.5110914934768789,
+      "dampingRatio": 0.004624,
+      "dominantBasis": {
+        "angularOrder": 1,
+        "radialOrder": 1,
+        "symmetry": "cosine"
+      },
+      "microphoneCoupling": -0.18124677872233633,
+      "modeId": "mode-014",
+      "naturalFrequencyHz": 640.0212862150677,
+      "ordinal": 14,
+      "radiationEfficiency": 0.8190413100597521,
+      "signReference": "actuator-positive",
+      "textureLayer": 13
+    },
+    {
+      "actuatorCoupling": 0.15060583920505427,
+      "dampingRatio": 0.004672,
+      "dominantBasis": {
+        "angularOrder": 6,
+        "radialOrder": 1,
+        "symmetry": "cosine"
+      },
+      "microphoneCoupling": -0.023706297344110262,
+      "modeId": "mode-015",
+      "naturalFrequencyHz": 717.973654065163,
+      "ordinal": 15,
+      "radiationEfficiency": 0.3814964887521608,
+      "signReference": "actuator-positive",
+      "textureLayer": 14
+    },
+    {
+      "actuatorCoupling": 0.014549472774259102,
+      "dampingRatio": 0.00472,
+      "dominantBasis": {
+        "angularOrder": 2,
+        "radialOrder": 1,
+        "symmetry": "sine"
+      },
+      "microphoneCoupling": 0.39899897850672933,
+      "modeId": "mode-016",
+      "naturalFrequencyHz": 718.8930139638114,
+      "ordinal": 16,
+      "radiationEfficiency": 0.3710957274982889,
+      "signReference": "actuator-positive",
+      "textureLayer": 15
+    },
+    {
+      "actuatorCoupling": 0.5310111494323937,
+      "dampingRatio": 0.004768,
+      "dominantBasis": {
+        "angularOrder": 2,
+        "radialOrder": 1,
+        "symmetry": "sine"
+      },
+      "microphoneCoupling": 1.0,
+      "modeId": "mode-017",
+      "naturalFrequencyHz": 733.7390005880407,
+      "ordinal": 17,
+      "radiationEfficiency": 0.5067180579840146,
+      "signReference": "actuator-positive",
+      "textureLayer": 16
+    },
+    {
+      "actuatorCoupling": 0.9139137356549242,
+      "dampingRatio": 0.004816,
+      "dominantBasis": {
+        "angularOrder": 2,
+        "radialOrder": 1,
+        "symmetry": "cosine"
+      },
+      "microphoneCoupling": -0.21848979375601962,
+      "modeId": "mode-018",
+      "naturalFrequencyHz": 768.8889367875223,
+      "ordinal": 18,
+      "radiationEfficiency": 0.5350457833971829,
+      "signReference": "actuator-positive",
+      "textureLayer": 17
+    },
+    {
+      "actuatorCoupling": 0.012925342262620883,
+      "dampingRatio": 0.004864,
+      "dominantBasis": {
+        "angularOrder": 7,
+        "radialOrder": 1,
+        "symmetry": "sine"
+      },
+      "microphoneCoupling": -0.1060643605090012,
+      "modeId": "mode-019",
+      "naturalFrequencyHz": 933.1469768975151,
+      "ordinal": 19,
+      "radiationEfficiency": 0.3237989829842123,
+      "signReference": "actuator-positive",
+      "textureLayer": 18
+    },
+    {
+      "actuatorCoupling": 0.02332818674209264,
+      "dampingRatio": 0.004912,
+      "dominantBasis": {
+        "angularOrder": 7,
+        "radialOrder": 1,
+        "symmetry": "cosine"
+      },
+      "microphoneCoupling": 0.09045208502290732,
+      "modeId": "mode-020",
+      "naturalFrequencyHz": 933.5494462587052,
+      "ordinal": 20,
+      "radiationEfficiency": 0.3435351434146635,
+      "signReference": "actuator-positive",
+      "textureLayer": 19
+    },
+    {
+      "actuatorCoupling": 0.4262137936271352,
+      "dampingRatio": 0.00496,
+      "dominantBasis": {
+        "angularOrder": 3,
+        "radialOrder": 2,
+        "symmetry": "cosine"
+      },
+      "microphoneCoupling": 0.6597630546866625,
+      "modeId": "mode-021",
+      "naturalFrequencyHz": 971.7872963764133,
+      "ordinal": 21,
+      "radiationEfficiency": 0.5133184349699657,
+      "signReference": "actuator-positive",
+      "textureLayer": 20
+    },
+    {
+      "actuatorCoupling": 0.8170258790963547,
+      "dampingRatio": 0.005008,
+      "dominantBasis": {
+        "angularOrder": 3,
+        "radialOrder": 1,
+        "symmetry": "sine"
+      },
+      "microphoneCoupling": -0.7004279810921731,
+      "modeId": "mode-022",
+      "naturalFrequencyHz": 995.8331574395417,
+      "ordinal": 22,
+      "radiationEfficiency": 0.4883784408564992,
+      "signReference": "actuator-positive",
+      "textureLayer": 21
+    },
+    {
+      "actuatorCoupling": 0.028239200968091748,
+      "dampingRatio": 0.005056,
+      "dominantBasis": {
+        "angularOrder": 8,
+        "radialOrder": 1,
+        "symmetry": "cosine"
+      },
+      "microphoneCoupling": 0.04266193877735786,
+      "modeId": "mode-023",
+      "naturalFrequencyHz": 1193.4669404874123,
+      "ordinal": 23,
+      "radiationEfficiency": 0.3436324140762216,
+      "signReference": "actuator-positive",
+      "textureLayer": 22
+    },
+    {
+      "actuatorCoupling": 0.021690714056102067,
+      "dampingRatio": 0.005104,
+      "dominantBasis": {
+        "angularOrder": 8,
+        "radialOrder": 1,
+        "symmetry": "sine"
+      },
+      "microphoneCoupling": -0.03562561559363528,
+      "modeId": "mode-024",
+      "naturalFrequencyHz": 1194.226472496708,
+      "ordinal": 24,
+      "radiationEfficiency": 0.32912006870687827,
+      "signReference": "actuator-positive",
+      "textureLayer": 23
+    },
+    {
+      "actuatorCoupling": 1.0,
+      "dampingRatio": 0.005152,
+      "dominantBasis": {
+        "angularOrder": 4,
+        "radialOrder": 2,
+        "symmetry": "sine"
+      },
+      "microphoneCoupling": 0.1211367619023647,
+      "modeId": "mode-025",
+      "naturalFrequencyHz": 1371.2940848274393,
+      "ordinal": 25,
+      "radiationEfficiency": 0.4781400116431895,
+      "signReference": "actuator-positive",
+      "textureLayer": 24
+    },
+    {
+      "actuatorCoupling": 0.15767170912172418,
+      "dampingRatio": 0.005200000000000001,
+      "dominantBasis": {
+        "angularOrder": 4,
+        "radialOrder": 2,
+        "symmetry": "cosine"
+      },
+      "microphoneCoupling": 0.8540924940507688,
+      "modeId": "mode-026",
+      "naturalFrequencyHz": 1372.3395788357184,
+      "ordinal": 26,
+      "radiationEfficiency": 0.48273336674792217,
+      "signReference": "actuator-positive",
+      "textureLayer": 25
+    },
+    {
+      "actuatorCoupling": 0.23023287009531382,
+      "dampingRatio": 0.005248,
+      "dominantBasis": {
+        "angularOrder": 0,
+        "radialOrder": 1,
+        "symmetry": "axisymmetric"
+      },
+      "microphoneCoupling": 0.7261861531151628,
+      "modeId": "mode-027",
+      "naturalFrequencyHz": 1471.4835930127533,
+      "ordinal": 27,
+      "radiationEfficiency": 1.0,
+      "signReference": "actuator-positive",
+      "textureLayer": 26
+    },
+    {
+      "actuatorCoupling": 0.08543020267220895,
+      "dampingRatio": 0.005296,
+      "dominantBasis": {
+        "angularOrder": 1,
+        "radialOrder": 1,
+        "symmetry": "sine"
+      },
+      "microphoneCoupling": -0.6263449511828105,
+      "modeId": "mode-028",
+      "naturalFrequencyHz": 1574.5463984524888,
+      "ordinal": 28,
+      "radiationEfficiency": 0.567357806126076,
+      "signReference": "actuator-positive",
+      "textureLayer": 27
+    },
+    {
+      "actuatorCoupling": 0.49298861284376533,
+      "dampingRatio": 0.005344000000000001,
+      "dominantBasis": {
+        "angularOrder": 1,
+        "radialOrder": 1,
+        "symmetry": "cosine"
+      },
+      "microphoneCoupling": -0.2347887681374981,
+      "modeId": "mode-029",
+      "naturalFrequencyHz": 1715.8473197437086,
+      "ordinal": 29,
+      "radiationEfficiency": 0.6949978433903146,
+      "signReference": "actuator-positive",
+      "textureLayer": 28
+    },
+    {
+      "actuatorCoupling": 0.6104604306573421,
+      "dampingRatio": 0.005392,
+      "dominantBasis": {
+        "angularOrder": 2,
+        "radialOrder": 1,
+        "symmetry": "sine"
+      },
+      "microphoneCoupling": 0.6230003187492147,
+      "modeId": "mode-030",
+      "naturalFrequencyHz": 1847.634887233651,
+      "ordinal": 30,
+      "radiationEfficiency": 0.5147318833046707,
+      "signReference": "actuator-positive",
+      "textureLayer": 29
+    },
+    {
+      "actuatorCoupling": 0.22460635596479991,
+      "dampingRatio": 0.0054399999999999995,
+      "dominantBasis": {
+        "angularOrder": 2,
+        "radialOrder": 1,
+        "symmetry": "cosine"
+      },
+      "microphoneCoupling": -0.6145898204272885,
+      "modeId": "mode-031",
+      "naturalFrequencyHz": 1857.7717439298742,
+      "ordinal": 31,
+      "radiationEfficiency": 0.5041900796675968,
+      "signReference": "actuator-positive",
+      "textureLayer": 30
+    },
+    {
+      "actuatorCoupling": 0.18894958992110428,
+      "dampingRatio": 0.005488,
+      "dominantBasis": {
+        "angularOrder": 2,
+        "radialOrder": 1,
+        "symmetry": "sine"
+      },
+      "microphoneCoupling": 0.4907014683121233,
+      "modeId": "mode-032",
+      "naturalFrequencyHz": 1976.2860442578008,
+      "ordinal": 32,
+      "radiationEfficiency": 0.5516599556794861,
+      "signReference": "actuator-positive",
+      "textureLayer": 31
+    },
+    {
+      "actuatorCoupling": 0.6517780919202072,
+      "dampingRatio": 0.005536,
+      "dominantBasis": {
+        "angularOrder": 2,
+        "radialOrder": 1,
+        "symmetry": "cosine"
+      },
+      "microphoneCoupling": -0.19780331614900387,
+      "modeId": "mode-033",
+      "naturalFrequencyHz": 1986.1904642662923,
+      "ordinal": 33,
+      "radiationEfficiency": 0.6516880483488618,
+      "signReference": "actuator-positive",
+      "textureLayer": 32
+    },
+    {
+      "actuatorCoupling": 0.4971298131581478,
+      "dampingRatio": 0.0055839999999999996,
+      "dominantBasis": {
+        "angularOrder": 6,
+        "radialOrder": 2,
+        "symmetry": "cosine"
+      },
+      "microphoneCoupling": 0.004981359249757535,
+      "modeId": "mode-034",
+      "naturalFrequencyHz": 2289.6098360136916,
+      "ordinal": 34,
+      "radiationEfficiency": 0.4639226481470659,
+      "signReference": "actuator-positive",
+      "textureLayer": 33
+    },
+    {
+      "actuatorCoupling": 0.3569735597652552,
+      "dampingRatio": 0.005632,
+      "dominantBasis": {
+        "angularOrder": 3,
+        "radialOrder": 1,
+        "symmetry": "sine"
+      },
+      "microphoneCoupling": -0.7853360515277754,
+      "modeId": "mode-035",
+      "naturalFrequencyHz": 2305.383671665413,
+      "ordinal": 35,
+      "radiationEfficiency": 0.46370577079132314,
+      "signReference": "actuator-positive",
+      "textureLayer": 34
+    },
+    {
+      "actuatorCoupling": 0.7131497627822801,
+      "dampingRatio": 0.00568,
+      "dominantBasis": {
+        "angularOrder": 3,
+        "radialOrder": 1,
+        "symmetry": "sine"
+      },
+      "microphoneCoupling": -0.5241457121565413,
+      "modeId": "mode-036",
+      "naturalFrequencyHz": 2616.2735893023664,
+      "ordinal": 36,
+      "radiationEfficiency": 0.5618565753706377,
+      "signReference": "actuator-positive",
+      "textureLayer": 35
+    },
+    {
+      "actuatorCoupling": 0.18650720057795916,
+      "dampingRatio": 0.005728,
+      "dominantBasis": {
+        "angularOrder": 3,
+        "radialOrder": 1,
+        "symmetry": "cosine"
+      },
+      "microphoneCoupling": 0.609622926137647,
+      "modeId": "mode-037",
+      "naturalFrequencyHz": 2649.409272260466,
+      "ordinal": 37,
+      "radiationEfficiency": 0.6730089974979849,
+      "signReference": "actuator-positive",
+      "textureLayer": 36
+    },
+    {
+      "actuatorCoupling": 0.1013511765218902,
+      "dampingRatio": 0.005776,
+      "dominantBasis": {
+        "angularOrder": 7,
+        "radialOrder": 2,
+        "symmetry": "sine"
+      },
+      "microphoneCoupling": 0.44048807705894394,
+      "modeId": "mode-038",
+      "naturalFrequencyHz": 2774.788922613004,
+      "ordinal": 38,
+      "radiationEfficiency": 0.4543663471377232,
+      "signReference": "actuator-positive",
+      "textureLayer": 37
+    },
+    {
+      "actuatorCoupling": 0.6200763709233231,
+      "dampingRatio": 0.005824,
+      "dominantBasis": {
+        "angularOrder": 7,
+        "radialOrder": 2,
+        "symmetry": "cosine"
+      },
+      "microphoneCoupling": 0.3788847182778388,
+      "modeId": "mode-039",
+      "naturalFrequencyHz": 2795.0080314128586,
+      "ordinal": 39,
+      "radiationEfficiency": 0.44985297417907977,
+      "signReference": "actuator-positive",
+      "textureLayer": 38
+    },
+    {
+      "actuatorCoupling": 0.3823988402006887,
+      "dampingRatio": 0.005872,
+      "dominantBasis": {
+        "angularOrder": 0,
+        "radialOrder": 2,
+        "symmetry": "axisymmetric"
+      },
+      "microphoneCoupling": 0.40949311997853,
+      "modeId": "mode-040",
+      "naturalFrequencyHz": 3195.4436214326865,
+      "ordinal": 40,
+      "radiationEfficiency": 0.9677005191368241,
+      "signReference": "actuator-positive",
+      "textureLayer": 39
+    },
+    {
+      "actuatorCoupling": 0.14980825950195714,
+      "dampingRatio": 0.00592,
+      "dominantBasis": {
+        "angularOrder": 4,
+        "radialOrder": 1,
+        "symmetry": "cosine"
+      },
+      "microphoneCoupling": 0.9665090454878317,
+      "modeId": "mode-041",
+      "naturalFrequencyHz": 3513.5501075842235,
+      "ordinal": 41,
+      "radiationEfficiency": 0.5680343247913259,
+      "signReference": "actuator-positive",
+      "textureLayer": 40
+    },
+    {
+      "actuatorCoupling": 0.8350996506107154,
+      "dampingRatio": 0.005968,
+      "dominantBasis": {
+        "angularOrder": 4,
+        "radialOrder": 1,
+        "symmetry": "sine"
+      },
+      "microphoneCoupling": 0.24947801757248245,
+      "modeId": "mode-042",
+      "naturalFrequencyHz": 3579.450894651106,
+      "ordinal": 42,
+      "radiationEfficiency": 0.5445052277174179,
+      "signReference": "actuator-positive",
+      "textureLayer": 41
+    },
+    {
+      "actuatorCoupling": 0.639015216960301,
+      "dampingRatio": 0.0060160000000000005,
+      "dominantBasis": {
+        "angularOrder": 8,
+        "radialOrder": 2,
+        "symmetry": "cosine"
+      },
+      "microphoneCoupling": -0.25112701687802325,
+      "modeId": "mode-043",
+      "naturalFrequencyHz": 3781.9908275243843,
+      "ordinal": 43,
+      "radiationEfficiency": 0.44665504315103655,
+      "signReference": "actuator-positive",
+      "textureLayer": 42
+    },
+    {
+      "actuatorCoupling": 0.5848903172570216,
+      "dampingRatio": 0.006064,
+      "dominantBasis": {
+        "angularOrder": 8,
+        "radialOrder": 2,
+        "symmetry": "sine"
+      },
+      "microphoneCoupling": 0.13029295215290093,
+      "modeId": "mode-044",
+      "naturalFrequencyHz": 3837.3789074159135,
+      "ordinal": 44,
+      "radiationEfficiency": 0.414945828074334,
+      "signReference": "actuator-positive",
+      "textureLayer": 43
+    },
+    {
+      "actuatorCoupling": 0.7649765116769552,
+      "dampingRatio": 0.006112,
+      "dominantBasis": {
+        "angularOrder": 5,
+        "radialOrder": 1,
+        "symmetry": "sine"
+      },
+      "microphoneCoupling": 0.2897070899621051,
+      "modeId": "mode-045",
+      "naturalFrequencyHz": 4648.105053420824,
+      "ordinal": 45,
+      "radiationEfficiency": 0.5560768596889915,
+      "signReference": "actuator-positive",
+      "textureLayer": 44
+    },
+    {
+      "actuatorCoupling": 0.6711443218438254,
+      "dampingRatio": 0.0061600000000000005,
+      "dominantBasis": {
+        "angularOrder": 5,
+        "radialOrder": 1,
+        "symmetry": "cosine"
+      },
+      "microphoneCoupling": -0.9609748880156936,
+      "modeId": "mode-046",
+      "naturalFrequencyHz": 4690.892717086122,
+      "ordinal": 46,
+      "radiationEfficiency": 0.5555904468161736,
+      "signReference": "actuator-positive",
+      "textureLayer": 45
+    },
+    {
+      "actuatorCoupling": 0.777108497990902,
+      "dampingRatio": 0.006208,
+      "dominantBasis": {
+        "angularOrder": 0,
+        "radialOrder": 2,
+        "symmetry": "axisymmetric"
+      },
+      "microphoneCoupling": 0.4315934836565146,
+      "modeId": "mode-047",
+      "naturalFrequencyHz": 5380.476955984735,
+      "ordinal": 47,
+      "radiationEfficiency": 0.8302979996073501,
+      "signReference": "actuator-positive",
+      "textureLayer": 46
+    },
+    {
+      "actuatorCoupling": 0.11413496802032723,
+      "dampingRatio": 0.006256,
+      "dominantBasis": {
+        "angularOrder": 1,
+        "radialOrder": 2,
+        "symmetry": "cosine"
+      },
+      "microphoneCoupling": -0.5309774889019443,
+      "modeId": "mode-048",
+      "naturalFrequencyHz": 5513.904244609427,
+      "ordinal": 48,
+      "radiationEfficiency": 0.5166301611930642,
+      "signReference": "actuator-positive",
+      "textureLayer": 47
+    }
+  ],
+  "response": {
+    "definition": "sum(g_i*m_i*r_i*omega_i^2/(omega_i^2-omega^2+j*2*zeta_i*omega_i*omega))",
+    "maximumFrequencyHz": 6000.0,
+    "minimumFrequencyHz": 45.0,
+    "normalizationDivisor": 24.61236457632084,
+    "sampleCount": 512,
+    "spacing": "logarithmic"
+  },
+  "schemaVersion": "mandelhowl.provenance.v1",
+  "scientificScope": {
+    "claimPolicy": "The Mandelbrot iteration defines a finite material field; it does not directly generate sound or guarantee Mandelbrot-shaped sand.",
+    "established": [
+      "finite-resolution Mandelbrot field mapped into thickness",
+      "variable-thickness Kirchhoff-Love bending energy",
+      "generalized eigenproblem with unit-modal-mass normalization",
+      "nodal/low-velocity sand-density postprocessing"
+    ],
+    "limitations": [
+      "Rayleigh-Ritz global basis is not a shell finite-element solve",
+      "the clamped hub is represented as an annular essential boundary",
+      "air loading, nonlinear material response, and grain dynamics are omitted",
+      "the independent finite-difference check is a reduced cross-check, not certification",
+      "runtime textures are a quantized LOD of float64 solver fields"
+    ]
+  },
+  "solver": {
+    "canonicalRequest": {
+      "elementFamily": "kirchhoff-love-thin-plate",
+      "requestedModeCount": 48
+    },
+    "containerDigestMeaning": "Explicit deterministic sentinel for an uncontainerized stdlib run; it is not evidence that a container image was executed.",
+    "containerImageDigest": "sha256:e8db013425be66648821c049f179cae805bccb1e6b14e0b79c1487f79cd658d3",
+    "containerized": false,
+    "executedMethod": "global-rayleigh-ritz-thin-plate-basis",
+    "methodRequestMismatchRecorded": false,
+    "name": "mandelhowl-kirchhoff-love-rayleigh-ritz",
+    "normalization": "unit-modal-mass",
+    "options": {
+      "basisCount": 64,
+      "finiteDifferenceHessianStepRatio": 0.0005,
+      "floatPrecision": "binary64",
+      "method": "variable-thickness-kirchhoff-love-rayleigh-ritz",
+      "quadrature": {
+        "angularSamples": 96,
+        "pointCount": 3840,
+        "radialSamples": 40
+      },
+      "randomSource": "forbidden"
+    },
+    "optionsSha256": "b84cb739c797539c3dd4e2b98436860bdb31efbffd67ac93b164e97831c96a66",
+    "signRule": "positive-at-actuator-or-first-nonzero-node",
+    "version": "1.0.0"
+  },
+  "textures": {
+    "emittedRuntimeLod": {
+      "nodal-mask": {
+        "channels": 1,
+        "heightPx": 128,
+        "layers": 48,
+        "orientation": "ru",
+        "quantization": "linear UNORM",
+        "supercompression": "none",
+        "uvOrigin": "negative-x-negative-y",
+        "vkFormat": "VK_FORMAT_R8_UNORM",
+        "widthPx": 128
+      },
+      "normal": {
+        "channels": 2,
+        "heightPx": 128,
+        "layers": 48,
+        "orientation": "ru",
+        "quantization": "linear UNORM",
+        "supercompression": "none",
+        "uvOrigin": "negative-x-negative-y",
+        "vkFormat": "VK_FORMAT_R8G8_UNORM",
+        "widthPx": 128
+      },
+      "sand-density": {
+        "channels": 1,
+        "heightPx": 128,
+        "layers": 48,
+        "orientation": "ru",
+        "quantization": "linear UNORM",
+        "supercompression": "none",
+        "uvOrigin": "negative-x-negative-y",
+        "vkFormat": "VK_FORMAT_R8_UNORM",
+        "widthPx": 128
+      },
+      "signed-displacement": {
+        "channels": 1,
+        "heightPx": 128,
+        "layers": 48,
+        "orientation": "ru",
+        "quantization": "signed [-1,1] mapped to [0,255]",
+        "supercompression": "none",
+        "uvOrigin": "negative-x-negative-y",
+        "vkFormat": "VK_FORMAT_R8_UNORM",
+        "widthPx": 128
+      }
+    },
+    "precisionStatement": "The emitted uncompressed R8/RG8 KTX2 arrays match the canonical runtime request and are derived from float64 solver modes. No Basis/UASTC block compression is claimed.",
+    "requested": {
+      "channels": [
+        "signed-displacement-r8",
+        "normal-rg8",
+        "nodal-mask-r8",
+        "sand-density-r8"
+      ],
+      "container": "KTX2",
+      "heightPx": 128,
+      "uvOrigin": "negative-x-negative-y",
+      "uvXAxis": "positive-x",
+      "uvYAxis": "positive-y",
+      "widthPx": 128
+    }
+  }
+}

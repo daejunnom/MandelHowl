@@ -3,6 +3,18 @@ import type {
   Sha256Hex,
 } from "./contract-metadata";
 
+export interface DatasetReleaseSpec {
+  readonly schemaVersion: "mandelhowl.dataset-release.v1";
+  readonly canonicalOwner: CanonicalOwnership;
+  readonly manifestUrl: string;
+  readonly datasetId: `sha256:${string}`;
+  readonly manifestSha256: Sha256Hex;
+  readonly modalModelId: `sha256:${string}`;
+  readonly sourceDirectory: string;
+  readonly loadingPolicy:
+    "verified-before-activation-with-analytical-fallback";
+}
+
 export interface DialConfig {
   readonly $schema?: string;
   readonly schemaVersion: "mandelhowl.dial-config.v1";

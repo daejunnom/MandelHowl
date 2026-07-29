@@ -29,6 +29,55 @@ modalSelection:
   activationBandwidthRatio: 0.08
   residualEnergyThreshold: 0.000001
 
+calibration:
+  modalResponse:
+    minimumBandwidthHz: 1.6
+    dampingBandwidthMultiplier: 3.4
+    relativeBandwidthFloor: 0.0045
+    couplingNormalization: dataset-global-maximum-absolute-actuator-microphone-product
+    directionalPhaseScale: 0.035
+    captureSpeedHzPerSecond: 260
+  modalEnergy:
+    retainedDriveBase: 0.18
+    feedbackDriveBase: 0.32
+    feedbackEnvelopeMultiplier: 1.28
+    feedbackSignalMultiplier: 0.18
+    attackBasePerSecond: 2.4
+    attackResponseMultiplierPerSecond: 3.8
+    releaseBasePerSecond: 0.52
+    releaseDampingMultiplierPerSecond: 18
+    phaseDriftScale: 0.085
+    activeModeScoreMinimum: 0.075
+  loopMargin:
+    adjacentModeGainLinear: 0.22
+    residualHistoryGainMaximum: 0.0015
+    residualHistoryStartEnvelope: 0.35
+    residualHistorySpanEnvelope: 0.45
+  energyDynamics:
+    growthBasePerSecond: 0.42
+    growthMarginMultiplierPerSecond: 2.25
+    decayBasePerSecond: 0.68
+    decayMarginMultiplierPerSecond: 1.55
+    criticalFollowRatePerSecond: 0.92
+    criticalLowerRmsMultiplier: 0.75
+    criticalSaturationPosition: 0.82
+  microphone:
+    modeBaseWeight: 0.72
+    modePhaseWeight: 0.12
+    normalizationPerMode: 0.19
+    radiationNormalizationPerMode: 0.22
+    levelBase: 0.74
+    modalResponseWeight: 0.2
+    radiationWeight: 0.06
+    beatBase: 0.96
+    beatWeight: 0.04
+    peakBase: 1.06
+    peakAdjacentResponseWeight: 0.16
+    waveformDryWeight: 0.32
+    waveformFeedbackWeight: 0.68
+    waveformModePhaseWeight: 0.18
+    minimumCriticalScale: 0.2
+
 loop:
   delaySeconds: 0.0175
   gainLinear: 1.16
@@ -72,6 +121,7 @@ regimeThresholds:
   decayingMaximumEnvelope: 0.004
   growingMinimumSlopePerSecond: 0.08
   saturatedMinimumEnvelope: 0.78
+  saturatedUnconditionalEnvelope: 0.92
   saturatedMinimumGainReductionDb: 0.5
 
 determinism:

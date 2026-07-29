@@ -29,7 +29,9 @@ function deriveDialState(
   const velocity = finiteOr(velocityRadiansPerSecond, 0);
   const direction = signWithDeadBand(
     Math.abs(sweep) > 1e-7 ? sweep : velocity,
-    1e-7,
+    Math.abs(sweep) > 1e-7
+      ? state.config.approachDirectionThresholdHzPerSecond
+      : state.config.stationaryVelocityThreshold,
   );
   const stopped =
     direction === 0 && Math.abs(velocity) <= state.config.inertiaStopVelocity
@@ -82,12 +84,13 @@ export function createDialState(
     lastPointerAngleRadians: null,
     lastPointerTimestampMs: null,
     lastUpdateTimestampMs: null,
+    inertiaElapsedSeconds: 0,
   };
 }
 
 function pointerStart(
   state: DialState,
-  command: Extract<DialCommand, { type: "pointer-start" }>,
+  command: Extract<DialCommand, { point: unknown }>,
 ): DialState {
   const deadZone = command.deadZoneRadius ?? state.config.radialDeadZone;
   const usable = isOutsideRadialDeadZone(command.point, command.center, deadZone);
@@ -100,12 +103,13 @@ function pointerStart(
       : null,
     lastPointerTimestampMs: finiteOr(command.timestampMs, 0),
     lastUpdateTimestampMs: finiteOr(command.timestampMs, 0),
+    inertiaElapsedSeconds: 0,
   };
 }
 
 function pointerMove(
   state: DialState,
-  command: Extract<DialCommand, { type: "pointer-move" }>,
+  command: Extract<DialCommand, { point: unknown }>,
 ): DialState {
   if (!state.dragging) return state;
   const timestampMs = finiteOr(
@@ -146,11 +150,25 @@ function pointerMove(
     };
   }
 
+  if (dt > state.config.maximumPointerSampleGapSeconds) {
+    return {
+      ...state,
+      lastPointerAngleRadians: wrappedAngle,
+      lastPointerTimestampMs: timestampMs,
+      lastUpdateTimestampMs: timestampMs,
+      angularVelocityRadiansPerSecond: 0,
+      inertiaElapsedSeconds: 0,
+    };
+  }
+
   const rawDelta = unwrapAngleDelta(
     state.lastPointerAngleRadians,
     wrappedAngle,
   );
-  const maximumDelta = state.config.maxPointerAngularVelocity * dt;
+  const maximumDelta = Math.min(
+    state.config.maximumPointerDeltaRadians,
+    state.config.maxPointerAngularVelocity * dt,
+  );
   const filteredDelta = clamp(rawDelta, -maximumDelta, maximumDelta);
   const targetAngle = applyEndStopResistance(
     state.unwrappedAngleRadians + filteredDelta,
@@ -171,6 +189,7 @@ function pointerMove(
     lastPointerAngleRadians: wrappedAngle,
     lastPointerTimestampMs: timestampMs,
     lastUpdateTimestampMs: timestampMs,
+    inertiaElapsedSeconds: 0,
   };
 }
 
@@ -186,6 +205,7 @@ function pointerEnd(
     lastPointerAngleRadians: null,
     lastPointerTimestampMs: null,
     lastUpdateTimestampMs: timestamp,
+    inertiaElapsedSeconds: 0,
   };
 }
 
@@ -211,20 +231,37 @@ function nudge(
   deltaRadians: number,
   timestampMs?: number,
 ): DialState {
+  const timestamp =
+    timestampMs === undefined
+      ? state.lastUpdateTimestampMs
+      : finiteOr(timestampMs, state.lastUpdateTimestampMs ?? 0);
+  const rawElapsed =
+    timestamp !== null && state.lastUpdateTimestampMs !== null
+      ? (timestamp - state.lastUpdateTimestampMs) / 1000
+      : state.config.integrationStepSeconds;
+  const elapsed = clamp(
+    finiteOr(rawElapsed, state.config.integrationStepSeconds),
+    state.config.integrationStepSeconds,
+    state.config.maximumPointerSampleGapSeconds,
+  );
   const target = applyEndStopResistance(
     state.unwrappedAngleRadians + finiteOr(deltaRadians, 0),
     state.config,
   );
-  const next = deriveDialState(state, target, 0, 0);
+  const appliedDelta = target - state.unwrappedAngleRadians;
+  const velocity = clamp(
+    appliedDelta / elapsed,
+    -state.config.maxPointerAngularVelocity,
+    state.config.maxPointerAngularVelocity,
+  );
+  const next = deriveDialState(state, target, velocity, elapsed);
   return {
     ...next,
     dragging: false,
     lastPointerAngleRadians: null,
     lastPointerTimestampMs: null,
-    lastUpdateTimestampMs:
-      timestampMs === undefined
-        ? state.lastUpdateTimestampMs
-        : finiteOr(timestampMs, state.lastUpdateTimestampMs ?? 0),
+    lastUpdateTimestampMs: timestamp,
+    inertiaElapsedSeconds: 0,
   };
 }
 
@@ -247,6 +284,13 @@ export function stepDialState(
     };
   }
 
+  if (
+    state.inertiaElapsedSeconds >=
+    state.config.inertiaMaximumDurationSeconds
+  ) {
+    return deriveDialState(state, state.unwrappedAngleRadians, 0, elapsed);
+  }
+
   let remaining = elapsed;
   let angle = state.unwrappedAngleRadians;
   let velocity = state.angularVelocityRadiansPerSecond;
@@ -265,7 +309,17 @@ export function stepDialState(
     remaining -= dt;
   }
 
-  return deriveDialState(state, angle, velocity, elapsed);
+  const next = deriveDialState(state, angle, velocity, elapsed);
+  return {
+    ...next,
+    inertiaElapsedSeconds:
+      velocity === 0
+        ? state.inertiaElapsedSeconds
+        : Math.min(
+            state.config.inertiaMaximumDurationSeconds,
+            state.inertiaElapsedSeconds + elapsed,
+          ),
+  };
 }
 
 export function reduceDialState(
@@ -279,20 +333,19 @@ export function reduceDialState(
       return pointerMove(state, command);
     case "pointer-end":
       return pointerEnd(state, command.timestampMs);
+    case "pointer-cancel":
+      return pointerEnd(state, command.timestampMs);
     case "keyboard": {
       if (command.key === "Home" || command.key === "End") {
         const angle =
           command.key === "Home"
             ? state.config.minAngleRadians
             : state.config.maxAngleRadians;
-        const next = deriveDialState(state, angle, 0, 0);
-        return {
-          ...next,
-          lastUpdateTimestampMs:
-            command.timestampMs === undefined
-              ? state.lastUpdateTimestampMs
-              : finiteOr(command.timestampMs, state.lastUpdateTimestampMs ?? 0),
-        };
+        return nudge(
+          state,
+          angle - state.unwrappedAngleRadians,
+          command.timestampMs,
+        );
       }
       return nudge(
         state,
@@ -312,14 +365,11 @@ export function reduceDialState(
       return nudge(state, command.deltaRadians, command.timestampMs);
     case "set-frequency": {
       const angle = frequencyToAngle(command.frequencyHz, state.config);
-      const next = deriveDialState(state, angle, 0, 0);
-      return {
-        ...next,
-        lastUpdateTimestampMs:
-          command.timestampMs === undefined
-            ? state.lastUpdateTimestampMs
-            : finiteOr(command.timestampMs, state.lastUpdateTimestampMs ?? 0),
-      };
+      return nudge(
+        state,
+        angle - state.unwrappedAngleRadians,
+        command.timestampMs,
+      );
     }
     case "advance":
       return stepDialState(state, command.deltaSeconds);

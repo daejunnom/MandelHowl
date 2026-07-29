@@ -1,0 +1,12 @@
+{
+  "name": "@mandelhowl/release-packager",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "headers": "node src/write-security-headers.mjs",
+    "headers:check": "node src/write-security-headers.mjs --check",
+    "forbidden": "node src/verify-forbidden-runtime.mjs",
+    "verify": "node src/verify-release.mjs"
+  }
+}

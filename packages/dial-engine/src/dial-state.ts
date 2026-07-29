@@ -1,4 +1,8 @@
-import { clamp, finiteOr, TAU } from "./math";
+import {
+  GENERATED_DIAL_SPEC,
+  GENERATED_FEEDBACK_SPEC,
+} from "../../contracts/src";
+import { clamp, finiteOr } from "./math";
 
 export type RotationDirection = -1 | 0 | 1;
 
@@ -9,7 +13,11 @@ export interface DialConfig {
   readonly minAngleRadians: number;
   readonly maxAngleRadians: number;
   readonly radialDeadZone: number;
+  readonly maximumPointerSampleGapSeconds: number;
+  readonly maximumPointerDeltaRadians: number;
   readonly maxPointerAngularVelocity: number;
+  readonly stationaryVelocityThreshold: number;
+  readonly approachDirectionThresholdHzPerSecond: number;
   readonly velocitySmoothing: number;
   readonly keyboardStepRadians: number;
   readonly keyboardPageStepRadians: number;
@@ -17,6 +25,7 @@ export interface DialConfig {
   readonly maxWheelStepRadians: number;
   readonly inertiaFrictionPerSecond: number;
   readonly inertiaStopVelocity: number;
+  readonly inertiaMaximumDurationSeconds: number;
   readonly endStopOverscrollRadians: number;
   readonly endStopStiffness: number;
   readonly endStopDamping: number;
@@ -43,28 +52,46 @@ export interface DialState {
   readonly lastPointerAngleRadians: number | null;
   readonly lastPointerTimestampMs: number | null;
   readonly lastUpdateTimestampMs: number | null;
+  readonly inertiaElapsedSeconds: number;
 }
 
 export const DEFAULT_DIAL_CONFIG: DialConfig = Object.freeze({
   version: "mandelhowl.dial-config.v1",
-  minFrequencyHz: 52,
-  maxFrequencyHz: 1250,
-  minAngleRadians: 0,
-  maxAngleRadians: TAU * 3,
-  radialDeadZone: 18,
-  maxPointerAngularVelocity: TAU * 4,
+  minFrequencyHz: GENERATED_DIAL_SPEC.mapping.minimumFrequencyHz,
+  maxFrequencyHz: GENERATED_DIAL_SPEC.mapping.maximumFrequencyHz,
+  minAngleRadians: GENERATED_DIAL_SPEC.mapping.minimumUnwrappedAngleRad,
+  maxAngleRadians: GENERATED_DIAL_SPEC.mapping.maximumUnwrappedAngleRad,
+  radialDeadZone: GENERATED_DIAL_SPEC.pointerSampling.minimumRadiusRatio,
+  maximumPointerSampleGapSeconds:
+    GENERATED_DIAL_SPEC.pointerSampling.maximumSampleGapSeconds,
+  maximumPointerDeltaRadians:
+    GENERATED_DIAL_SPEC.pointerSampling.maximumAngularDeltaPerSampleRad,
+  maxPointerAngularVelocity:
+    GENERATED_DIAL_SPEC.velocityEstimator.maximumAbsoluteRadPerSecond,
+  stationaryVelocityThreshold:
+    GENERATED_DIAL_SPEC.velocityEstimator.stationaryThresholdRadPerSecond,
+  approachDirectionThresholdHzPerSecond:
+    GENERATED_DIAL_SPEC.velocityEstimator
+      .approachDirectionThresholdHzPerSecond,
   velocitySmoothing: 0.32,
-  keyboardStepRadians: Math.PI / 90,
-  keyboardPageStepRadians: Math.PI / 12,
-  wheelRadiansPerUnit: 0.0025,
-  maxWheelStepRadians: Math.PI / 10,
-  inertiaFrictionPerSecond: 7.5,
-  inertiaStopVelocity: 0.012,
-  endStopOverscrollRadians: Math.PI / 12,
-  endStopStiffness: 92,
-  endStopDamping: 15,
-  maxAdvanceSeconds: 0.25,
-  integrationStepSeconds: 1 / 120,
+  keyboardStepRadians: GENERATED_DIAL_SPEC.keyboard.arrowStepRad,
+  keyboardPageStepRadians: GENERATED_DIAL_SPEC.keyboard.pageStepRad,
+  wheelRadiansPerUnit: GENERATED_DIAL_SPEC.wheel.radiansPerDeltaPixel,
+  maxWheelStepRadians: GENERATED_DIAL_SPEC.wheel.maximumDeltaRadPerEvent,
+  inertiaFrictionPerSecond:
+    GENERATED_DIAL_SPEC.inertia.frictionRadPerSecondSquared,
+  inertiaStopVelocity: GENERATED_DIAL_SPEC.inertia.stopThresholdRadPerSecond,
+  inertiaMaximumDurationSeconds:
+    GENERATED_DIAL_SPEC.inertia.maximumDurationSeconds,
+  endStopOverscrollRadians:
+    GENERATED_DIAL_SPEC.endStops.maximumOverscrollRad,
+  endStopStiffness:
+    GENERATED_DIAL_SPEC.endStops.springStiffnessPerSecondSquared,
+  endStopDamping: GENERATED_DIAL_SPEC.endStops.dampingPerSecond,
+  maxAdvanceSeconds:
+    GENERATED_FEEDBACK_SPEC.simulation.maximumCatchUpSeconds,
+  integrationStepSeconds:
+    GENERATED_FEEDBACK_SPEC.simulation.fixedStepSeconds,
 });
 
 export function createDialConfig(
@@ -72,21 +99,27 @@ export function createDialConfig(
 ): DialConfig {
   const minFrequencyHz = Math.max(
     Number.MIN_VALUE,
-    finiteOr(overrides.minFrequencyHz ?? DEFAULT_DIAL_CONFIG.minFrequencyHz, 52),
+    finiteOr(
+      overrides.minFrequencyHz ?? DEFAULT_DIAL_CONFIG.minFrequencyHz,
+      DEFAULT_DIAL_CONFIG.minFrequencyHz,
+    ),
   );
   const maxFrequencyHz = Math.max(
     minFrequencyHz + Number.EPSILON,
-    finiteOr(overrides.maxFrequencyHz ?? DEFAULT_DIAL_CONFIG.maxFrequencyHz, 1250),
+    finiteOr(
+      overrides.maxFrequencyHz ?? DEFAULT_DIAL_CONFIG.maxFrequencyHz,
+      DEFAULT_DIAL_CONFIG.maxFrequencyHz,
+    ),
   );
   const minAngleRadians = finiteOr(
     overrides.minAngleRadians ?? DEFAULT_DIAL_CONFIG.minAngleRadians,
-    0,
+    DEFAULT_DIAL_CONFIG.minAngleRadians,
   );
   const maxAngleRadians = Math.max(
     minAngleRadians + Number.EPSILON,
     finiteOr(
       overrides.maxAngleRadians ?? DEFAULT_DIAL_CONFIG.maxAngleRadians,
-      TAU * 3,
+      DEFAULT_DIAL_CONFIG.maxAngleRadians,
     ),
   );
 
@@ -98,20 +131,55 @@ export function createDialConfig(
     maxAngleRadians,
     radialDeadZone: Math.max(
       0,
-      finiteOr(overrides.radialDeadZone ?? DEFAULT_DIAL_CONFIG.radialDeadZone, 18),
+      finiteOr(
+        overrides.radialDeadZone ?? DEFAULT_DIAL_CONFIG.radialDeadZone,
+        DEFAULT_DIAL_CONFIG.radialDeadZone,
+      ),
+    ),
+    maximumPointerSampleGapSeconds: Math.max(
+      0,
+      finiteOr(
+        overrides.maximumPointerSampleGapSeconds ??
+          DEFAULT_DIAL_CONFIG.maximumPointerSampleGapSeconds,
+        DEFAULT_DIAL_CONFIG.maximumPointerSampleGapSeconds,
+      ),
+    ),
+    maximumPointerDeltaRadians: Math.max(
+      0,
+      finiteOr(
+        overrides.maximumPointerDeltaRadians ??
+          DEFAULT_DIAL_CONFIG.maximumPointerDeltaRadians,
+        DEFAULT_DIAL_CONFIG.maximumPointerDeltaRadians,
+      ),
     ),
     maxPointerAngularVelocity: Math.max(
       0.01,
       finiteOr(
         overrides.maxPointerAngularVelocity ??
           DEFAULT_DIAL_CONFIG.maxPointerAngularVelocity,
-        TAU * 4,
+        DEFAULT_DIAL_CONFIG.maxPointerAngularVelocity,
+      ),
+    ),
+    stationaryVelocityThreshold: Math.max(
+      0,
+      finiteOr(
+        overrides.stationaryVelocityThreshold ??
+          DEFAULT_DIAL_CONFIG.stationaryVelocityThreshold,
+        DEFAULT_DIAL_CONFIG.stationaryVelocityThreshold,
+      ),
+    ),
+    approachDirectionThresholdHzPerSecond: Math.max(
+      0,
+      finiteOr(
+        overrides.approachDirectionThresholdHzPerSecond ??
+          DEFAULT_DIAL_CONFIG.approachDirectionThresholdHzPerSecond,
+        DEFAULT_DIAL_CONFIG.approachDirectionThresholdHzPerSecond,
       ),
     ),
     velocitySmoothing: clamp(
       finiteOr(
         overrides.velocitySmoothing ?? DEFAULT_DIAL_CONFIG.velocitySmoothing,
-        0.32,
+        DEFAULT_DIAL_CONFIG.velocitySmoothing,
       ),
       0,
       1,
@@ -120,7 +188,7 @@ export function createDialConfig(
       Number.EPSILON,
       finiteOr(
         overrides.keyboardStepRadians ?? DEFAULT_DIAL_CONFIG.keyboardStepRadians,
-        Math.PI / 90,
+        DEFAULT_DIAL_CONFIG.keyboardStepRadians,
       ),
     ),
     keyboardPageStepRadians: Math.max(
@@ -128,21 +196,21 @@ export function createDialConfig(
       finiteOr(
         overrides.keyboardPageStepRadians ??
           DEFAULT_DIAL_CONFIG.keyboardPageStepRadians,
-        Math.PI / 12,
+        DEFAULT_DIAL_CONFIG.keyboardPageStepRadians,
       ),
     ),
     wheelRadiansPerUnit: Math.max(
       0,
       finiteOr(
         overrides.wheelRadiansPerUnit ?? DEFAULT_DIAL_CONFIG.wheelRadiansPerUnit,
-        0.0025,
+        DEFAULT_DIAL_CONFIG.wheelRadiansPerUnit,
       ),
     ),
     maxWheelStepRadians: Math.max(
       Number.EPSILON,
       finiteOr(
         overrides.maxWheelStepRadians ?? DEFAULT_DIAL_CONFIG.maxWheelStepRadians,
-        Math.PI / 10,
+        DEFAULT_DIAL_CONFIG.maxWheelStepRadians,
       ),
     ),
     inertiaFrictionPerSecond: Math.max(
@@ -150,14 +218,22 @@ export function createDialConfig(
       finiteOr(
         overrides.inertiaFrictionPerSecond ??
           DEFAULT_DIAL_CONFIG.inertiaFrictionPerSecond,
-        7.5,
+        DEFAULT_DIAL_CONFIG.inertiaFrictionPerSecond,
       ),
     ),
     inertiaStopVelocity: Math.max(
       0,
       finiteOr(
         overrides.inertiaStopVelocity ?? DEFAULT_DIAL_CONFIG.inertiaStopVelocity,
-        0.012,
+        DEFAULT_DIAL_CONFIG.inertiaStopVelocity,
+      ),
+    ),
+    inertiaMaximumDurationSeconds: Math.max(
+      0,
+      finiteOr(
+        overrides.inertiaMaximumDurationSeconds ??
+          DEFAULT_DIAL_CONFIG.inertiaMaximumDurationSeconds,
+        DEFAULT_DIAL_CONFIG.inertiaMaximumDurationSeconds,
       ),
     ),
     endStopOverscrollRadians: Math.max(
@@ -165,35 +241,35 @@ export function createDialConfig(
       finiteOr(
         overrides.endStopOverscrollRadians ??
           DEFAULT_DIAL_CONFIG.endStopOverscrollRadians,
-        Math.PI / 12,
+        DEFAULT_DIAL_CONFIG.endStopOverscrollRadians,
       ),
     ),
     endStopStiffness: Math.max(
       0,
       finiteOr(
         overrides.endStopStiffness ?? DEFAULT_DIAL_CONFIG.endStopStiffness,
-        92,
+        DEFAULT_DIAL_CONFIG.endStopStiffness,
       ),
     ),
     endStopDamping: Math.max(
       0,
       finiteOr(
         overrides.endStopDamping ?? DEFAULT_DIAL_CONFIG.endStopDamping,
-        15,
+        DEFAULT_DIAL_CONFIG.endStopDamping,
       ),
     ),
     maxAdvanceSeconds: Math.max(
       0,
       finiteOr(
         overrides.maxAdvanceSeconds ?? DEFAULT_DIAL_CONFIG.maxAdvanceSeconds,
-        0.25,
+        DEFAULT_DIAL_CONFIG.maxAdvanceSeconds,
       ),
     ),
     integrationStepSeconds: clamp(
       finiteOr(
         overrides.integrationStepSeconds ??
           DEFAULT_DIAL_CONFIG.integrationStepSeconds,
-        1 / 120,
+        DEFAULT_DIAL_CONFIG.integrationStepSeconds,
       ),
       1 / 1000,
       1 / 30,

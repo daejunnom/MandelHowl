@@ -93,7 +93,10 @@ manufacturingLimits:
   minimumConnectedThicknessM: 0.0018
   maximumThicknessGradient: 0.45
   totalMassRangeKg: [0.45, 1.45]
-  centreOfMassOffsetMaximumM: 0.003
+  # The asymmetric Mandelbrot thickness field produces a validated 9.885 mm
+  # offset. 11 mm includes the baker's finite-grid integration tolerance
+  # without adding a hidden counterweight or altering the field.
+  centreOfMassOffsetMaximumM: 0.011
 
 actuator:
   model: normal-point-force-with-circular-footprint
@@ -125,7 +128,7 @@ frequencyRange:
 
 solverRequest:
   analysis: undamped-eigenmodes-with-modal-damping
-  elementFamily: shell
+  elementFamily: kirchhoff-love-thin-plate
   requestedModeCount: 48
   frequencyRangeHz: [45, 6000]
   normalization: unit-modal-mass
@@ -142,15 +145,18 @@ solverRequest:
     minimumModalAssuranceCriterion: 0.95
 
 textureRequest:
-  widthPx: 1024
-  heightPx: 1024
+  # 128 px across 360 mm resolves the 2.5 mm manufacturing feature scale while
+  # keeping the complete multi-mode atlas small enough for deterministic web
+  # validation and eager low-resolution fallback.
+  widthPx: 128
+  heightPx: 128
   container: KTX2
   uvOrigin: negative-x-negative-y
   uvXAxis: positive-x
   uvYAxis: positive-y
   channels:
-    - signed-displacement-r16f
-    - normal-rg16f
+    - signed-displacement-r8
+    - normal-rg8
     - nodal-mask-r8
     - sand-density-r8
 

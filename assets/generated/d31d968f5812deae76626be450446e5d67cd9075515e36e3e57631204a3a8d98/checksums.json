@@ -1,0 +1,81 @@
+{
+  "algorithm": "sha256",
+  "files": [
+    {
+      "byteLength": 10275,
+      "path": "convergence-report.json",
+      "sha256": "01c57992b66d39c921c13cbb5898b6fb3f2bc1b3c76cb4d66e607975b3c35cfa"
+    },
+    {
+      "byteLength": 128622,
+      "path": "coverage-report.json",
+      "sha256": "9c2bef9d7d442e7941fe61dfe1fcde0be270531185c1081ec6f0c31da40700e9"
+    },
+    {
+      "byteLength": 1048600,
+      "path": "field/mandelbrot-field.bin",
+      "sha256": "892a21be4fa744b1d721a0df7e5716bf9fa4783f733b07130dbd6dac14421898"
+    },
+    {
+      "byteLength": 292,
+      "path": "generation-report.json",
+      "sha256": "92f58958c7e61faa9675cda3a59d8fee648067fbea6696e6d06bf134fc9c1d6d"
+    },
+    {
+      "byteLength": 2375442,
+      "path": "mesh/fine-polar-mesh.mhmz",
+      "sha256": "696112e6c3bea04d4f895f524bd13cc5f71475c393b4f5f9cf7d286916c9f169"
+    },
+    {
+      "byteLength": 1836,
+      "path": "mesh/mesh-evidence.json",
+      "sha256": "a4b62b71a88fe70033e61fc5234f373bdd1ea1fffd0300cafb5973143f33a1f6"
+    },
+    {
+      "byteLength": 4624,
+      "path": "modes.bin",
+      "sha256": "db567968bc4d628ebeb5f3a1fbce46ecf20881f83e0d0c9b0e501e1927b40953"
+    },
+    {
+      "byteLength": 3215,
+      "path": "plate-spec.json",
+      "sha256": "e8d3a19314dee680e4b5f393f39f04028aa2e3535caf8b4f35569e52f6ae58c7"
+    },
+    {
+      "byteLength": 30405,
+      "path": "provenance.json",
+      "sha256": "ba813358a3c8591de7437a5e04495f1cddbfaa97b1fc7d337fbf06d3a3139a4b"
+    },
+    {
+      "byteLength": 12304,
+      "path": "response.bin",
+      "sha256": "9ba5096d50432da6d2ab91b6c03d0f1ac41dacad4117b1ea9ed3fb5e266d3f67"
+    },
+    {
+      "byteLength": 57364,
+      "path": "science/solver-evidence.bin",
+      "sha256": "e4bba5ebaab9205c6eae325eda47b8bc97efcf300428786e2e82d3e324f740fa"
+    },
+    {
+      "byteLength": 786652,
+      "path": "textures/nodal-mask.ktx2",
+      "sha256": "d2d3348dbfa24982c39658e9a9053ecc3e37045c10253d67f32f97a0fa2006d0"
+    },
+    {
+      "byteLength": 1573100,
+      "path": "textures/normal.ktx2",
+      "sha256": "41a0a50833246703638cf0b1777c6cea6137e5bbe489d157da83762130fc7d61"
+    },
+    {
+      "byteLength": 786652,
+      "path": "textures/sand-density.ktx2",
+      "sha256": "6b7cee1e902be9f5b80976f630ae6c7bad33f19e85e1dfb862fc58627fc5fe82"
+    },
+    {
+      "byteLength": 786652,
+      "path": "textures/signed-displacement.ktx2",
+      "sha256": "8757cd2996d661b22f79bd2510ee2116f372730080897a303dd45c61cecfeda5"
+    }
+  ],
+  "schemaVersion": "mandelhowl.checksums.v1"
+}

@@ -18,6 +18,8 @@ export type MandelHowlRegime =
 export interface MandelHowlSceneProps {
   /** Current drive frequency in hertz. */
   frequency: number;
+  frequencyMin?: number;
+  frequencyMax?: number;
   /** Continuous, unwrapped dial angle in radians. */
   angle: number;
   /** Canonical virtual volume output in the inclusive range 0..100. */
@@ -29,13 +31,28 @@ export interface MandelHowlSceneProps {
   activeMode: number | null;
   /** Normalized measurement-window progress in the inclusive range 0..1. */
   measurementProgress: number;
+  measurementStatus?: "measuring" | "settled";
+  microphoneRms?: number;
+  microphonePeak?: number;
+  microphoneSamples?: readonly number[];
+  activeModePhase?: number;
   /** Whether the safe listening graph is enabled. This is display-only here. */
   audioEnabled: boolean;
+  rendererKind?: "webgl2" | "canvas2d" | "static";
+  renderQuality?: "high" | "balanced" | "reduced" | "canvas";
+  datasetStatus?: "loading" | "verified" | "prototype" | "error";
+  diagnosticSeverity?: "none" | "info" | "warning" | "fatal";
+  diagnosticTitle?: string | null;
+  diagnosticMessage?: string | null;
+  diagnosticCode?: string | null;
+  diagnosticDetail?: string | null;
+  challengeTarget?: number | null;
   dragging: boolean;
   onDialPointerDown: PointerEventHandler<HTMLDivElement>;
   onDialPointerMove: PointerEventHandler<HTMLDivElement>;
   onDialPointerUp: PointerEventHandler<HTMLDivElement>;
   onDialPointerCancel: PointerEventHandler<HTMLDivElement>;
+  onDialLostPointerCapture?: PointerEventHandler<HTMLDivElement>;
   onDialKeyDown: KeyboardEventHandler<HTMLDivElement>;
   onDialWheel: WheelEventHandler<HTMLDivElement>;
   /** The parent owns all canvas drawing and its animation lifecycle. */
@@ -47,6 +64,8 @@ type SceneStyle = CSSProperties & {
   "--envelope": number;
   "--measurement": string;
   "--volume": number;
+  "--phase-angle": string;
+  "--target-volume": number;
 };
 
 const REGIME_COPY: Record<
@@ -84,20 +103,52 @@ function formatFrequency(frequency: number) {
   return `${frequency.toFixed(frequency < 100 ? 1 : 0)} Hz`;
 }
 
+function formatCompactFrequency(frequency: number) {
+  if (frequency >= 1000) {
+    return `${Number((frequency / 1000).toPrecision(3))}k`;
+  }
+  return `${Math.round(frequency)}`;
+}
+
+function logarithmicTick(
+  minimum: number,
+  maximum: number,
+  normalized: number,
+) {
+  return minimum * Math.pow(maximum / minimum, normalized);
+}
+
 export function MandelHowlScene({
   frequency,
+  frequencyMin = 45,
+  frequencyMax = 6_000,
   angle,
   volume,
   regime,
   envelope,
   activeMode,
   measurementProgress,
+  measurementStatus = "measuring",
+  microphoneRms = 0,
+  microphonePeak = 0,
+  microphoneSamples = [],
+  activeModePhase = 0,
   audioEnabled,
+  rendererKind = "canvas2d",
+  renderQuality = "canvas",
+  datasetStatus = "prototype",
+  diagnosticSeverity = "none",
+  diagnosticTitle = null,
+  diagnosticMessage = null,
+  diagnosticCode = null,
+  diagnosticDetail = null,
+  challengeTarget = null,
   dragging,
   onDialPointerDown,
   onDialPointerMove,
   onDialPointerUp,
   onDialPointerCancel,
+  onDialLostPointerCapture,
   onDialKeyDown,
   onDialWheel,
   canvasRef,
@@ -106,6 +157,12 @@ export function MandelHowlScene({
   const visualEnvelope = clampUnit(envelope);
   const displayedVolume = Math.round(volume).toString().padStart(3, "0");
   const displayedFrequency = formatFrequency(frequency);
+  const frequencyTicks = [
+    frequencyMin,
+    logarithmicTick(frequencyMin, frequencyMax, 1 / 3),
+    logarithmicTick(frequencyMin, frequencyMax, 2 / 3),
+    frequencyMax,
+  ].map(formatCompactFrequency);
   const modeLabel =
     activeMode === null
       ? "NO MODE"
@@ -116,13 +173,24 @@ export function MandelHowlScene({
     "--envelope": visualEnvelope,
     "--measurement": `${Math.round(progress * 100)}%`,
     "--volume": volume,
+    "--phase-angle": `${activeModePhase}rad`,
+    "--target-volume": challengeTarget ?? 0,
   };
+  const isVerifiedDataset = datasetStatus === "verified";
+  const samples =
+    microphoneSamples.length > 0
+      ? microphoneSamples.slice(-40)
+      : Array.from({ length: 40 }, () => 0);
+  const stableAnnouncement =
+    measurementStatus === "settled"
+      ? `Volume settled at ${displayedVolume} out of 100.`
+      : "";
 
   return (
     <main
       className={`mh-shell mh-regime-${regime}${
         dragging ? " mh-is-dragging" : ""
-      }`}
+      } mh-measurement-${measurementStatus}`}
       data-regime={regime}
       style={sceneStyle}
     >
@@ -139,8 +207,10 @@ export function MandelHowlScene({
 
         <div className="mh-header-readouts" aria-label="System status">
           <p>
-            <span>PLATE</span>
-            MH–01 / CENTER CLAMP
+            <span>DATASET</span>
+            {isVerifiedDataset
+              ? "VERIFIED THIN-PLATE BAKE"
+              : "PROTOTYPE / CENTER CLAMP"}
           </p>
           <p
             className={audioEnabled ? "mh-audio-on" : "mh-audio-off"}
@@ -164,8 +234,8 @@ export function MandelHowlScene({
             role="slider"
             tabIndex={0}
             aria-label="Drive frequency"
-            aria-valuemin={52}
-            aria-valuemax={1250}
+            aria-valuemin={frequencyMin}
+            aria-valuemax={frequencyMax}
             aria-valuenow={Math.round(frequency)}
             aria-valuetext={`${displayedFrequency}, ${regimeCopy.label.toLowerCase()}`}
             aria-orientation="horizontal"
@@ -173,22 +243,23 @@ export function MandelHowlScene({
             onPointerMove={onDialPointerMove}
             onPointerUp={onDialPointerUp}
             onPointerCancel={onDialPointerCancel}
+            onLostPointerCapture={onDialLostPointerCapture}
             onKeyDown={onDialKeyDown}
             onWheel={onDialWheel}
           >
             <span className="mh-dial-scale" aria-hidden="true" />
             <span className="mh-dial-track" aria-hidden="true" />
             <span className="mh-dial-label mh-dial-label-20" aria-hidden="true">
-              52
+              {frequencyTicks[0]}
             </span>
             <span className="mh-dial-label mh-dial-label-200" aria-hidden="true">
-              150
+              {frequencyTicks[1]}
             </span>
             <span className="mh-dial-label mh-dial-label-2k" aria-hidden="true">
-              430
+              {frequencyTicks[2]}
             </span>
             <span className="mh-dial-label mh-dial-label-20k" aria-hidden="true">
-              1.25k
+              {frequencyTicks[3]}
             </span>
 
             <span className="mh-dial-face">
@@ -209,9 +280,9 @@ export function MandelHowlScene({
             <span>LOG SWEEP</span>
             <span className="mh-drive-direction">
               <i aria-hidden="true">−</i>
-              52 Hz
+              {formatFrequency(frequencyMin)}
               <b aria-hidden="true" />
-              1.25 kHz
+              {formatFrequency(frequencyMax)}
               <i aria-hidden="true">+</i>
             </span>
           </div>
@@ -223,7 +294,7 @@ export function MandelHowlScene({
               <span>02 / RESONATOR</span>
               <h2 id="apparatus-title">Closed-loop Chladni apparatus</h2>
             </div>
-            <div className="mh-mode-readout" role="status">
+            <div className="mh-mode-readout">
               <span>CAPTURE</span>
               <strong>{modeLabel}</strong>
             </div>
@@ -231,7 +302,11 @@ export function MandelHowlScene({
 
           <div
             className="mh-apparatus"
-            aria-label={`Signal path: speaker drives the Mandelbrot-encoded Chladni plate, microphone returns the response through the feedback loop. ${regimeCopy.label}, ${regimeCopy.description}.`}
+            aria-label={`Signal path: speaker drives the ${
+              isVerifiedDataset
+                ? "verified Mandelbrot-encoded thin-plate bake"
+                : "explicitly labelled analytical prototype plate"
+            }, microphone returns the response through the feedback loop. ${regimeCopy.label}, ${regimeCopy.description}.`}
           >
             <div className="mh-signal-key mh-signal-key-drive" aria-hidden="true">
               <span>DRIVE</span>
@@ -263,7 +338,11 @@ export function MandelHowlScene({
 
             <figure className="mh-plate-assembly">
               <div className="mh-plate-title">
-                <span>MANDELBROT-ENCODED</span>
+                <span>
+                  {isVerifiedDataset
+                    ? "MANDELBROT-ENCODED / THIN PLATE"
+                    : "ANALYTICAL PROTOTYPE"}
+                </span>
                 <strong>METAL PLATE + SAND</strong>
               </div>
               <div className="mh-plate-brace" aria-hidden="true">
@@ -289,8 +368,12 @@ export function MandelHowlScene({
                 </div>
               </div>
               <figcaption>
-                <span>FINITE MODAL DATA</span>
-                <span>NODAL SAND MAP</span>
+                <span>
+                  {isVerifiedDataset ? "VERIFIED MODAL DATA" : "DETERMINISTIC PREVIEW"}
+                </span>
+                <span>
+                  {rendererKind.toUpperCase()} / {renderQuality.toUpperCase()}
+                </span>
               </figcaption>
             </figure>
 
@@ -320,10 +403,75 @@ export function MandelHowlScene({
             </div>
           </div>
 
+          <div className="mh-instrumentation" aria-label="Read-only signal instruments">
+            <div
+              className="mh-oscilloscope"
+              role="img"
+              aria-label={`Microphone waveform; RMS ${Math.round(
+                microphoneRms * 100,
+              )} percent, peak ${Math.round(microphonePeak * 100)} percent`}
+            >
+              <div className="mh-instrument-label">
+                <span>MIC SIGNAL</span>
+                <strong>OSCILLOSCOPE</strong>
+              </div>
+              <div className="mh-scope-screen" aria-hidden="true">
+                <i className="mh-scope-zero" />
+                {samples.map((sample, index) => {
+                  const normalizedSample = Math.min(
+                    1,
+                    Math.max(-1, Number.isFinite(sample) ? sample : 0),
+                  );
+                  const sampleStyle = {
+                    "--scope-magnitude": Math.abs(normalizedSample),
+                    "--scope-sign": normalizedSample < 0 ? -1 : 1,
+                  } as CSSProperties;
+                  return (
+                    <span
+                      className="mh-scope-sample"
+                      key={`${index}-${samples.length}`}
+                      style={sampleStyle}
+                    />
+                  );
+                })}
+              </div>
+              <p>
+                RMS {Math.round(microphoneRms * 100).toString().padStart(3, "0")}
+                <span>
+                  PEAK{" "}
+                  {Math.round(microphonePeak * 100).toString().padStart(3, "0")}
+                </span>
+              </p>
+            </div>
+
+            <div className="mh-phase-meter">
+              <div className="mh-instrument-label">
+                <span>LOOP ALIGNMENT</span>
+                <strong>MODE PHASE</strong>
+              </div>
+              <div
+                className="mh-phase-face"
+                role="img"
+                aria-label={`Active mode phase ${activeModePhase.toFixed(2)} radians`}
+              >
+                <i aria-hidden="true" />
+                <span aria-hidden="true">0</span>
+                <span aria-hidden="true">π</span>
+              </div>
+              <p>{activeModePhase.toFixed(2)} RAD</p>
+            </div>
+          </div>
+
           <div className="mh-measurement" aria-label="Measurement status">
             <div>
-              <span>MEASUREMENT WINDOW</span>
-              <strong>{Math.round(progress * 100).toString().padStart(3, "0")}%</strong>
+              <span>
+                {measurementStatus === "measuring"
+                  ? "MEASURING"
+                  : "SETTLED"}
+              </span>
+              <strong>
+                {Math.round(progress * 100).toString().padStart(3, "0")}%
+              </strong>
             </div>
             <div className="mh-measurement-track" aria-hidden="true">
               <span />
@@ -343,23 +491,45 @@ export function MandelHowlScene({
             <h2 id="output-title">Virtual output</h2>
           </div>
 
-          <div className="mh-volume-readout" aria-live="polite" aria-atomic="true">
+          <div className="mh-volume-readout">
             <span className="mh-output-label">VOLUME</span>
             <strong>{displayedVolume}</strong>
             <span className="mh-output-range">/ 100</span>
+            <span className="mh-output-state">
+              {measurementStatus === "measuring" ? "MEASURING" : "SETTLED"}
+            </span>
+            {challengeTarget !== null ? (
+              <span className="mh-challenge-readonly">
+                READ-ONLY TARGET{" "}
+                {challengeTarget.toString().padStart(3, "0")}
+              </span>
+            ) : null}
           </div>
+          <span
+            className="mh-sr-only"
+            role="status"
+            aria-live="polite"
+            aria-atomic="true"
+          >
+            {stableAnnouncement}
+          </span>
 
           <div className="mh-meter-block">
             <div className="mh-volume-meter" aria-hidden="true">
               <span className="mh-meter-fill" />
               <span className="mh-meter-grid" />
+              {challengeTarget !== null ? (
+                <span className="mh-target-line">
+                  <i>TARGET {challengeTarget.toString().padStart(3, "0")}</i>
+                </span>
+              ) : null}
               <i className="mh-meter-mark mh-meter-mark-100">100</i>
               <i className="mh-meter-mark mh-meter-mark-75">75</i>
               <i className="mh-meter-mark mh-meter-mark-50">50</i>
               <i className="mh-meter-mark mh-meter-mark-25">25</i>
               <i className="mh-meter-mark mh-meter-mark-0">0</i>
             </div>
-            <div className="mh-regime-card" role="status">
+            <div className="mh-regime-card">
               <span>LOOP REGIME</span>
               <strong>
                 <i aria-hidden="true" />
@@ -368,6 +538,22 @@ export function MandelHowlScene({
               <p>{regimeCopy.description}</p>
             </div>
           </div>
+
+          {diagnosticTitle && diagnosticMessage ? (
+            <aside
+              className={`mh-diagnostic mh-diagnostic-${diagnosticSeverity}`}
+              aria-label="System diagnostic"
+            >
+              <span>{diagnosticCode ?? "SYSTEM"}</span>
+              <strong>{diagnosticTitle}</strong>
+              <p>{diagnosticMessage}</p>
+              {diagnosticDetail ? (
+                <code className="mh-diagnostic-detail">
+                  {diagnosticDetail}
+                </code>
+              ) : null}
+            </aside>
+          ) : null}
 
           <div className="mh-safety-note">
             <span aria-hidden="true">↳</span>
@@ -391,7 +577,9 @@ export function MandelHowlScene({
         </p>
         <p>ONE CONTROL / ONE RESULT / NO RANDOMNESS</p>
         <p className="mh-prototype-status">
-          PROTOTYPE MODAL FIXTURE / FEM BAKE PENDING
+          {isVerifiedDataset
+            ? "CONTENT-ADDRESSED / VERIFIED THIN-PLATE BAKE"
+            : "ANALYTICAL PROTOTYPE / PRODUCTION BAKE PENDING"}
         </p>
       </footer>
     </main>

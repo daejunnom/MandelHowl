@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mandelhowl.dev/schemas/dataset-release.v1.schema.json",
+  "title": "MandelHowl pinned runtime dataset release v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "canonicalOwner",
+    "manifestUrl",
+    "datasetId",
+    "modalModelId",
+    "sourceDirectory",
+    "loadingPolicy"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "mandelhowl.dataset-release.v1" },
+    "canonicalOwner": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "policy"],
+      "properties": {
+        "path": { "const": "specs/runtime/dataset-release.v1.yaml" },
+        "policy": { "const": "edit-source-regenerate-derived" }
+      }
+    },
+    "manifestUrl": { "const": "/runtime/manifest.json" },
+    "datasetId": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$"
+    },
+    "modalModelId": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$"
+    },
+    "sourceDirectory": {
+      "type": "string",
+      "pattern": "^assets/generated/[a-f0-9]{64}$"
+    },
+    "loadingPolicy": {
+      "const": "verified-before-activation-with-analytical-fallback"
+    }
+  }
+}

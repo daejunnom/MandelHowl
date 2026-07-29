@@ -6,6 +6,10 @@ export const SCHEMA_VERSIONS = {
   plateSpec: "mandelhowl.plate-spec.v1",
   resonanceManifest: "mandelhowl.resonance-manifest.v1",
   runtimeSnapshot: "mandelhowl.runtime-snapshot.v1",
+  dialGestureTrace: "mandelhowl.dial-gesture-trace.v1",
+  resonanceTrajectoryTrace: "mandelhowl.resonance-trajectory-trace.v1",
+  coverageReport: "mandelhowl.coverage-report.v1",
+  datasetRelease: "mandelhowl.dataset-release.v1",
   dialConfig: "mandelhowl.dial-config.v1",
   feedbackSpec: "mandelhowl.feedback-spec.v1",
   volumeMap: "mandelhowl.volume-map.v1",
@@ -39,4 +43,17 @@ export interface AssetReference {
   readonly byteLength: number;
   readonly sha256: Sha256Hex;
   readonly mediaType: string;
+}
+
+export interface ChecksumEntry {
+  readonly path: string;
+  readonly byteLength: number;
+  readonly sha256: Sha256Hex;
+}
+
+export interface ChecksumsFile {
+  readonly schemaVersion: "mandelhowl.checksums.v1";
+  readonly algorithm: "sha256";
+  /** Every referenced asset except checksums.json itself, sorted by path. */
+  readonly files: readonly ChecksumEntry[];
 }

@@ -28,6 +28,61 @@ export interface FeedbackSpec {
     readonly activationBandwidthRatio: number;
     readonly residualEnergyThreshold: number;
   };
+  readonly calibration: {
+    readonly modalResponse: {
+      readonly minimumBandwidthHz: number;
+      readonly dampingBandwidthMultiplier: number;
+      readonly relativeBandwidthFloor: number;
+      readonly couplingNormalization:
+        "dataset-global-maximum-absolute-actuator-microphone-product";
+      readonly directionalPhaseScale: number;
+      readonly captureSpeedHzPerSecond: number;
+    };
+    readonly modalEnergy: {
+      readonly retainedDriveBase: number;
+      readonly feedbackDriveBase: number;
+      readonly feedbackEnvelopeMultiplier: number;
+      readonly feedbackSignalMultiplier: number;
+      readonly attackBasePerSecond: number;
+      readonly attackResponseMultiplierPerSecond: number;
+      readonly releaseBasePerSecond: number;
+      readonly releaseDampingMultiplierPerSecond: number;
+      readonly phaseDriftScale: number;
+      readonly activeModeScoreMinimum: number;
+    };
+    readonly loopMargin: {
+      readonly adjacentModeGainLinear: number;
+      readonly residualHistoryGainMaximum: number;
+      readonly residualHistoryStartEnvelope: number;
+      readonly residualHistorySpanEnvelope: number;
+    };
+    readonly energyDynamics: {
+      readonly growthBasePerSecond: number;
+      readonly growthMarginMultiplierPerSecond: number;
+      readonly decayBasePerSecond: number;
+      readonly decayMarginMultiplierPerSecond: number;
+      readonly criticalFollowRatePerSecond: number;
+      readonly criticalLowerRmsMultiplier: number;
+      readonly criticalSaturationPosition: number;
+    };
+    readonly microphone: {
+      readonly modeBaseWeight: number;
+      readonly modePhaseWeight: number;
+      readonly normalizationPerMode: number;
+      readonly radiationNormalizationPerMode: number;
+      readonly levelBase: number;
+      readonly modalResponseWeight: number;
+      readonly radiationWeight: number;
+      readonly beatBase: number;
+      readonly beatWeight: number;
+      readonly peakBase: number;
+      readonly peakAdjacentResponseWeight: number;
+      readonly waveformDryWeight: number;
+      readonly waveformFeedbackWeight: number;
+      readonly waveformModePhaseWeight: number;
+      readonly minimumCriticalScale: number;
+    };
+  };
   readonly loop: {
     readonly delaySeconds: number;
     readonly gainLinear: number;
@@ -70,6 +125,7 @@ export interface FeedbackSpec {
     readonly decayingMaximumEnvelope: number;
     readonly growingMinimumSlopePerSecond: number;
     readonly saturatedMinimumEnvelope: number;
+    readonly saturatedUnconditionalEnvelope: number;
     /** Positive amount of gain reduction, in dB. */
     readonly saturatedMinimumGainReductionDb: number;
   };

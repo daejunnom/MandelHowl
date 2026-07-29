@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mandelhowl.dev/contracts/challenge-host.v1.json",
+  "title": "MandelHowl read-only challenge target message",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["type", "targetVolume"],
+  "properties": {
+    "type": {
+      "const": "mandelhowl.challenge-target.v1"
+    },
+    "targetVolume": {
+      "oneOf": [
+        {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "transport": {
+    "inboundMessageType": "mandelhowl.challenge-target.v1",
+    "outboundMessageType": "mandelhowl.challenge-result.v1",
+    "originPolicy": "same-origin-or-explicit-allowlist",
+    "traceTransmission": "forbidden",
+    "targetMutability": "host-read-only"
+  }
+}

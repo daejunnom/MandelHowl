@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mandelhowl-physics-baker"
+version = "1.0.0"
+description = "Deterministic offline plate-mode baker for MandelHowl"
+requires-python = ">=3.10"
+dependencies = []
+
+[project.scripts]
+mandelhowl-baker = "mandelhowl_baker.cli:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
