@@ -53,8 +53,13 @@
 | F0 | integrity/capability 진단과 접근성 fallback E2E | PASS |
 | F1 | unit·science·integration·E2E·visual·soak 전체 suite | PASS |
 | G0 | release pin·provenance·licenses·headers·archive | PASS |
-| M0 | framework-neutral store/port contract + Svelte 5 control slice | PARTIAL — compile-only, production host/mount 미구현 |
-| M1 | Rust workspace + pinned modes/response 독립 validator | PASS — unit + strict pinned parity |
+| NUI0 | full-scene Svelte 5 primary + React 19 standby가 같은 UI port·single dial·single result·ARIA contract 구현 | PASS — Svelte check + React/Svelte presentation inventory + production mount E2E |
+| NUI1 | 두 view가 공통 dial-input mapping과 canonical runtime을 사용하고 같은 gesture 결과 생성 | PASS — input contract unit + forced React/Svelte differential E2E |
+| NUI2 | availability fault에서 session state를 보존하며 세대·중복 입력을 막고 one-way failover | PASS — supervisor unit + load/mount/active-view/attached-renderer fault E2E |
+| NUI3 | digest mismatch 격리, 근거 진단, hidden heartbeat와 두 구현/supervisor/host source provenance | PASS — `MH-UI-*` unit + release provenance v3 verifier |
+| M1 | 같은 `baker-algorithm.v1`을 독립 구현한 Rust native/Python stdlib 전체 generator | PASS — full-generation strict WSL differential |
+| M2 | Rust primary, availability-only Python degraded fallback, scientific split-brain/LKG 정책 | PASS — broker policy/process/semantic-diff tests |
+| M3 | 관리된 단일 native executable, 4551 구조화, report-file attestation과 release binding | PASS — artifact-path/process tests + release verifier |
 
 ## 최종 gate
 
@@ -70,12 +75,24 @@ npm run release:archive:check
 개별 결과를 강제하는 값별 분기나 lookup table, 검증되지 않은 dataset의
 프로덕션 승격, 실제 마이크 입력은 release blocker다.
 
-`response.bin`의 공진 계산 재통합, Svelte 5 전체 UI entry 이전, Rust native
-전체 generator는 현재 `PASS`에 포함하지 않는다. M0는 compile-only 교체
-경계, M1은 독립 validator 구현과 compile gate를 뜻한다. 기본 구현체
-교체에는 production host/mount smoke, coverage differential, 수치 A/B와
-policy-compatible host의 Python/Rust strict parity가 추가로 필요하다.
-`docs/adr-runtime-rendering-and-migration.md`에 gate를 기록한다.
+Svelte 5 full scene은 primary로, 같은 계약의 React 19 full scene은 standby로
+프로덕션 host에 연결됐다. NUI0–NUI3의 `PASS`는 framework view availability,
+세션 연속성, 입력 exactly-once 경계와 provenance를 뜻한다. 두 구현은 같은
+TypeScript scientific runtime, renderer/audio, dataset, CSS, supervisor와
+hosting bootstrap을 공유하므로 과학 알고리즘이나 배포 전체의 독립 N-version을
+뜻하지 않는다. shared contract digest mismatch는 자동 fallback하지 않고
+split-brain으로 격리한다. 활성 view의 연결된 renderer가 실패하면 standby로
+전환하며, 모든 view가 실패하면 정적 fatal 상태와 함께 오디오를 suspend한다.
+
+`response.bin`의 공진 계산 재통합과 위 UI 공통-mode 제거는 현재 `PASS`에
+포함하지 않는다.
+
+M1 strict WSL full-generation 증거는 `dual-verified`,
+`mismatchCount = 0`, Rust `3.041 s`, Python `62.283 s`였다. field, 네 종류의
+decoded KTX2 atlas와 mesh는 exact였고 나머지 수치는 versioned 계약의
+허용오차 안이었다. 이는 두 구현의 현재 계약 합의를 증명한다. 배포 중인
+고정 dataset은 `algorithmRevision` 도입 전 legacy/unversioned pin이므로 현재
+N-version으로 재생성됐다고 소급 주장하지 않는다.
 
 atlas-v1은 종류별 48 layer가 monolithic이므로 per-mode/range lazy residency도
 현재 `PASS`에 포함하지 않는다. 현재 D1은 검증된 core→sand prewarm→나머지

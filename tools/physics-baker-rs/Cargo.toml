@@ -8,7 +8,10 @@ publish = false
 [lib]
 name = "mandelhowl_baker_native"
 path = "src/lib.rs"
+doctest = false
 
 [[bin]]
 name = "mandelhowl-baker-native"
 path = "src/main.rs"
+test = false
+bench = false

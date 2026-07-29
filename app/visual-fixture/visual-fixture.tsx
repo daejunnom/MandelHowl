@@ -22,6 +22,7 @@ import {
   getRuntimeSnapshot,
 } from "@/packages/resonance-engine/src";
 import { MandelHowlScene, type MandelHowlRegime } from "../mandelhowl-scene";
+import "../mandelhowl.css";
 
 interface VisualState {
   readonly frequency: number;

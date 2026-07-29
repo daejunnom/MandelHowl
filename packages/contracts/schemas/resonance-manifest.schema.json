@@ -26,6 +26,10 @@
     "schemaVersion": {
       "const": "mandelhowl.resonance-manifest.v1"
     },
+    "algorithmRevision": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+    },
     "datasetId": {
       "$ref": "#/$defs/contentId"
     },
@@ -38,7 +42,10 @@
           "const": "generated"
         },
         "generator": {
-          "const": "tools/physics-baker"
+          "enum": [
+            "tools/physics-baker",
+            "tools/physics-baker-rs"
+          ]
         },
         "policy": {
           "const": "immutable-regenerate"

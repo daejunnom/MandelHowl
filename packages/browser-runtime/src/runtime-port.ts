@@ -1,5 +1,6 @@
 import type { RuntimeSnapshot } from "../../contracts/src";
 import type { DialCommand } from "../../dial-engine/src";
+import type { PlateRendererStatus } from "../../render-engine/src";
 import {
   RuntimeSnapshotFanout,
   type SnapshotConsumer,
@@ -12,11 +13,79 @@ export interface RuntimeSnapshotReadable {
   getSnapshot(): RuntimeSnapshot;
 }
 
+export type MandelHowlDatasetStatus =
+  | "loading"
+  | "verified"
+  | "prototype"
+  | "error";
+
+export interface MandelHowlPresentedDiagnostic {
+  readonly severity: "none" | "info" | "warning" | "fatal";
+  readonly title: string | null;
+  readonly message: string | null;
+  readonly code: string | null;
+  readonly detail: string | null;
+}
+
+/**
+ * Owned state exposed to UI implementations.
+ *
+ * The scientific snapshot remains canonical. The remaining fields are
+ * browser-session presentation state which cannot be reconstructed by a view
+ * (dataset promotion, audio activation, renderer health and host challenge).
+ */
+export interface MandelHowlUiSnapshot {
+  readonly contractVersion: "mandelhowl.ui-port.v1";
+  readonly revision: number;
+  readonly runtime: RuntimeSnapshot;
+  readonly minimumFrequencyHz: number;
+  readonly maximumFrequencyHz: number;
+  readonly radialDeadZone: number;
+  readonly dragging: boolean;
+  readonly audioEnabled: boolean;
+  readonly datasetStatus: MandelHowlDatasetStatus;
+  readonly renderer: PlateRendererStatus | null;
+  readonly diagnostic: MandelHowlPresentedDiagnostic;
+  readonly challengeTarget: number | null;
+}
+
+export interface MandelHowlUiSnapshotReadable {
+  subscribe(consumer: (snapshot: MandelHowlUiSnapshot) => void): () => void;
+  getSnapshot(): MandelHowlUiSnapshot;
+}
+
+export interface MandelHowlViewAttachment {
+  /** Detaches only this view. It never disposes the shared browser session. */
+  detach(): void;
+  /**
+   * Optional view-local renderer availability channel.
+   *
+   * The canonical session owns renderer execution, so failures can occur
+   * outside a framework event handler. The N-version supervisor subscribes to
+   * this channel and treats a failed visible attachment as a view availability
+   * failure without granting the view any session-disposal authority.
+   */
+  subscribeAvailabilityFailure?(
+    consumer: (error: unknown) => void,
+  ): () => void;
+}
+
 export interface MandelHowlBrowserRuntimePort {
+  readonly contractVersion: "mandelhowl.ui-port.v1";
   readonly snapshots: RuntimeSnapshotReadable;
-  mountPlate(canvas: HTMLCanvasElement): void;
+  readonly presentation: MandelHowlUiSnapshotReadable;
+  mountPlate(canvas: HTMLCanvasElement): MandelHowlViewAttachment;
   dispatchDial(command: DialCommand): void;
+  setDragging(dragging: boolean): void;
   activateAudio(): Promise<boolean>;
+}
+
+/**
+ * Owner capability is deliberately separate from the UI port. A failed
+ * React/Svelte candidate can detach its own canvas and subscriptions, but
+ * cannot tear down the canonical runtime, audio graph or dataset lifecycle.
+ */
+export interface MandelHowlBrowserSessionOwner {
   dispose(): void;
 }
 
@@ -83,5 +152,77 @@ export class RuntimeSnapshotStore implements RuntimeSnapshotReadable {
 
   dispose(): void {
     this.fanout.dispose();
+  }
+}
+
+export class MandelHowlUiSnapshotStore
+  implements MandelHowlUiSnapshotReadable
+{
+  private current: MandelHowlUiSnapshot;
+  private readonly consumers = new Set<
+    (snapshot: MandelHowlUiSnapshot) => void
+  >();
+  private readonly onConsumerError?: (
+    error: unknown,
+    snapshot: MandelHowlUiSnapshot,
+  ) => void;
+
+  constructor(
+    initial: MandelHowlUiSnapshot,
+    onConsumerError?: (
+      error: unknown,
+      snapshot: MandelHowlUiSnapshot,
+    ) => void,
+  ) {
+    this.current = initial;
+    this.onConsumerError = onConsumerError;
+  }
+
+  getSnapshot(): MandelHowlUiSnapshot {
+    return this.current;
+  }
+
+  subscribe(consumer: (snapshot: MandelHowlUiSnapshot) => void): () => void {
+    this.consumers.add(consumer);
+    try {
+      consumer(this.current);
+    } catch (error) {
+      this.consumers.delete(consumer);
+      this.reportConsumerError(error, this.current);
+      return () => {};
+    }
+    return () => {
+      this.consumers.delete(consumer);
+    };
+  }
+
+  publish(snapshot: MandelHowlUiSnapshot): void {
+    if (snapshot.revision <= this.current.revision) return;
+    this.current = snapshot;
+    for (const consumer of Array.from(this.consumers)) {
+      try {
+        consumer(snapshot);
+      } catch (error) {
+        // A broken UI version is isolated immediately. Its supervisor receives
+        // the diagnostic through the supplied observer and may fail over.
+        this.consumers.delete(consumer);
+        this.reportConsumerError(error, snapshot);
+      }
+    }
+  }
+
+  dispose(): void {
+    this.consumers.clear();
+  }
+
+  private reportConsumerError(
+    error: unknown,
+    snapshot: MandelHowlUiSnapshot,
+  ): void {
+    try {
+      this.onConsumerError?.(error, snapshot);
+    } catch {
+      // Observability must never compromise session availability.
+    }
   }
 }

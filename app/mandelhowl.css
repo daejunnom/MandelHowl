@@ -1,3 +1,60 @@
+.mh-ui-nversion-host {
+  position: relative;
+  min-height: 0;
+}
+
+.mh-session-canvas {
+  position: fixed;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.mh-ui-version-target {
+  min-height: 100svh;
+}
+
+.mh-ui-generation-target {
+  min-height: inherit;
+}
+
+.mh-ui-loading {
+  position: fixed;
+  z-index: 3;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  gap: 0.55rem;
+  background: #0a0d0e;
+  color: #edf0e9;
+  text-align: center;
+  letter-spacing: 0.08em;
+}
+
+.mh-ui-loading span {
+  color: #8fd8df;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+}
+
+.mh-ui-fatal {
+  position: fixed;
+  z-index: 4;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  gap: 0.65rem;
+  padding: 2rem;
+  background: #0a0d0e;
+  color: #edf0e9;
+  text-align: center;
+}
+
+.mh-ui-fatal p {
+  margin: 0;
+}
+
 .mh-shell {
   --ink: #0a0d0e;
   --ink-soft: #15191a;

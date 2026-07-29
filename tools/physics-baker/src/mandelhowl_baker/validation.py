@@ -288,6 +288,7 @@ def validate_dataset(dataset: Path) -> dict[str, Any]:
         )
     return {
         "datasetId": manifest["datasetId"],
+        "manifestSha256": sha256_file(dataset / "manifest.json"),
         "modeCount": len(modes),
         "responseSampleCount": len(response),
         "textureCount": len(files["textures"]),

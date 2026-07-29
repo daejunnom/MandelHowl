@@ -16,6 +16,10 @@ const outputPath = resolve(
   "packages/contracts/src/generated/runtime-specs.generated.ts",
 );
 const releaseLockPath = resolve(root, "release/dataset-lock.json");
+const identitySources = {
+  scientificAlgorithm: "specs/physics/baker-algorithm.v1.json",
+  presentationContract: "specs/runtime/ui-nversion.v1.json",
+};
 const sources = [
   ["dial", "specs/runtime/dial.v1.yaml", "GENERATED_DIAL_SPEC", "DialConfig"],
   [
@@ -117,6 +121,12 @@ const parsed = sources.map(([key, path, constant, type]) => {
   const source = readFileSync(resolve(root, path), "utf8");
   return { key, path, constant, type, source, value: parseYamlSubset(source) };
 });
+const nVersionContractDigests = Object.fromEntries(
+  Object.entries(identitySources).map(([key, sourcePath]) => [
+    key,
+    `sha256:${hash(readFileSync(resolve(root, sourcePath)))}`,
+  ]),
+);
 
 const body = `/**
  * GENERATED FILE — edit specs/runtime/*.yaml and run
@@ -127,6 +137,12 @@ import type { FeedbackSpec } from "../feedback-spec";
 
 export const RUNTIME_SPEC_SOURCE_HASHES = Object.freeze(${JSON.stringify(
   Object.fromEntries(parsed.map((item) => [item.key, hash(item.source)])),
+  null,
+  2,
+)} as const);
+
+export const N_VERSION_CONTRACT_DIGESTS = Object.freeze(${JSON.stringify(
+  nVersionContractDigests,
   null,
   2,
 )} as const);

@@ -1,5 +1,6 @@
 import vinext from "vinext";
 import { defineConfig } from "vite";
+import { svelte } from "@sveltejs/vite-plugin-svelte";
 import hostingConfig from "./.openai/hosting.json";
 import { sites } from "./build/sites-vite-plugin";
 
@@ -62,6 +63,7 @@ export default defineConfig(async () => {
       },
     },
     plugins: [
+      svelte(),
       vinext(),
       sites(),
       cloudflare({

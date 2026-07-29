@@ -3,7 +3,7 @@
 - 상태: Accepted
 - 결정일: 2026-07-30
 - 적용 범위: 중앙 금속판·모래 렌더링, 런타임 자산 로딩, UI와 오프라인
-  baker의 향후 구현체 선택
+  baker의 N-version 선택
 
 ## 배경
 
@@ -61,7 +61,7 @@ sand density가 128×128×48 KTX2 array로 미리 계산되어 있다. 브라우
 객체 graph를 렌더 프레임마다 새로 만들지 않는다.
 
 renderer와 audio는 매 animation frame에 같은 writer lease를 동기적으로
-소비하고 이를 보관하지 않는다. React, challenge, diagnostics는 같은 canonical
+소비하고 이를 보관하지 않는다. 활성 UI, challenge, diagnostics는 같은 canonical
 state와 sequence에서 만든 owned immutable snapshot을 최대 24 Hz로 받는다.
 dataset 교체와 visibility reset에는 두 lane을 강제로 함께 발행한다. differential
 unit test가 lease와 immutable projection의 필드 값을 비교한다.
@@ -162,49 +162,85 @@ critical 폭, 0/100 극단 비율, 1..99 전체 도달 trace가 함께 달라질
 
 프레임워크나 언어 변경은 현재 렌더 hot path의 정확성 수정과 분리한다.
 
-### React에서 Svelte 5
+### Svelte-primary / React-standby N-version
 
-현재 React/Vinext 프로덕션 entry를 즉시 교체하지 않는다. 다만
-snapshot fanout, challenge host, health hook은 React 앱에서
-`packages/browser-runtime`으로 이동했고, Svelte-readable
-`RuntimeSnapshotStore`와 `MandelHowlBrowserRuntimePort`를 공개한다.
-`apps/svelte-prototype`의 Svelte 5 수직 slice는 같은 TypeScript 엔진,
-presentation model, CSS와 ARIA 계약을 사용하며 `svelte-check`를 통과해야
-한다. 이 slice는 아직 compile-only다. production orchestration adapter와
-pointer gesture, mount smoke가 추가되기 전에는 runnable migration으로
-승격하지 않는다.
+프로덕션 host는 하나의 framework-neutral browser session을 먼저 만들고
+`UiNVersionSupervisor`에 view mount capability만 전달한다. Svelte 5가
+primary이며 React 19는 cold standby다. 두 구현 모두
+`mandelhowl.ui-port.v1`, 공통 dial-input mapping, presentation model,
+`.mh-*` CSS와 ARIA 계약을 소비한다.
 
-동일 기기·동일 production build에서 다음 중 하나 이상을 만족할 때만 전체
-entry 이전 후보로 승인한다.
+자동 전환은 load, mount, readiness timeout, visible-document heartbeat stale,
+framework view error처럼 확인된 availability failure에만 허용한다. 전환은
+세션당 최대 한 번이고 자동 fail-back은 없다. view generation이 바뀌면 이전
+input lease를 폐기하며 같은 native event identity는 새 generation에서도
+두 번 dispatch하지 않는다. plate와 framework view는 detach하지만 canonical
+runtime, dataset loader와 safe-audio graph는 계속 소유자가 유지한다.
+활성 view에 연결된 plate renderer의 context·texture·render failure도
+view-local availability fault로 보고한다. standby까지 실패하면 host는 정적
+fatal 상태를 표시하고 safe audio engine을 suspend한다.
 
-- 초기 client JavaScript transfer 또는 parse 대상 20% 이상 감소
-- 다이얼 조작 구간 UI commit CPU 30% 이상 감소
-- dial input에서 다음 plate paint까지 p95 15% 이상 감소
+scientific algorithm digest 또는 presentation contract digest의 불일치는
+실패 복구 후보가 아니라 split-brain이다. supervisor는 두 view를 격리하고
+`MH-UI-SPLIT-BRAIN`을 보고하며 어느 결과도 자동 채택하지 않는다. 이 규칙과
+primary/standby 순서는 `specs/runtime/ui-nversion.v1.json`에 고정되고 generated
+contract digest, release provenance와 verifier가 source drift를 차단한다.
 
-그와 동시에 snapshot 결정성, WebGL2/Canvas2D 픽셀 전환, 접근성, 오디오
-안전, 60/30 FPS 예산에 회귀가 없어야 한다. 측정 기준과 raw 결과를 저장하지
-않은 체감 비교는 이전 근거로 사용하지 않는다.
+| Gate | 합격 조건 |
+|---|---|
+| NUI0 | Svelte와 React가 같은 전체 scene·single dial·single integer result·ARIA contract를 독립 mount |
+| NUI1 | 같은 gesture가 공통 input adapter를 거쳐 같은 canonical runtime frequency/state를 생성 |
+| NUI2 | load/mount/readiness/heartbeat/view fault에서 state 보존, stale/duplicate input 거부, 한 번의 one-way failover |
+| NUI3 | `MH-UI-*` evidence, hidden-page heartbeat suspension, spec·두 entry/source·supervisor·route host digest를 release provenance에서 검증 |
 
-### Python baker에서 Rust native
+이는 framework view의 fail-operational 경계이지 과학 엔진의 두 구현이 아니다.
+두 view는 runtime, renderer, audio, dataset, CSS, supervisor와 React/Vinext
+route·hosting bootstrap을
+공유하므로 해당 공통-mode 오류에는 이 failover를 사용하지 않는다. 과거의
+JavaScript transfer·commit CPU·dial-to-paint 성능 기준은 React standby 제거
+근거가 아니라 두 구현의 성능 회귀를 측정하는 예산으로 남긴다.
 
-Python baker는 브라우저 UI hot path가 아니라 오프라인 생성 도구다. 장기
-후보는 Cython이나 런타임 WASM이 아니라 Rust native baker다. 루트 Cargo
-workspace와 `tools/physics-baker-rs`가 `modes-v1`·`response-v1` 독립
-validator를 제공하며 pinned dataset 검증에서 Python oracle 뒤에 실행된다.
-native `generate`는 아직 fail-closed다. Rust 구현은 Python을 독립 oracle로
-유지하면서 field, 질량, 고유주파수, mode sign, texture와 coverage의
-differential 검증을 통과해야 한다. provenance에는 Rust toolchain과 binary
-digest를 기록한다.
+### Rust-primary / Python-standby baker N-version
 
-로컬 application-control 정책이 새 Rust executable을 막는 경우 기본
-`physics:validate`는 skip을 명시하고, `physics:validate:strict`는 실패한다.
-따라서 native parity의 release 증거는 policy-compatible CI에서 strict
-command로 남긴다. compile/clippy 성공을 native 실행 성공으로 대체하지 않는다.
+Python baker는 브라우저 UI hot path가 아니라 오프라인 생성 도구다.
+`specs/physics/baker-algorithm.v1.json`은 binary64, fast-math 금지, 반복·합산
+순서, ties-to-even 양자화, field/solver/mesh/texture/package 규칙과
+differential tolerance를 versioned 계약으로 고정한다.
+`tools/physics-baker-rs`와 `tools/physics-baker`는 field부터 세 해상도 solve,
+48 modes/response, 네 KTX2 atlas, mesh/evidence와 content-addressed package까지
+각각 독립 구현한다.
 
-backend provenance가 다르면 전체 dataset content hash도 달라지는 것이
-정상이다. 따라서 cross-backend gate는 scientific payload의 semantic digest와
-수치·pixel parity를 비교하고, full dataset hash 결정성은 backend별 반복
-실행으로 검증한다.
+broker는 두 full candidate가 semantic하게 합의한 경우에만 Rust primary를
+선택하고 promotion/release를 허용한다. Rust missing/timeout/Application
+Control `4551`은 availability failure이므로 Python degraded fallback을
+허용하되 승격·release는 금지한다. scientific rejection이나 semantic mismatch는
+split-brain이며 어느 새 candidate도 선택하지 않고 검증된 last-known-good를
+유지한다.
+
+운영 실행 표면은
+`tools/physics-baker-rs/bin/<platform>-<arch>/mandelhowl-baker-native[.exe]`
+한 파일로 고정한다. `cargo run/test`와 `target/` discovery는 운영에 사용하지
+않고 개발·Linux CI gate에만 둔다. managed CI/installer의 exact absolute
+binary injection은 SHA-256과 함께 report에 남는다. 이 방식은 Windows에서
+새 executable을 반복 생성·실행해 `4551` 판정을 늘리는 표면을 줄인다.
+
+`--report-file`은 backend identity/status/duration, native digest, algorithm
+revision/raw digest, semantic metrics와 선택 정책을 machine-readable하게
+기록한다. release verifier는 `dual-verified`, mismatch 0,
+promotion/release true, Rust 선택과 candidate identity/dataset binding을
+재검증하며 terminal output만을 증거로 사용하지 않는다.
+
+strict full WSL differential은 Rust `3.041 s`, Python `62.283 s`에 완료됐고
+`mismatchCount = 0`이었다. field, 네 decoded texture atlas와 mesh는 exact였고
+모드·응답·solver/report는 versioned 허용오차
+(`1e-9` mode frequency relative, `1e-10` mode scalar absolute,
+`2e-10` response component absolute, texture/field 최대 `1 LSB` 등) 안이었다.
+
+현재 배포 pin은 algorithm revision 도입 전 legacy/unversioned dataset이다.
+그러므로 위 strict 결과는 implementation attestation이며 현재 pin을 새
+N-version 결과라고 소급 증명하지 않는다. 새 dataset은 두 candidate의
+versioned manifest와 report identity를 묶은 dataset-bound attestation 뒤에만
+승격한다.
 
 런타임 Rust/WASM은 현재 도입하지 않는다. representative trace에서
 시뮬레이션 step이 `2 ms p95`를 넘거나 시뮬레이션이 메인 스레드 CPU의
@@ -215,7 +251,12 @@ backend provenance가 다르면 전체 dataset content hash도 달라지는 것�
 
 2026-07-30 worktree에서 render-engine·asset-runtime·runtime snapshot
 focused unit, 두 snapshot fanout lane의 web unit, renderer integrity와
-resource soak를 통과했다.
+resource soak를 통과했다. UI N-version 검증은 supervisor availability/
+split-brain/lease unit, Svelte compile check, React/Svelte presentation
+inventory와 load·mount·active-view fault E2E 및 failover 전후 frequency
+continuity를 포함한다. Baker N-version 검증은 broker policy/process/semantic
+unit, 관리된 native self-test와 strict WSL full-generation differential을
+포함한다.
 
 temporal fixture E2E는 WebGL2와 Canvas2D 각각 baseline 뒤 정확한 다음
 animation frame, 50 ms, 250 ms snapshot을 순서대로 그린다. 새
@@ -235,11 +276,11 @@ screenshot hash로 비교해 실제 입력 뒤 근접 paint, 50 ms, 250 ms의 �
 - runtime frame-pressure를 입력으로 한 자동 `60→30 FPS` 전환과
   핸드오프 15.3의 전체 단계적 품질 저하. 현재는 startup hardware tier,
   reduced-motion, forced-colors만 적용한다.
-- Svelte 5 전체 UI entry 이전. browser-runtime store/port 계약과 compile-only
-  control slice는 구현했지만 production adapter, pointer gesture,
-  route/fixture/hosting shell은 아직 React다.
-- Rust native 전체 generator와 Rust/WASM 런타임. Cargo workspace와 binary
-  validator는 구현했지만 Python generator를 대체하지 않는다.
+- UI framework와 무관한 두 번째 scientific runtime, 독립 CSS·renderer·audio,
+  별도 hosting bootstrap. 현재 N-version은 Svelte/React presentation
+  availability를 보호하며 이 공통-mode 범위를 넘어선다고 주장하지 않는다.
+- Rust/WASM 브라우저 런타임. Rust native는 오프라인 baker N-version으로
+  승격했지만 browser fixed-step scientific runtime은 계속 TypeScript 하나다.
 
 이 항목은 누락을 완료로 표시하지 않고 위 검증 게이트가 충족될 때 별도
 변경으로 추적한다.

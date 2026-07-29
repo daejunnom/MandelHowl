@@ -31,9 +31,13 @@ export interface CanonicalOwnership {
   readonly policy: "edit-source-regenerate-derived";
 }
 
+export type GeneratedArtifactGenerator =
+  | "tools/physics-baker"
+  | "tools/physics-baker-rs";
+
 export interface GeneratedArtifactOwnership {
   readonly kind: "generated";
-  readonly generator: "tools/physics-baker";
+  readonly generator: GeneratedArtifactGenerator;
   readonly policy: "immutable-regenerate";
 }
 

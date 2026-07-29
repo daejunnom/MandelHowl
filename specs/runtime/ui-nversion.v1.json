@@ -1,0 +1,47 @@
+{
+  "schemaVersion": "mandelhowl.ui-nversion.v1",
+  "portContractVersion": "mandelhowl.ui-port.v1",
+  "primary": "svelte5",
+  "standby": "react",
+  "sharedAlgorithms": {
+    "runtimeSnapshot": "mandelhowl.runtime-snapshot.v1",
+    "dialInputMapping": "packages/browser-runtime/src/dial-input.ts",
+    "oscilloscopePresentation": "packages/presentation-model/src/oscilloscope-presenter.ts"
+  },
+  "requiredSceneRegions": [
+    "header-status",
+    "frequency-dial",
+    "plate-and-sand",
+    "oscilloscope",
+    "phase-meter",
+    "measurement-progress",
+    "virtual-volume",
+    "diagnostic",
+    "footer"
+  ],
+  "requiredInputs": [
+    "pointer",
+    "keyboard",
+    "wheel"
+  ],
+  "accessibility": {
+    "dialRole": "slider",
+    "dialLabel": "Drive frequency",
+    "oneConceptualInput": true,
+    "oneIntegerResult": true,
+    "inactiveViewInDom": false
+  },
+  "selection": {
+    "availabilityFailureMayFailOver": true,
+    "contractMismatchMayFailOver": false,
+    "automaticFailback": false,
+    "maximumFailoversPerSession": 1,
+    "hiddenDocumentHeartbeatSuspended": true
+  },
+  "ownership": {
+    "viewMayDisposeSession": false,
+    "viewMayDetachOwnResources": true,
+    "canonicalRuntimeInstances": 1,
+    "canonicalAudioGraphs": 1
+  }
+}

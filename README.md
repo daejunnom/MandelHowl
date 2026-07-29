@@ -22,15 +22,21 @@ MandelHowl은 하나의 `DRIVE FREQUENCY` 다이얼로 만델브로 물성판과
   challenge host 경계
 - 단위·과학·통합·E2E·시각 회귀·오디오 안전·장시간 soak와 재현 가능한
   릴리스 검증
-- React와 독립적인 browser-runtime/store 계약, Svelte 5 control의
-  compile-only 수직 slice, Rust native modes/response validator와 Python
-  oracle parity gate
+- 같은 browser session을 유지하는 Svelte 5 primary/React 19 standby
+  full-scene presentation, one-way availability failover와 generation-scoped input
+- 동일한 versioned 알고리즘 계약을 독립 구현한 Rust native/Python stdlib 전체
+  baker, semantic differential broker와 machine-readable release attestation
 
 프로덕션 데이터셋은 다음 ID로 고정한다.
 
 ```text
 sha256:d31d968f5812deae76626be450446e5d67cd9075515e36e3e57631204a3a8d98
 ```
+
+이 배포 pin은 `algorithmRevision` 도입 전 생성된 legacy/unversioned dataset이다.
+무결성과 기존 과학 증거는 계속 검증하지만, 현재 Rust/Python N-version
+알고리즘으로 재생성됐다고 소급 주장하지 않는다. 새 dataset 승격에는 두
+backend의 strict 합의와 dataset-bound attestation이 필요하다.
 
 자산이 로드되는 동안이나 무결성 검증이 실패한 경우에만 명시적으로 표시된
 분석적 fallback을 사용한다. 실패한 자산을 프로덕션 결과로 조용히 대체하지
@@ -59,7 +65,9 @@ npm run dev
 npm run verify
 npm run physics:validate
 npm run physics:validate:strict # policy-compatible CI에서 Rust 실행 필수
-npm run release:verify -- --require-clean
+npm run baker:nversion:generate -- --strict --report-file <report.json>
+npm run release:verify -- --require-clean # non-attested source/legacy 검증
+npm run release:verify:attested -- <report.json> # strict CI release gate
 npm run release:archive
 npm run release:archive:check
 ```
@@ -68,5 +76,5 @@ npm run release:archive:check
 `docs/asset-pipeline.md`, `docs/audio-safety.md`에 기록한다.
 `MandelHowl_핸드오프.md`의 요구와 구현 증거의 최종 대응은
 `docs/handoff-coverage.md`와 `docs/acceptance-matrix.md`에서 확인한다.
-Svelte/Rust 기본 구현체 교체의 현재 경계와 남은 gate는
-`docs/migration-seams.md`에 기록한다.
+Svelte/React N-version의 fail-operational 범위와 공통-mode 한계, Rust backend
+경계는 `docs/migration-seams.md`에 기록한다.

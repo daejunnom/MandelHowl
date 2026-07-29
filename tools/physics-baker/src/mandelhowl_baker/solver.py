@@ -14,6 +14,27 @@ import struct
 from dataclasses import dataclass
 from typing import Any, Iterable
 
+from .algorithm import (
+    AXISYMMETRIC_RADIAL_ORDERS,
+    HIGH_ANGULAR_MAXIMUM,
+    HIGH_ANGULAR_MINIMUM,
+    HIGH_ANGULAR_RADIAL_ORDERS,
+    HESSIAN_STEP_RATIO,
+    JACOBI_MAXIMUM_SWEEPS,
+    JACOBI_RELATIVE_TOLERANCE,
+    LOW_ANGULAR_MAXIMUM,
+    LOW_ANGULAR_MINIMUM,
+    LOW_ANGULAR_RADIAL_ORDERS,
+    NORMALIZATION_FLOOR,
+    ORDINAL_DAMPING_SLOPE,
+    PROBE_RING_RADIUS_RATIO,
+    PROBE_RING_SAMPLES,
+    RADIATION_ANGULAR_SAMPLES,
+    RADIATION_COHERENCE_FLOOR,
+    RADIATION_COHERENCE_WEIGHT,
+    RADIATION_RADIAL_SAMPLES,
+    SIGN_EPSILON,
+)
 from .field import MaterialField
 from .linear_algebra import (
     Matrix,
@@ -60,14 +81,14 @@ class SolveResult:
 
 def build_basis() -> tuple[BasisFunction, ...]:
     basis: list[BasisFunction] = []
-    for radial in range(8):
+    for radial in range(AXISYMMETRIC_RADIAL_ORDERS):
         basis.append(BasisFunction(radial, 0, "axisymmetric"))
-    for angular in range(1, 5):
-        for radial in range(4):
+    for angular in range(LOW_ANGULAR_MINIMUM, LOW_ANGULAR_MAXIMUM + 1):
+        for radial in range(LOW_ANGULAR_RADIAL_ORDERS):
             basis.append(BasisFunction(radial, angular, "cosine"))
             basis.append(BasisFunction(radial, angular, "sine"))
-    for angular in range(5, 9):
-        for radial in range(3):
+    for angular in range(HIGH_ANGULAR_MINIMUM, HIGH_ANGULAR_MAXIMUM + 1):
+        for radial in range(HIGH_ANGULAR_RADIAL_ORDERS):
             basis.append(BasisFunction(radial, angular, "cosine"))
             basis.append(BasisFunction(radial, angular, "sine"))
     return tuple(basis)
@@ -207,7 +228,7 @@ def _assemble(
     density = float(material["densityKgPerM3"])
     youngs_modulus = float(material["youngsModulusPa"])
     poisson_ratio = float(material["poissonRatio"])
-    epsilon = radius * 0.0005
+    epsilon = radius * HESSIAN_STEP_RATIO
 
     for radial_index in range(radial_samples):
         radial_position = hub_radius + (radial_index + 0.5) * radial_step
@@ -259,12 +280,12 @@ def _probe_average(
     outer_radius_m: float,
 ) -> float:
     samples = [(0.0, 0.0)]
-    for index in range(8):
-        theta = 2.0 * math.pi * index / 8.0
+    for index in range(PROBE_RING_SAMPLES):
+        theta = 2.0 * math.pi * index / PROBE_RING_SAMPLES
         samples.append(
             (
-                footprint_radius_m * 0.72 * math.cos(theta),
-                footprint_radius_m * 0.72 * math.sin(theta),
+                footprint_radius_m * PROBE_RING_RADIUS_RATIO * math.cos(theta),
+                footprint_radius_m * PROBE_RING_RADIUS_RATIO * math.sin(theta),
             )
         )
     return sum(
@@ -289,12 +310,17 @@ def _radiation_efficiency(
     absolute_sum = 0.0
     signed_sum = 0.0
     count = 0
-    for radial_index in range(12):
-        radius = hub_radius_m + (radial_index + 0.5) / 12.0 * (
+    for radial_index in range(RADIATION_RADIAL_SAMPLES):
+        radius = hub_radius_m + (radial_index + 0.5) / RADIATION_RADIAL_SAMPLES * (
             outer_radius_m - hub_radius_m
         )
-        for angular_index in range(32):
-            theta = (angular_index + 0.5) * 2.0 * math.pi / 32.0
+        for angular_index in range(RADIATION_ANGULAR_SAMPLES):
+            theta = (
+                (angular_index + 0.5)
+                * 2.0
+                * math.pi
+                / RADIATION_ANGULAR_SAMPLES
+            )
             value = evaluate_mode(
                 coefficients,
                 basis,
@@ -306,8 +332,10 @@ def _radiation_efficiency(
             absolute_sum += abs(value)
             signed_sum += value
             count += 1
-    coherence = abs(signed_sum) / max(absolute_sum, 1e-30)
-    return (absolute_sum / count) * (0.35 + 0.65 * coherence)
+    coherence = abs(signed_sum) / max(absolute_sum, NORMALIZATION_FLOOR)
+    return (absolute_sum / count) * (
+        RADIATION_COHERENCE_FLOOR + RADIATION_COHERENCE_WEIGHT * coherence
+    )
 
 
 def solve_modes(
@@ -323,7 +351,9 @@ def solve_modes(
     )
     standard, lower = generalized_to_standard(stiffness, mass)
     values, vectors, sweeps, final_off_diagonal = jacobi_eigen_symmetric(
-        standard, maximum_sweeps=100
+        standard,
+        relative_tolerance=JACOBI_RELATIVE_TOLERANCE,
+        maximum_sweeps=JACOBI_MAXIMUM_SWEEPS,
     )
     eigenpairs: list[tuple[float, list[float]]] = []
     for index, eigenvalue in enumerate(values):
@@ -331,7 +361,12 @@ def solve_modes(
             continue
         transformed = [vectors[row][index] for row in range(len(basis))]
         coefficients = solve_upper_from_lower_transpose(lower, transformed)
-        norm = math.sqrt(max(mass_inner(coefficients, mass, coefficients), 1e-30))
+        norm = math.sqrt(
+            max(
+                mass_inner(coefficients, mass, coefficients),
+                NORMALIZATION_FLOOR,
+            )
+        )
         coefficients = [value / norm for value in coefficients]
         eigenpairs.append((math.sqrt(eigenvalue) / (2.0 * math.pi), coefficients))
     eigenpairs.sort(key=lambda pair: pair[0])
@@ -367,11 +402,14 @@ def solve_modes(
             radius,
         )
         sign_reference = "actuator-positive"
-        if abs(actuator_raw) > 1e-10:
+        if abs(actuator_raw) > SIGN_EPSILON:
             sign = 1.0 if actuator_raw >= 0.0 else -1.0
         else:
             sign_reference = "first-nonzero-node-positive"
-            first = next((value for value in coefficients if abs(value) > 1e-10), 1.0)
+            first = next(
+                (value for value in coefficients if abs(value) > SIGN_EPSILON),
+                1.0,
+            )
             sign = 1.0 if first >= 0.0 else -1.0
         coefficients = [value * sign for value in coefficients]
         actuator_raw *= sign
@@ -396,7 +434,8 @@ def solve_modes(
                 ordinal=ordinal,
                 frequency_hz=frequency,
                 angular_frequency_rad_per_s=2.0 * math.pi * frequency,
-                damping_ratio=damping * (1.0 + 0.012 * (ordinal - 1)),
+                damping_ratio=damping
+                * (1.0 + ORDINAL_DAMPING_SLOPE * (ordinal - 1)),
                 coefficients=tuple(coefficients),
                 actuator_coupling_raw=actuator_raw,
                 microphone_coupling_raw=microphone_raw,
@@ -438,7 +477,9 @@ def modal_assurance(
     )
     left_norm = mass_inner(list(left.coefficients), matrix, list(left.coefficients))
     right_norm = mass_inner(list(right.coefficients), matrix, list(right.coefficients))
-    return numerator * numerator / max(left_norm * right_norm, 1e-30)
+    return numerator * numerator / max(
+        left_norm * right_norm, NORMALIZATION_FLOOR
+    )
 
 
 def convergence_report(
@@ -460,7 +501,7 @@ def convergence_report(
         medium_mode = medium.modes[index]
         fine_mode = fine.modes[index]
         relative_change = abs(fine_mode.frequency_hz - medium_mode.frequency_hz) / max(
-            fine_mode.frequency_hz, 1e-30
+            fine_mode.frequency_hz, NORMALIZATION_FLOOR
         )
         mac = modal_assurance(medium_mode, fine_mode, fine.mass_matrix)
         comparisons.append(

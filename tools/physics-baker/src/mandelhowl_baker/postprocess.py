@@ -7,6 +7,16 @@ import struct
 from dataclasses import dataclass
 from typing import Any
 
+from .algorithm import (
+    FINITE_DIFFERENCE_CHECK_ORDINALS,
+    HIGH_VELOCITY_THRESHOLD,
+    LOW_VELOCITY_THRESHOLD,
+    NODAL_ABSOLUTE_THRESHOLD,
+    NORMAL_VISUAL_SCALE,
+    NORMALIZATION_FLOOR,
+    RESPONSE_SAMPLE_COUNT,
+    SAND_GAUSSIAN_SCALE,
+)
 from .field import MaterialField
 from .ktx2 import write_ktx2_array
 from .solver import Mode, SolveResult, evaluate_mode
@@ -119,14 +129,14 @@ def write_response_binary(
     modes: tuple[RuntimeMode, ...],
     minimum_hz: float,
     maximum_hz: float,
-    sample_count: int = 512,
+    sample_count: int = RESPONSE_SAMPLE_COUNT,
 ) -> tuple[bytes, dict[str, Any]]:
     frequencies = [
         minimum_hz * (maximum_hz / minimum_hz) ** (index / (sample_count - 1))
         for index in range(sample_count)
     ]
     raw = [sum((_complex_response(mode, frequency) for mode in modes), 0j) for frequency in frequencies]
-    normalization = max(max(abs(value) for value in raw), 1e-30)
+    normalization = max(max(abs(value) for value in raw), NORMALIZATION_FLOOR)
     values = [value / normalization for value in raw]
     output = bytearray(struct.pack("<8sHHI", b"MHRESPN1", 1, 16, sample_count))
     for frequency, value in zip(frequencies, values):
@@ -232,7 +242,9 @@ def _finite_difference_frequency(
             )
             bending_energy += rigidity * curvature * area
             mass_energy += density * thickness * values[index] ** 2 * area
-    return math.sqrt(bending_energy / max(mass_energy, 1e-30)) / (2.0 * math.pi)
+    return math.sqrt(
+        bending_energy / max(mass_energy, NORMALIZATION_FLOOR)
+    ) / (2.0 * math.pi)
 
 
 def build_textures(
@@ -250,7 +262,7 @@ def build_textures(
     sand_alignment: list[float] = []
     radius = float(spec["geometry"]["radiusM"])
     step = 2.0 * radius / size
-    check_ordinals = {1, 8, 16, 32, 48}
+    check_ordinals = FINITE_DIFFERENCE_CHECK_ORDINALS
 
     for mode in result.modes:
         values, valid = _shape_grid(spec, result, mode, size)
@@ -271,12 +283,14 @@ def build_textures(
                     layer_normal.extend((128, 128))
                     continue
                 absolute = abs(values[index])
-                layer_nodal[index] = 255 if absolute <= 0.065 else 0
-                density = math.exp(-((absolute / 0.12) ** 2))
+                layer_nodal[index] = (
+                    255 if absolute <= NODAL_ABSOLUTE_THRESHOLD else 0
+                )
+                density = math.exp(-((absolute / SAND_GAUSSIAN_SCALE) ** 2))
                 layer_sand[index] = max(0, min(255, round(255.0 * density)))
-                if absolute <= 0.1:
+                if absolute <= LOW_VELOCITY_THRESHOLD:
                     low_velocity_sand.append(density)
-                elif absolute >= 0.5:
+                elif absolute >= HIGH_VELOCITY_THRESHOLD:
                     high_velocity_sand.append(density)
                 left = values[index - 1] if x > 0 and valid[index - 1] else values[index]
                 right = (
@@ -298,7 +312,7 @@ def build_textures(
                 dy = (up - down) / (2.0 * step)
                 # Visual normal scale is a documented exaggeration; topology and
                 # coordinate alignment remain data-derived.
-                visual_scale = 0.0015
+                visual_scale = NORMAL_VISUAL_SCALE
                 length = math.sqrt(
                     1.0 + (visual_scale * dx) ** 2 + (visual_scale * dy) ** 2
                 )

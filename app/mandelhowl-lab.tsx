@@ -3,11 +3,9 @@
 import {
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
-  type KeyboardEvent,
-  type PointerEvent,
-  type WheelEvent,
 } from "react";
 import {
   loadResonanceDataset,
@@ -27,10 +25,7 @@ import {
   presentDiagnostics,
   probeRuntimeCapabilities,
 } from "@/packages/diagnostics/src";
-import {
-  type DialCommand,
-  type DialKeyboardKey,
-} from "@/packages/dial-engine/src";
+import type { DialCommand } from "@/packages/dial-engine/src";
 import {
   createPlateRenderer,
   type PlateRenderer,
@@ -52,11 +47,14 @@ import {
   createChallengeHostBridge,
   type ChallengeHostBridge,
   installRuntimeHealthHook,
+  MandelHowlUiSnapshotStore,
   RuntimeSnapshotLeaseFanout,
   RuntimeSnapshotStore,
+  type MandelHowlBrowserRuntimePort,
   type MandelHowlHealthSnapshot,
 } from "@/packages/browser-runtime/src";
-import { MandelHowlScene } from "./mandelhowl-scene";
+import { MandelHowlUiHost } from "./mandelhowl-ui-host";
+import "./mandelhowl.css";
 
 interface ViewState {
   readonly snapshot: RuntimeSnapshot;
@@ -65,18 +63,13 @@ interface ViewState {
   readonly maximumFrequencyHz: number;
 }
 
-type DatasetStatus = "loading" | "verified" | "prototype" | "error";
+interface ViewPlateRenderer {
+  readonly renderer: PlateRenderer;
+  readonly resizeObserver: ResizeObserver | null;
+  readonly reportAvailabilityFailure: (error: unknown) => void;
+}
 
-const DIAL_KEYS = new Set<string>([
-  "ArrowLeft",
-  "ArrowRight",
-  "ArrowDown",
-  "ArrowUp",
-  "PageDown",
-  "PageUp",
-  "Home",
-  "End",
-]);
+type DatasetStatus = "loading" | "verified" | "prototype" | "error";
 
 const PRESENTATION_SNAPSHOT_INTERVAL_SECONDS = 1 / 24;
 
@@ -111,25 +104,6 @@ const DATASET_PENDING_DIAGNOSTIC = createDiagnostic({
     },
   ],
 });
-
-function dialCommandPoint(
-  event: PointerEvent<HTMLDivElement>,
-  state: MandelHowlRuntimeState,
-) {
-  const bounds = event.currentTarget.getBoundingClientRect();
-  return {
-    point: {
-      x: event.clientX,
-      y: event.clientY,
-    },
-    center: {
-      x: bounds.left + bounds.width / 2,
-      y: bounds.top + bounds.height / 2,
-    },
-    deadZoneRadius:
-      Math.min(bounds.width, bounds.height) * state.dial.config.radialDeadZone,
-  };
-}
 
 export function activeMode(snapshot: RuntimeSnapshot): {
   index: number | null;
@@ -268,6 +242,8 @@ export function MandelHowlLab() {
   const runtimeRef = useRef<MandelHowlRuntimeState>(initialRuntime);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const rendererRef = useRef<PlateRenderer | null>(null);
+  const viewRenderersRef = useRef<ViewPlateRenderer[]>([]);
+  const secondaryTextureSourceRef = useRef<PlateTextureSource | null>(null);
   const rendererStatusRef = useRef<PlateRendererStatus | null>(null);
   const challengeRef = useRef<ChallengeHostBridge | null>(null);
   const challengeTargetRef = useRef<number | null>(null);
@@ -275,6 +251,33 @@ export function MandelHowlLab() {
   const [audioEngine] = useState(() => new SafeAudioEngine());
 
   const initialSnapshot = getRuntimeSnapshot(initialRuntime);
+  const [runtimeSnapshots] = useState(
+    () => new RuntimeSnapshotStore(initialSnapshot),
+  );
+  const [uiSnapshots] = useState(
+    () =>
+      new MandelHowlUiSnapshotStore({
+        contractVersion: "mandelhowl.ui-port.v1",
+        revision: 0,
+        runtime: initialSnapshot,
+        minimumFrequencyHz: initialRuntime.dial.config.minFrequencyHz,
+        maximumFrequencyHz: initialRuntime.dial.config.maxFrequencyHz,
+        radialDeadZone: initialRuntime.dial.config.radialDeadZone,
+        dragging: initialRuntime.dial.dragging,
+        audioEnabled: false,
+        datasetStatus: "loading",
+        renderer: null,
+        diagnostic: {
+          severity: "info",
+          title: null,
+          message: null,
+          code: "MH-DATASET-PENDING",
+          detail: null,
+        },
+        challengeTarget: null,
+      }),
+  );
+  const uiRevisionRef = useRef(0);
   const [viewState, setViewState] = useState<ViewState>(() => ({
     snapshot: initialSnapshot,
     dragging: initialRuntime.dial.dragging,
@@ -308,108 +311,217 @@ export function MandelHowlLab() {
   }, []);
 
   const activateAudio = useCallback(async () => {
-    if (audioEngine.isActivated) return;
+    if (audioEngine.isActivated) return true;
     const active = await audioEngine.activate();
     setAudioEnabled(Boolean(active));
+    return Boolean(active);
   }, [audioEngine]);
 
-  const onDialPointerDown = useCallback(
-    (event: PointerEvent<HTMLDivElement>) => {
-      if (event.pointerType === "mouse" && event.button !== 0) return;
-      event.preventDefault();
-      try {
-        event.currentTarget.setPointerCapture(event.pointerId);
-      } catch {
-        // Some assistive pointer adapters do not expose capture.
+  const suspendAudioForUiIsolation = useCallback(() => {
+    void audioEngine
+      .suspend("error")
+      .catch(() => {
+        // The safe audio engine already reports lifecycle failures.
+      })
+      .finally(() => {
+        setAudioEnabled(false);
+      });
+  }, [audioEngine]);
+
+  const setDragging = useCallback((dragging: boolean) => {
+    setViewState((current) =>
+      current.dragging === dragging ? current : { ...current, dragging },
+    );
+  }, []);
+
+  const mountViewPlate = useCallback(
+    (canvas: HTMLCanvasElement) => {
+      const capabilities = probeRuntimeCapabilities();
+      let candidate: ViewPlateRenderer | null = null;
+      let attached = true;
+      let availabilityFailure: unknown | null = null;
+      const availabilityFailureConsumers = new Set<
+        (error: unknown) => void
+      >();
+      const reportAvailabilityFailure = (error: unknown) => {
+        if (!attached || availabilityFailure !== null) return;
+        availabilityFailure =
+          error ??
+          new Error("The attached plate renderer became unavailable.");
+        for (const consumer of Array.from(availabilityFailureConsumers)) {
+          try {
+            consumer(availabilityFailure);
+          } catch {
+            // A supervisor observer cannot retain or destabilize the session.
+          }
+        }
+      };
+      const renderer = createPlateRenderer(canvas, {
+        preferences: {
+          reducedMotion: capabilities.reducedMotion,
+          forcedColors: capabilities.forcedColors,
+        },
+        logicalProcessors: capabilities.logicalProcessors,
+        deviceMemoryGb: capabilities.deviceMemoryGb,
+        fallbackModes: PROTOTYPE_MODAL_DATASET.modes.map((mode) => ({
+          modeId: mode.id,
+          radialOrder: mode.radialOrder,
+          angularOrder: mode.angularOrder,
+        })),
+        onDiagnostic: pushDiagnostic,
+        onStatus: (status) => {
+          if (
+            candidate === null ||
+            viewRenderersRef.current.at(-1) !== candidate
+          ) {
+            return;
+          }
+          if (status.contextLost) {
+            candidate.reportAvailabilityFailure(
+              new Error(
+                "The attached plate renderer lost its graphics context.",
+              ),
+            );
+            return;
+          }
+          rendererStatusRef.current = status;
+          setRendererStatus((current) => {
+            if (
+              current?.kind === status.kind &&
+              current.quality === status.quality &&
+              current.datasetId === status.datasetId &&
+              current.textureReady === status.textureReady &&
+              current.contextLost === status.contextLost
+            ) {
+              return current;
+            }
+            return status;
+          });
+        },
+      });
+      const resizeObserver =
+        typeof ResizeObserver === "function"
+          ? new ResizeObserver(() => renderer.resize())
+          : null;
+      candidate = Object.freeze({
+        renderer,
+        resizeObserver,
+        reportAvailabilityFailure,
+      });
+      viewRenderersRef.current = [...viewRenderersRef.current, candidate];
+      rendererStatusRef.current = renderer.status;
+      setRendererStatus(renderer.status);
+      resizeObserver?.observe(canvas);
+      const textureSource = secondaryTextureSourceRef.current;
+      if (textureSource) {
+        void renderer
+          .setTextureSource(textureSource)
+          .then(async () => {
+            const status = renderer.status;
+            if (
+              status.kind !== "static" &&
+              (status.contextLost ||
+                !status.textureReady ||
+                status.datasetId !== textureSource.datasetId)
+            ) {
+              reportAvailabilityFailure(
+                new Error(
+                  status.contextLost
+                    ? "The attached plate renderer lost its graphics context."
+                    : status.datasetId !== textureSource.datasetId
+                      ? "The attached plate renderer selected the wrong verified dataset."
+                      : "The attached plate renderer rejected the verified texture.",
+                ),
+              );
+              await renderer.setTextureSource(null);
+            }
+          })
+          .catch(async (error: unknown) => {
+            reportAvailabilityFailure(error);
+            try {
+              await renderer.setTextureSource(null);
+            } catch {
+              // The view stays on the CSS plate if even clearing is rejected.
+            }
+            pushDiagnostic(
+              createDiagnostic({
+                code: "MH-UI-PLATE-ATTACH-FAILED",
+                severity: "warning",
+                messageKey: "runtime.rendererFallback",
+                evidence: [
+                  {
+                    key: "candidate",
+                    value: "view",
+                    source: "ui-supervisor",
+                  },
+                ],
+              }),
+            );
+          });
       }
-      const currentRuntime = runtimeRef.current;
-      dispatchDial({
-        type: "pointer-start",
-        ...dialCommandPoint(event, currentRuntime),
-        timestampMs: event.timeStamp,
+
+      return Object.freeze({
+        subscribeAvailabilityFailure: (
+          consumer: (error: unknown) => void,
+        ) => {
+          if (!attached) {
+            consumer(
+              availabilityFailure ??
+                new Error("The plate attachment has already been detached."),
+            );
+            return () => {};
+          }
+          availabilityFailureConsumers.add(consumer);
+          if (availabilityFailure !== null) {
+            consumer(availabilityFailure);
+          }
+          return () => {
+            availabilityFailureConsumers.delete(consumer);
+          };
+        },
+        detach: () => {
+          if (!attached) return;
+          attached = false;
+          availabilityFailureConsumers.clear();
+          resizeObserver?.disconnect();
+          viewRenderersRef.current = viewRenderersRef.current.filter(
+            (entry) => entry !== candidate,
+          );
+          renderer.dispose();
+          const fallbackStatus =
+            viewRenderersRef.current.at(-1)?.renderer.status ??
+            rendererRef.current?.status ??
+            null;
+          rendererStatusRef.current = fallbackStatus;
+          setRendererStatus(fallbackStatus);
+        },
       });
-      // Gesture affordance is local UI state, so it can update immediately
-      // without allocating or retaining an extra runtime snapshot.
-      setViewState((current) =>
-        current.dragging ? current : { ...current, dragging: true },
-      );
-      void activateAudio();
     },
-    [activateAudio, dispatchDial],
+    [pushDiagnostic],
   );
 
-  const onDialPointerMove = useCallback(
-    (event: PointerEvent<HTMLDivElement>) => {
-      const currentRuntime = runtimeRef.current;
-      if (!currentRuntime.dial.dragging) return;
-      event.preventDefault();
-      dispatchDial({
-        type: "pointer-move",
-        ...dialCommandPoint(event, currentRuntime),
-        timestampMs: event.timeStamp,
+  const uiPort = useMemo<MandelHowlBrowserRuntimePort>(
+    () => {
+      // The frozen port stores callbacks but never invokes them during render.
+      // eslint-disable-next-line react-hooks/refs
+      return Object.freeze({
+        contractVersion: "mandelhowl.ui-port.v1" as const,
+        snapshots: runtimeSnapshots,
+        presentation: uiSnapshots,
+        mountPlate: mountViewPlate,
+        dispatchDial,
+        setDragging,
+        activateAudio,
       });
     },
-    [dispatchDial],
-  );
-
-  const finishPointerGesture = useCallback(
-    (event: PointerEvent<HTMLDivElement>) => {
-      event.preventDefault();
-      if (runtimeRef.current.dial.dragging) {
-        dispatchDial({
-          type: "pointer-end",
-          timestampMs: event.timeStamp,
-        });
-      }
-      setViewState((current) =>
-        current.dragging ? { ...current, dragging: false } : current,
-      );
-      if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-        event.currentTarget.releasePointerCapture(event.pointerId);
-      }
-    },
-    [dispatchDial],
-  );
-
-  const onDialLostPointerCapture = useCallback(
-    (event: PointerEvent<HTMLDivElement>) => {
-      if (!runtimeRef.current.dial.dragging) return;
-      dispatchDial({
-        type: "pointer-end",
-        timestampMs: event.timeStamp,
-      });
-      setViewState((current) =>
-        current.dragging ? { ...current, dragging: false } : current,
-      );
-    },
-    [dispatchDial],
-  );
-
-  const onDialKeyDown = useCallback(
-    (event: KeyboardEvent<HTMLDivElement>) => {
-      if (!DIAL_KEYS.has(event.key)) return;
-      event.preventDefault();
-      dispatchDial({
-        type: "keyboard",
-        key: event.key as DialKeyboardKey,
-        timestampMs: event.timeStamp,
-      });
-      void activateAudio();
-    },
-    [activateAudio, dispatchDial],
-  );
-
-  const onDialWheel = useCallback(
-    (event: WheelEvent<HTMLDivElement>) => {
-      event.preventDefault();
-      dispatchDial({
-        type: "wheel",
-        deltaY: event.deltaY,
-        timestampMs: event.timeStamp,
-      });
-      void activateAudio();
-    },
-    [activateAudio, dispatchDial],
+    [
+      activateAudio,
+      dispatchDial,
+      mountViewPlate,
+      runtimeSnapshots,
+      setDragging,
+      uiSnapshots,
+    ],
   );
 
   useEffect(() => {
@@ -447,6 +559,7 @@ export function MandelHowlLab() {
       })),
       onDiagnostic: pushDiagnostic,
       onStatus: (status) => {
+        if (viewRenderersRef.current.length > 0) return;
         rendererStatusRef.current = status;
         setRendererStatus((current) => {
           if (
@@ -512,7 +625,27 @@ export function MandelHowlLab() {
     const snapshotWriter = createRuntimeSnapshotWriter();
     const hotPathFanout = new RuntimeSnapshotLeaseFanout(
       [
-        (snapshot) => renderer.render(snapshot),
+        (snapshot) => {
+          const activeView = viewRenderersRef.current.at(-1);
+          if (!activeView) {
+            renderer.render(snapshot);
+            return;
+          }
+          try {
+            activeView.renderer.render(snapshot);
+          } catch (error) {
+            // View-local GPU failure must not remove the shared render lane.
+            // Quarantine it and resume on the next view or parking canvas.
+            activeView.reportAvailabilityFailure(error);
+            activeView.resizeObserver?.disconnect();
+            viewRenderersRef.current = viewRenderersRef.current.filter(
+              (entry) => entry !== activeView,
+            );
+            activeView.renderer.dispose();
+            const nextView = viewRenderersRef.current.at(-1);
+            (nextView?.renderer ?? renderer).render(snapshot);
+          }
+        },
         (snapshot) => audioEngine.applyRuntimeSnapshot(snapshot),
       ],
       (error, snapshot) => {
@@ -523,10 +656,8 @@ export function MandelHowlLab() {
     // React, challenge reporting, and diagnostics receive owned immutable
     // snapshots only. This fan-out is published at no more than 24 Hz during
     // normal animation so presentation work cannot starve the fixed-step loop.
-    const presentationFanout = new RuntimeSnapshotStore(
-      getRuntimeSnapshot(runtimeRef.current),
-      [
-        (snapshot) => {
+    const presentationUnsubscribers = [
+      runtimeSnapshots.subscribe((snapshot) => {
           const runtime = runtimeRef.current;
           setViewState({
             snapshot,
@@ -534,8 +665,8 @@ export function MandelHowlLab() {
             minimumFrequencyHz: runtime.dial.config.minFrequencyHz,
             maximumFrequencyHz: runtime.dial.config.maxFrequencyHz,
           });
-        },
-        (snapshot) => {
+        }),
+      runtimeSnapshots.subscribe((snapshot) => {
           if (snapshot.volume.status !== "settled") return;
           const target = challengeTargetRef.current;
           const signature = `${snapshot.datasetId}:${target ?? "none"}:${snapshot.volume.value}`;
@@ -548,20 +679,16 @@ export function MandelHowlLab() {
             datasetId: snapshot.datasetId,
             reached: target !== null && snapshot.volume.value === target,
           });
-        },
-        (snapshot) => {
+        }),
+      runtimeSnapshots.subscribe((snapshot) => {
           const signature = diagnosticSignature(snapshot.diagnostics);
           if (signature === lastSnapshotDiagnosticSignatureRef.current) return;
           lastSnapshotDiagnosticSignatureRef.current = signature;
           setDiagnostics((current) =>
             mergeDiagnostics(current, snapshot.diagnostics),
           );
-        },
-      ],
-      (error, snapshot) => {
-        reportConsumerFailure("presentation", error, snapshot.sequence);
-      },
-    );
+        }),
+    ];
     let lastPresentationTimeSeconds =
       runtimeRef.current.resonance.simulationTimeSeconds;
     let lastPresentationDatasetId =
@@ -582,7 +709,7 @@ export function MandelHowlLab() {
       }
 
       const snapshot = getRuntimeSnapshot(runtime);
-      if (presentationFanout.publish(snapshot)) {
+      if (runtimeSnapshots.publish(snapshot)) {
         lastPresentationTimeSeconds = snapshot.simulationTimeSeconds;
         lastPresentationDatasetId = snapshot.datasetId;
       }
@@ -605,9 +732,17 @@ export function MandelHowlLab() {
       if (disposed) return;
 
       if (result.status === "ready") {
+        const textureSource = plateTextureSource(result);
+        secondaryTextureSourceRef.current = textureSource;
         try {
-          await renderer.setTextureSource(plateTextureSource(result));
+          await renderer.setTextureSource(textureSource);
         } catch {
+          secondaryTextureSourceRef.current = null;
+          await Promise.allSettled(
+            viewRenderersRef.current.map(({ renderer: viewRenderer }) =>
+              viewRenderer.setTextureSource(null),
+            ),
+          );
           if (!disposed) {
             try {
               await renderer.setTextureSource(null);
@@ -619,6 +754,35 @@ export function MandelHowlLab() {
           }
           return;
         }
+        const visibleViewRenderers = [...viewRenderersRef.current];
+        await Promise.allSettled(
+          visibleViewRenderers.map(async (viewRenderer) => {
+            try {
+              await viewRenderer.renderer.setTextureSource(textureSource);
+              const status = viewRenderer.renderer.status;
+              if (
+                status.kind !== "static" &&
+                (status.contextLost ||
+                  !status.textureReady ||
+                  status.datasetId !== result.manifest.datasetId)
+              ) {
+                throw new Error(
+                  status.contextLost
+                    ? "The visible plate renderer lost its graphics context."
+                    : status.datasetId !== result.manifest.datasetId
+                      ? "The visible plate renderer selected the wrong verified dataset."
+                      : "The visible plate renderer rejected the verified texture.",
+                );
+              }
+            } catch (error) {
+              // A verified parking renderer cannot authorize a visibly broken
+              // framework attachment. Quarantine that view so the independent
+              // standby gets its own renderer and the same texture source.
+              viewRenderer.reportAvailabilityFailure(error);
+              throw error;
+            }
+          }),
+        );
         if (disposed) return;
         const textureStatus = renderer.status;
         const productionTextureFailed =
@@ -627,11 +791,17 @@ export function MandelHowlLab() {
             !textureStatus.textureReady ||
             textureStatus.datasetId !== result.manifest.datasetId);
         if (productionTextureFailed) {
+          secondaryTextureSourceRef.current = null;
           try {
             await renderer.setTextureSource(null);
           } catch {
             // Status remains fail-closed below even if clearing also fails.
           }
+          await Promise.allSettled(
+            viewRenderersRef.current.map(({ renderer: viewRenderer }) =>
+              viewRenderer.setTextureSource(null),
+            ),
+          );
           if (disposed) return;
           setDatasetStatus("error");
           return;
@@ -655,6 +825,12 @@ export function MandelHowlLab() {
         hotPathFanout.publish(snapshotWriter.write(runtimeRef.current));
         publishPresentationFrame(true);
       } else {
+        secondaryTextureSourceRef.current = null;
+        await Promise.allSettled(
+          viewRenderersRef.current.map(({ renderer: viewRenderer }) =>
+            viewRenderer.setTextureSource(null),
+          ),
+        );
         try {
           await renderer.setTextureSource(null);
         } catch {
@@ -676,6 +852,12 @@ export function MandelHowlLab() {
       await texturePreviewQueue.waitForIdle();
       texturePreviewQueue.dispose();
       if (disposed) return;
+      secondaryTextureSourceRef.current = null;
+      await Promise.allSettled(
+        viewRenderersRef.current.map(({ renderer: viewRenderer }) =>
+          viewRenderer.setTextureSource(null),
+        ),
+      );
       try {
         await renderer.setTextureSource(null);
       } catch {
@@ -764,9 +946,12 @@ export function MandelHowlLab() {
         );
         return {
           capturedAtMs: performance.now(),
-          presentationFanout: presentationFanout.metrics,
+          presentationFanout: runtimeSnapshots.metrics,
           hotPathFanout: hotPathFanout.metrics,
-          renderer: rendererRef.current?.status ?? rendererStatusRef.current,
+          renderer:
+            viewRenderersRef.current.at(-1)?.renderer.status ??
+            rendererRef.current?.status ??
+            rendererStatusRef.current,
           audio: audioEngine.telemetry,
           animationFrames,
           frameWorkP95Ms: sortedFrameWork[p95Index] ?? 0,
@@ -805,20 +990,21 @@ export function MandelHowlLab() {
       removeHealthHook();
       challenge.dispose();
       challengeRef.current = null;
-      presentationFanout.dispose();
+      for (const unsubscribe of presentationUnsubscribers) unsubscribe();
       hotPathFanout.dispose();
       renderer.dispose();
       rendererRef.current = null;
+      for (const viewRenderer of viewRenderersRef.current) {
+        viewRenderer.resizeObserver?.disconnect();
+        viewRenderer.renderer.dispose();
+      }
+      viewRenderersRef.current = [];
+      secondaryTextureSourceRef.current = null;
       void audioEngine.dispose();
     };
-  }, [audioEngine, pushDiagnostic]);
+  }, [audioEngine, pushDiagnostic, runtimeSnapshots]);
 
   const snapshot = viewState.snapshot;
-  const mode = activeMode(snapshot);
-  const volume =
-    snapshot.volume.status === "settled"
-      ? snapshot.volume.value
-      : (snapshot.volume.lastSettledValue ?? 0);
   const visibleDiagnostics = diagnostics.filter(
     (diagnostic) => diagnostic.code !== "DATASET_READY",
   );
@@ -830,43 +1016,59 @@ export function MandelHowlLab() {
     visibleDiagnostics[0] ??
     null;
 
+  useEffect(() => {
+    uiRevisionRef.current += 1;
+    uiSnapshots.publish({
+      contractVersion: "mandelhowl.ui-port.v1",
+      revision: uiRevisionRef.current,
+      runtime: snapshot,
+      minimumFrequencyHz: viewState.minimumFrequencyHz,
+      maximumFrequencyHz: viewState.maximumFrequencyHz,
+      radialDeadZone: runtimeRef.current.dial.config.radialDeadZone,
+      dragging: viewState.dragging,
+      audioEnabled,
+      datasetStatus,
+      renderer: rendererStatus,
+      diagnostic: {
+        severity: presented.severity,
+        title: visibleDiagnostics.length > 0 ? presented.title : null,
+        message: visibleDiagnostics.length > 0 ? presented.message : null,
+        code: primaryDiagnostic?.code ?? null,
+        detail: presented.developerLines[0] ?? null,
+      },
+      challengeTarget,
+    });
+  }, [
+    audioEnabled,
+    challengeTarget,
+    datasetStatus,
+    presented.developerLines,
+    presented.message,
+    presented.severity,
+    presented.title,
+    primaryDiagnostic?.code,
+    rendererStatus,
+    snapshot,
+    uiSnapshots,
+    viewState.dragging,
+    viewState.maximumFrequencyHz,
+    viewState.minimumFrequencyHz,
+    visibleDiagnostics.length,
+  ]);
+
   return (
-    <MandelHowlScene
-      frequency={snapshot.dial.driveFrequencyHz}
-      frequencyMin={viewState.minimumFrequencyHz}
-      frequencyMax={viewState.maximumFrequencyHz}
-      angle={snapshot.dial.unwrappedAngleRad}
-      volume={volume}
-      regime={snapshot.regime}
-      envelope={snapshot.feedback.envelopeNormalized}
-      activeMode={mode.index}
-      activeModePhase={mode.phase}
-      measurementProgress={snapshot.volume.progress}
-      measurementStatus={snapshot.volume.status}
-      microphoneRms={snapshot.microphone.rmsNormalized}
-      microphonePeak={snapshot.microphone.peakNormalized}
-      microphoneSamples={snapshot.microphone.recentSamples}
-      audioEnabled={audioEnabled}
-      rendererKind={rendererStatus?.kind ?? "static"}
-      renderQuality={rendererStatus?.quality ?? "reduced"}
-      datasetStatus={datasetStatus}
-      diagnosticSeverity={presented.severity}
-      diagnosticTitle={visibleDiagnostics.length > 0 ? presented.title : null}
-      diagnosticMessage={
-        visibleDiagnostics.length > 0 ? presented.message : null
-      }
-      diagnosticCode={primaryDiagnostic?.code ?? null}
-      diagnosticDetail={presented.developerLines[0] ?? null}
-      challengeTarget={challengeTarget}
-      dragging={viewState.dragging}
-      onDialPointerDown={onDialPointerDown}
-      onDialPointerMove={onDialPointerMove}
-      onDialPointerUp={finishPointerGesture}
-      onDialPointerCancel={finishPointerGesture}
-      onDialLostPointerCapture={onDialLostPointerCapture}
-      onDialKeyDown={onDialKeyDown}
-      onDialWheel={onDialWheel}
-      canvasRef={canvasRef}
-    />
+    <>
+      <canvas
+        ref={canvasRef}
+        className="mh-session-canvas"
+        aria-hidden="true"
+        tabIndex={-1}
+      />
+      <MandelHowlUiHost
+        runtime={uiPort}
+        onDiagnostic={pushDiagnostic}
+        onAllVersionsUnavailable={suspendAudioForUiIsolation}
+      />
+    </>
   );
 }

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 import json
 import math
 import struct
@@ -37,6 +38,28 @@ class MaterialAndMeshTests(unittest.TestCase):
         self.assertTrue(field.statistics["massWithinLimits"])
         self.assertTrue(field.statistics["centreOfMassWithinLimit"])
         self.assertTrue(field.statistics["minimumThicknessWithinLimit"])
+
+    def test_alternate_valid_bounds_remain_asymmetric(self) -> None:
+        spec = load(REPOSITORY / "specs" / "plate" / "mandelbrot-plate.v1.yaml")
+        alternate = copy.deepcopy(spec)
+        alternate["mandelbrotField"]["complexBounds"]["imaginaryMin"] = -1.0
+        alternate["mandelbrotField"]["complexBounds"]["imaginaryMax"] = 1.5
+        field = generate_material_field(alternate, 32)
+        self.assertTrue(
+            any(
+                field.values[y * 32 + x]
+                != field.values[(31 - y) * 32 + x]
+                for y in range(16)
+                for x in range(32)
+            )
+        )
+
+    def test_escape_radius_is_fixed_by_algorithm_revision(self) -> None:
+        spec = load(REPOSITORY / "specs" / "plate" / "mandelbrot-plate.v1.yaml")
+        alternate = copy.deepcopy(spec)
+        alternate["mandelbrotField"]["escapeRadius"] = 3
+        with self.assertRaisesRegex(ValueError, "requires escape radius 2"):
+            generate_material_field(alternate, 32)
 
     def test_packaged_meshes_have_positive_quality_and_fingerprint(self) -> None:
         self.assertTrue(datasets(), "no generated physics dataset found")

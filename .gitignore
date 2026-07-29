@@ -47,5 +47,6 @@ next-env.d.ts
 /public/runtime/
 /target/
 /tools/physics-baker-rs/target/
+/tools/physics-baker-rs/bin/*/mandelhowl-baker-native*
 __pycache__/
 *.py[cod]

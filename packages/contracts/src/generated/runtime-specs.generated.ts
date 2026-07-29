@@ -13,6 +13,11 @@ export const RUNTIME_SPEC_SOURCE_HASHES = Object.freeze({
   "datasetRelease": "fc63800c9ec1c14e7581df90af717719ac22d20a105753a703fdf9b67227c8b3"
 } as const);
 
+export const N_VERSION_CONTRACT_DIGESTS = Object.freeze({
+  "scientificAlgorithm": "sha256:89920ff6cd53b7c0207cc795555e5e7cacc3e10fdd2daa8aaa35c6ca3511332d",
+  "presentationContract": "sha256:fd531ac216689df6981ea0b40c77ee271cba848e9b831eed0763615da658a4b1"
+} as const);
+
 export const GENERATED_DIAL_SPEC = Object.freeze({
   "schemaVersion": "mandelhowl.dial-config.v1",
   "canonicalOwner": {

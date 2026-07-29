@@ -25,7 +25,7 @@ async function render() {
   );
 }
 
-test("server-renders the MandelHowl experiment shell", async () => {
+test("server-renders the framework-neutral MandelHowl N-version shell", async () => {
   const response = await render();
   assert.equal(response.status, 200);
   assert.match(response.headers.get("content-type") ?? "", /^text\/html\b/i);
@@ -42,21 +42,24 @@ test("server-renders the MandelHowl experiment shell", async () => {
 
   const html = await response.text();
   assert.match(html, /<title>MandelHowl — Resonance Volume Instrument<\/title>/i);
-  assert.match(html, /Experimental acoustic interface/i);
-  assert.match(html, /DRIVE FREQUENCY/i);
-  assert.match(html, /Closed-loop Chladni apparatus/i);
-  assert.match(html, /VOLUME/i);
-  assert.match(html, />000</);
-  assert.match(html, /ONE CONTROL \/ ONE RESULT \/ NO RANDOMNESS/i);
-  assert.match(html, /role="slider"/i);
+  assert.match(html, /class="mh-session-canvas"/i);
+  assert.match(html, /class="mh-ui-nversion-host"/i);
+  assert.match(html, /data-ui-phase="idle"/i);
+  assert.match(html, /MH-UI-PRIMARY-LOADING/i);
+  assert.match(html, /Loading verified instrument interface/i);
+  assert.match(html, /role="status"/i);
   assert.doesNotMatch(html, /codex-preview|Your site is taking shape/i);
 });
 
 test("removes starter-only source and metadata", async () => {
-  const [page, layout, scene, packageJson] = await Promise.all([
+  const [page, layout, scene, svelteScene, packageJson] = await Promise.all([
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/layout.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/mandelhowl-scene.tsx", import.meta.url), "utf8"),
+    readFile(
+      new URL("../apps/svelte-ui/src/MandelHowlApp.svelte", import.meta.url),
+      "utf8",
+    ),
     readFile(new URL("../package.json", import.meta.url), "utf8"),
   ]);
 
@@ -66,6 +69,10 @@ test("removes starter-only source and metadata", async () => {
   assert.match(scene, /frequencyMax = 6_000/);
   assert.match(scene, /aria-valuemin=\{frequencyMin\}/);
   assert.match(scene, /aria-valuemax=\{frequencyMax\}/);
+  assert.match(svelteScene, /data-ui-implementation="svelte5"/);
+  assert.match(svelteScene, /role="slider"/);
+  assert.match(svelteScene, /aria-valuemin=\{frequencyMin\}/);
+  assert.match(svelteScene, /aria-valuemax=\{frequencyMax\}/);
   assert.match(packageJson, /"name": "mandelhowl"/);
   assert.doesNotMatch(packageJson, /react-loading-skeleton/);
   assert.doesNotMatch(page + layout, /codex-preview|_sites-preview/);

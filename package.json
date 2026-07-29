@@ -26,8 +26,14 @@
     "test:performance": "playwright test tests/performance --project=chromium-desktop",
     "test:browser": "npm run test:e2e && npm run test:visual && npm run test:performance",
     "baker:rust:check": "cargo fmt --all -- --check && cargo clippy --workspace --all-targets --locked -- -D warnings",
+    "baker:rust:build": "cargo build --release --locked -p mandelhowl-baker-native --bin mandelhowl-baker-native",
+    "baker:rust:self-test": "node tools/baker-supervisor/src/supervisor.mjs self-test --require-rust",
     "baker:rust:test": "cargo test --workspace --locked",
-    "svelte:check": "svelte-check --workspace apps/svelte-prototype --tsconfig ./tsconfig.json --fail-on-warnings",
+    "baker:supervisor:test": "node --test tools/baker-supervisor/test/*.test.mjs",
+    "baker:nversion:self-test": "node tools/baker-supervisor/src/supervisor.mjs self-test",
+    "baker:nversion:validate": "node tools/baker-supervisor/src/supervisor.mjs validate",
+    "baker:nversion:generate": "node tools/baker-supervisor/src/supervisor.mjs generate",
+    "svelte:check": "svelte-check --workspace apps/svelte-ui --tsconfig ./tsconfig.json --fail-on-warnings",
     "physics:validate": "node tools/release-packager/src/validate-pinned-dataset.mjs",
     "physics:validate:strict": "node tools/release-packager/src/validate-pinned-dataset.mjs --require-rust",
     "security:static": "node tools/release-packager/src/verify-forbidden-runtime.mjs && node tools/release-packager/src/write-security-headers.mjs --check",
@@ -37,8 +43,9 @@
     "release:archive": "node tools/release-packager/src/create-release-archive.mjs",
     "release:archive:check": "node tools/release-packager/src/create-release-archive.mjs --check",
     "release:verify": "node tools/release-packager/src/verify-release.mjs",
+    "release:verify:attested": "node tools/release-packager/src/verify-release.mjs --require-clean --nversion-attestation",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next --ignore-pattern .vinext --ignore-pattern playwright-report --ignore-pattern test-results --ignore-pattern public/runtime --ignore-pattern outputs",
-    "verify": "npm run contracts:check && npm run typecheck && npm run lint && npm run svelte:check && npm run baker:rust:check && npm run security:audit && npm run security:static && npm test && npm run test:browser"
+    "verify": "npm run contracts:check && npm run typecheck && npm run lint && npm run svelte:check && npm run baker:supervisor:test && npm run security:audit && npm run security:static && npm test && npm run test:browser"
   },
   "dependencies": {
     "next": "^16.2.12",
@@ -48,6 +55,7 @@
   "devDependencies": {
     "@cloudflare/vite-plugin": "^1.48.0",
     "@playwright/test": "^1.62.0",
+    "@sveltejs/vite-plugin-svelte": "^7.2.0",
     "@tailwindcss/postcss": "4.2.1",
     "@types/node": "22.19.19",
     "@types/react": "19.2.14",

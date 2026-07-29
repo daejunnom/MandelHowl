@@ -1,0 +1,11 @@
+{
+  "schemaVersion": "mandelhowl.baker-nversion-policy.v1",
+  "primary": "rust-native",
+  "standby": "python-stdlib",
+  "promotionRequiresDualAgreement": true,
+  "releaseRequiresDualAgreement": true,
+  "availabilityFailureSelection": "surviving-version-degraded",
+  "scientificDisagreementSelection": "last-known-good",
+  "degradedPromotionAllowed": false,
+  "degradedReleaseEligible": false
+}

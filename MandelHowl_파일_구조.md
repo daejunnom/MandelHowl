@@ -18,23 +18,35 @@
 
 ### 현재 구현 보정 (2026-07-30)
 
-아래 트리는 초기 예상안이며 현재 저장소는 npm + React/Vinext 프로덕션
-shell을 사용한다. 구현체 교체를 위해 다음 실제 경계를 추가했다.
+아래 트리는 초기 예상안이며 현재 저장소는 npm + Vinext host에서 Svelte 5를
+primary, React 19를 standby로 실행한다. 다음 실제 경계를 추가했다.
 
 - `packages/browser-runtime/`: UI 프레임워크와 독립적인 snapshot store,
-  fanout, challenge/health host 및 Svelte가 구현할 runtime port
+  fanout, challenge/health host, UI port, generation lease와 N-version supervisor
 - `packages/presentation-model/`: React와 Svelte가 공유하는 오실로스코프
   auto-range 표시 모델
-- `apps/svelte-prototype/`: 동일 store·CSS·ARIA 계약을 소비하는 Svelte 5
-  control 수직 slice
-- `tools/physics-baker-rs/`: Python oracle과 병행하는 Rust native binary
-  validator 및 향후 generator 이식 위치
+- `apps/svelte-ui/`: 동일 store·CSS·ARIA 계약을 소비하는 production Svelte 5
+  full scene과 mount adapter
+- `apps/react-ui/`: 같은 계약을 독립 mount하는 React 19 standby full scene
+- `specs/runtime/ui-nversion.v1.json`: primary/standby, failover와 view/session
+  ownership의 canonical 정책
+- `specs/physics/baker-algorithm.v1.json`: Python과 Rust가 함께 구현하는
+  수치 순서·정밀도·허용오차의 versioned 단일 계약
+- `tools/physics-baker-rs/`: field부터 solver·KTX2·mesh·packaging까지 독립
+  구현한 Rust native 전체 generator/validator
+- `tools/physics-baker/`: 같은 알고리즘 계약의 독립 Python stdlib
+  generator/validator
+- `tools/baker-supervisor/`: 두 candidate를 실행·비교하고 degraded,
+  split-brain, last-known-good와 report-file attestation을 판정하는 broker
 - 루트 `Cargo.toml`, `rust-toolchain.toml`: native baker workspace와 toolchain
   재현성 경계
 
-과학 알고리즘은 UI 구현체 안으로 옮기지 않는다. React shell과 Python
-generator를 제거할 수 있는 시점은 각각 Svelte 성능/동작 회귀 gate와
-Rust differential gate를 통과한 뒤다.
+과학 알고리즘은 UI 구현체 안으로 옮기지 않는다. Svelte와 React는 같은
+canonical runtime을 읽는 presentation N-version이며 runtime·renderer/audio,
+CSS, supervisor와 hosting bootstrap은 공통-mode다. Rust backend 승격은
+Python과의 strict differential 합의 뒤에만 허용한다. 운영 경로는
+platform/architecture별 관리된 단일 native executable을 사용하며 `cargo`는
+개발 및 Linux CI 품질 gate에만 사용한다.
 
 ---
 
@@ -571,13 +583,17 @@ packages/contracts
                   apps/web
 ```
 
-오프라인 파이프라인은 TypeScript 내부 구현을 직접 import하지 않는다. `packages/contracts/schemas/`의 JSON Schema와 버전된 바이너리 포맷을 통해 연결한다.
+오프라인 파이프라인은 TypeScript 내부 구현을 직접 import하지 않는다.
+`packages/contracts/schemas/`의 JSON Schema, versioned 바이너리 포맷과
+`specs/physics/baker-algorithm.v1.json`을 통해 연결한다.
 
 ```text
 specs/*
-  ↓
-tools/physics-baker
-  ↓
+  ├─ tools/physics-baker-rs ─┐
+  └─ tools/physics-baker ────┤
+                             ↓
+                 tools/baker-supervisor
+                             ↓
 assets/generated/<dataset-hash>/
   ↓
 packages/asset-runtime
@@ -598,6 +614,9 @@ render-engine + audio-engine + DOM views
 | 다이얼 범위·주파수 매핑 | `specs/runtime/dial.v1.yaml` | dial engine 초기 상태 |
 | 가상 RMS→볼륨 변환 | `specs/runtime/volume-map.v1.yaml` | volume mapper 상수 |
 | 실제 청취 안전 상한 | `specs/runtime/audio-safety.v1.yaml` | audio graph 파라미터 |
+| UI N-version 선택·ownership | `specs/runtime/ui-nversion.v1.json` | generated digest, supervisor와 release provenance |
+| Baker 수치 알고리즘 | `specs/physics/baker-algorithm.v1.json` | Python/Rust generator, semantic comparator |
+| Baker 선택·승격 정책 | `specs/physics/baker-nversion.v1.json` | broker, attestation, release verifier |
 | 직렬화 구조 | `packages/contracts/schemas/` | TypeScript 타입, Python validator |
 | 생성된 모드·텍스처 | 수정 금지 | 사양 또는 baker 변경 후 재생성 |
 | 화면 레이아웃 기준 | `specs/visual/scene.v1.yaml` | renderer와 CSS view model |
@@ -611,7 +630,11 @@ render-engine + audio-engine + DOM views
 ```text
 PointerEvent / KeyboardEvent
         ↓
-apps/web/interaction 어댑터
+Svelte primary / React standby
+        ↓
+generation-scoped input lease
+        ↓
+packages/browser-runtime/dial-input
         ↓
 packages/dial-engine
         ↓
@@ -622,19 +645,38 @@ packages/resonance-engine
 RuntimeSnapshot
    ┌────┼───────────┐
    ↓    ↓           ↓
-DOM   WebGL       Web Audio
-meter scene       safe sound
+UI port  WebGL    Web Audio
+Svelte/React      safe sound
 ```
 
 볼륨 계산은 `resonance-engine/volume-mapper.ts` 한 곳만 소유한다. DOM, 렌더러, 오디오 엔진은 표시·재생을 위해 snapshot을 읽을 뿐 값을 다시 계산하지 않는다.
+UI failover는 view만 detach하고 같은 runtime snapshot sequence를 유지한다.
 
 ---
 
 ## 6. 오프라인 데이터 흐름
 
 ```text
-mandelbrot-plate.v1.yaml
-        ↓
+mandelbrot-plate.v1.yaml + baker-algorithm.v1.json
+        ├──────────────────────┐
+        ↓                      ↓
+Rust native generator     Python stdlib generator
+        ↓                      ↓
+독립 candidate dataset   독립 candidate dataset
+        └──────────┬───────────┘
+                   ↓
+        semantic differential broker
+                   ↓
+   dual-verified / degraded / split-brain
+                   ↓
+      explicit promotion + report attestation
+                   ↓
+        content-addressed runtime dataset
+```
+
+각 backend 내부의 동일한 알고리즘 단계는 다음과 같다.
+
+```text
 만델브로 수치장 생성
         ↓
 두께·질량·제조 제약 적용
@@ -655,6 +697,9 @@ content-addressed runtime dataset
 ```
 
 생성 단계 중 어느 하나가 실패하면 불완전한 dataset을 배포 경로에 쓰지 않는다. 임시 디렉터리에서 전부 검증한 뒤 원자적으로 최종 디렉터리로 이동한다.
+Rust가 실행 표면 문제로 unavailable이면 Python candidate로 degraded 운영할 수
+있지만 승격·release는 금지한다. 과학적 불일치나 거부는 split-brain이며 검증된
+last-known-good pin을 유지한다.
 
 ---
 

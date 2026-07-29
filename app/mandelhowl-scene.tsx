@@ -8,7 +8,6 @@ import type {
   WheelEventHandler,
 } from "react";
 import { presentOscilloscope } from "@/packages/presentation-model/src";
-import "./mandelhowl.css";
 
 export type MandelHowlRegime =
   | "decaying"
@@ -194,6 +193,7 @@ export function MandelHowlScene({
         dragging ? " mh-is-dragging" : ""
       } mh-measurement-${measurementStatus}`}
       data-regime={regime}
+      data-ui-implementation="react19"
       style={sceneStyle}
     >
       <header className="mh-header">

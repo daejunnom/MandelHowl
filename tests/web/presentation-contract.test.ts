@@ -5,13 +5,30 @@ const root = new URL("../../", import.meta.url);
 
 describe("web presentation contract", () => {
   it("preserves the last settled output while the measurement window is open", async () => {
-    const lab = await readFile(
-      new URL("app/mandelhowl-lab.tsx", root),
-      "utf8",
+    const [react, svelte] = await Promise.all([
+      readFile(
+        new URL("apps/react-ui/src/MandelHowlReactApp.tsx", root),
+        "utf8",
+      ),
+      readFile(
+        new URL("apps/svelte-ui/src/MandelHowlApp.svelte", root),
+        "utf8",
+      ),
+    ]);
+    for (const implementation of [react, svelte]) {
+      expect(implementation).toMatch(
+        /snapshot\.volume\.status === "settled"/,
+      );
+      expect(implementation).toMatch(
+        /snapshot\.volume\.lastSettledValue \?\? 0/,
+      );
+    }
+    expect(react).toMatch(
+      /measurementStatus=\{snapshot\.volume\.status\}/,
     );
-    expect(lab).toMatch(/snapshot\.volume\.status === "settled"/);
-    expect(lab).toMatch(/snapshot\.volume\.lastSettledValue \?\? 0/);
-    expect(lab).toMatch(/measurementStatus=\{snapshot\.volume\.status\}/);
+    expect(svelte).toMatch(
+      /mh-measurement-\$\{snapshot\.volume\.status\}/,
+    );
   });
 
   it("announces only settled volume and handles lost pointer capture", async () => {
@@ -55,5 +72,21 @@ describe("web presentation contract", () => {
     expect(css).toMatch(/forced-colors:\s*active/);
     expect(css).toMatch(/prefers-contrast:\s*more/);
     expect(css).toMatch(/max-width:\s*520px/);
+  });
+
+  it("makes each lazy UI candidate report its own compiled contract identity", async () => {
+    const [host, reactEntry, svelteEntry] = await Promise.all([
+      readFile(new URL("app/mandelhowl-ui-host.tsx", root), "utf8"),
+      readFile(new URL("apps/react-ui/src/entry.tsx", root), "utf8"),
+      readFile(new URL("apps/svelte-ui/src/entry.ts", root), "utf8"),
+    ]);
+    for (const entry of [reactEntry, svelteEntry]) {
+      expect(entry).toMatch(/import \{ N_VERSION_CONTRACT_DIGESTS \}/);
+      expect(entry).toMatch(/_UI_IMPLEMENTATION_IDENTITY/);
+      expect(entry).not.toMatch(/ImplementationIdentity/);
+      expect(entry).not.toMatch(/identity\.scientificAlgorithmDigest/);
+    }
+    expect(host).toMatch(/createSvelteUiImplementation\(\)/);
+    expect(host).toMatch(/createReactUiImplementation\(\)/);
   });
 });

@@ -236,7 +236,10 @@ test("context loss during texture installation cannot promote the dataset", asyn
         ];
       }),
     )
-    .toEqual(["webgl2", true, false, null]);
+    // Health reports the active visible renderer. The injected loss occurs
+    // first on the hidden parking renderer, so the visible view remains
+    // context-capable but must not receive or claim the rejected dataset.
+    .toEqual(["webgl2", false, false, null]);
   await expect(page.locator(".mh-prototype-status")).not.toContainText(
     "VERIFIED",
   );

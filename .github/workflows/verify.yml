@@ -8,7 +8,51 @@ permissions:
   contents: read
 
 jobs:
+  native-baker-nversion:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.19.0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - run: cargo fmt --all -- --check
+      - run: cargo clippy --workspace --all-targets --locked -- -D warnings
+      - run: cargo test --workspace --locked
+      - run: cargo build --release --locked -p mandelhowl-baker-native --bin mandelhowl-baker-native
+      - run: node --test tools/baker-supervisor/test/*.test.mjs
+      - run: node tools/baker-supervisor/src/supervisor.mjs self-test --strict
+        env:
+          MANDELHOWL_NATIVE_BAKER: ${{ github.workspace }}/target/release/mandelhowl-baker-native
+      - run: node tools/baker-supervisor/src/supervisor.mjs validate --strict
+        env:
+          MANDELHOWL_NATIVE_BAKER: ${{ github.workspace }}/target/release/mandelhowl-baker-native
+      - name: Full independent generation and semantic differential
+        run: >-
+          node tools/baker-supervisor/src/supervisor.mjs generate
+          --strict
+          --timeout-ms 2400000
+          --output-root "${{ runner.temp }}/mandelhowl-nversion-output"
+          --report-file "${{ runner.temp }}/baker-nversion-report.json"
+        env:
+          MANDELHOWL_NATIVE_BAKER: ${{ github.workspace }}/target/release/mandelhowl-baker-native
+
+      - name: Upload dual-generation attestation
+        uses: actions/upload-artifact@v4
+        with:
+          name: baker-nversion-attestation
+          path: ${{ runner.temp }}/baker-nversion-report.json
+          if-no-files-found: error
+          retention-days: 7
+
   full-verification:
+    needs: native-baker-nversion
     runs-on: windows-latest
     timeout-minutes: 45
     steps:
@@ -26,8 +70,17 @@ jobs:
       - run: npm ci
       - run: npx playwright install chromium
       - run: npm run verify
-      - run: npm run baker:rust:test
-      - run: npm run physics:validate:strict
-      - run: npm run release:verify -- --require-clean
+
+      - name: Download dual-generation attestation
+        uses: actions/download-artifact@v4
+        with:
+          name: baker-nversion-attestation
+          path: ${{ runner.temp }}/mandelhowl-nversion-attestation
+
+      - name: Verify release against Linux N-version attestation
+        run: >-
+          npm run release:verify:attested --
+          "${{ runner.temp }}/mandelhowl-nversion-attestation/baker-nversion-report.json"
+
       - run: npm run release:archive
       - run: npm run release:archive:check

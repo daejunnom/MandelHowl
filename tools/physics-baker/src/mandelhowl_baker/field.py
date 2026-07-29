@@ -4,9 +4,18 @@ from __future__ import annotations
 
 import math
 import struct
+import sys
 from collections import deque
 from dataclasses import dataclass
 from typing import Any
+
+from .algorithm import (
+    CONJUGATE_TOLERANCE,
+    FIELD_BEVEL_PASSES,
+    FIELD_BOX_PASSES,
+    FIELD_ESCAPE_RADIUS,
+    FIELD_MINIMUM_RESOLUTION,
+)
 
 
 @dataclass(frozen=True)
@@ -47,7 +56,7 @@ def mandelbrot_value(real: float, imaginary: float, maximum_iterations: int) -> 
     for iteration in range(maximum_iterations):
         zr, zi = zr * zr - zi * zi + real, 2.0 * zr * zi + imaginary
         magnitude_squared = zr * zr + zi * zi
-        if magnitude_squared > 4.0:
+        if magnitude_squared > FIELD_ESCAPE_RADIUS * FIELD_ESCAPE_RADIUS:
             escape_iteration = iteration + 1
             break
     if escape_iteration == maximum_iterations:
@@ -120,10 +129,18 @@ def _smoothstep(value: float) -> float:
 
 
 def generate_material_field(spec: dict[str, Any], size: int = 96) -> MaterialField:
-    if size < 32:
-        raise ValueError("analysis field resolution must be at least 32")
+    if size < FIELD_MINIMUM_RESOLUTION:
+        raise ValueError(
+            f"analysis field resolution must be at least {FIELD_MINIMUM_RESOLUTION}"
+        )
     radius = float(spec["geometry"]["radiusM"])
     field_spec = spec["mandelbrotField"]
+    requested_escape_radius = float(field_spec["escapeRadius"])
+    if abs(requested_escape_radius - FIELD_ESCAPE_RADIUS) > sys.float_info.epsilon:
+        raise ValueError(
+            "algorithm revision requires escape radius "
+            f"{FIELD_ESCAPE_RADIUS:g}, spec requested {requested_escape_radius:g}"
+        )
     bounds = field_spec["complexBounds"]
     maximum_iterations = int(field_spec["maximumIterations"])
     pixel_m = 2.0 * radius / size
@@ -133,7 +150,7 @@ def generate_material_field(spec: dict[str, Any], size: int = 96) -> MaterialFie
         float(bounds["imaginaryMin"]),
         -float(bounds["imaginaryMax"]),
         rel_tol=0.0,
-        abs_tol=1e-15,
+        abs_tol=CONJUGATE_TOLERANCE,
     )
     evaluated_rows = (size + 1) // 2 if conjugate_symmetric else size
     for y in range(evaluated_rows):
@@ -158,7 +175,7 @@ def generate_material_field(spec: dict[str, Any], size: int = 96) -> MaterialFie
     filter_spec = field_spec["manufacturingFilter"]
     filter_radius = max(1, round(float(filter_spec["radiusM"]) / pixel_m))
     blurred = raw
-    for _ in range(3):
+    for _ in range(FIELD_BOX_PASSES):
         blurred = _box_blur(blurred, size, filter_radius)
     closed = _window_extreme(
         _window_extreme(blurred, size, filter_radius, True),
@@ -178,20 +195,22 @@ def generate_material_field(spec: dict[str, Any], size: int = 96) -> MaterialFie
     # otherwise an ideal mathematical step has infinite thickness gradient.
     # Two deterministic box passes model that manufacturing transition while
     # retaining the quantized field as its source.
-    bevel_passes = 10
+    bevel_passes = FIELD_BEVEL_PASSES
     for _ in range(bevel_passes):
         filtered = _box_blur(filtered, size, filter_radius)
 
-    # The exact Mandelbrot field is conjugate symmetric. Re-impose that known
-    # symmetry after finite-grid filtering to eliminate platform rounding drift.
-    for y in range(size // 2):
-        mirror_y = size - 1 - y
-        for x in range(size):
-            index = y * size + x
-            mirror = mirror_y * size + x
-            average = (filtered[index] + filtered[mirror]) * 0.5
-            filtered[index] = average
-            filtered[mirror] = average
+    if conjugate_symmetric:
+        # Re-impose symmetry only when the requested complex bounds themselves
+        # are conjugate symmetric. Alternate valid bounds must retain their
+        # intentionally asymmetric material field.
+        for y in range(size // 2):
+            mirror_y = size - 1 - y
+            for x in range(size):
+                index = y * size + x
+                mirror = mirror_y * size + x
+                average = (filtered[index] + filtered[mirror]) * 0.5
+                filtered[index] = average
+                filtered[mirror] = average
 
     mapping = spec["thicknessMapping"]
     minimum = float(mapping["minimumThicknessM"])

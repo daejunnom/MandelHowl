@@ -1,0 +1,824 @@
+<script lang="ts">
+  import { onMount, tick } from "svelte";
+  import {
+    createDialKeyboardCommand,
+    createDialPointerCommand,
+    createDialWheelCommand,
+    isDialKeyboardKey,
+    type MandelHowlBrowserRuntimePort,
+    type MandelHowlUiSnapshot,
+    type MandelHowlViewAttachment,
+  } from "../../../packages/browser-runtime/src";
+  import type { DialCommand } from "../../../packages/dial-engine/src";
+  import { presentOscilloscope } from "../../../packages/presentation-model/src";
+
+  interface Props {
+    runtime: MandelHowlBrowserRuntimePort;
+    onReady?: () => void;
+    onHeartbeat?: (sequence: number) => void;
+    onAvailabilityFailure?: (error: unknown) => void;
+  }
+
+  const REGIME_COPY = {
+    decaying: {
+      label: "DECAYING",
+      description: "Loop below threshold",
+    },
+    critical: {
+      label: "CRITICAL",
+      description: "Burst boundary",
+    },
+    growing: {
+      label: "GROWING",
+      description: "Feedback capture",
+    },
+    saturated: {
+      label: "LIMITING",
+      description: "Virtual ceiling",
+    },
+  } as const;
+
+  let {
+    runtime,
+    onReady,
+    onHeartbeat,
+    onAvailabilityFailure,
+  }: Props = $props();
+
+  // The port identity is reactive for adapter-level remount tests, while
+  // subscription deliveries can optimistically replace the current value.
+  let presentation = $derived<MandelHowlUiSnapshot>(
+    runtime.presentation.getSnapshot(),
+  );
+  let dialElement: HTMLDivElement | null = null;
+  let activePointerId: number | null = null;
+  let plateAttachment: MandelHowlViewAttachment | null = null;
+  let plateAttached = false;
+  let readyReported = false;
+  let detached = false;
+
+  let snapshot = $derived(presentation.runtime);
+  let frequency = $derived(snapshot.dial.driveFrequencyHz);
+  let frequencyMin = $derived(presentation.minimumFrequencyHz);
+  let frequencyMax = $derived(presentation.maximumFrequencyHz);
+  let progress = $derived(clampUnit(snapshot.volume.progress));
+  let visualEnvelope = $derived(
+    clampUnit(snapshot.feedback.envelopeNormalized),
+  );
+  let volume = $derived(
+    snapshot.volume.status === "settled"
+      ? snapshot.volume.value
+      : (snapshot.volume.lastSettledValue ?? 0),
+  );
+  let displayedVolume = $derived(
+    Math.round(volume).toString().padStart(3, "0"),
+  );
+  let displayedFrequency = $derived(formatFrequency(frequency));
+  let frequencyTicks = $derived(
+    [
+      frequencyMin,
+      logarithmicTick(frequencyMin, frequencyMax, 1 / 3),
+      logarithmicTick(frequencyMin, frequencyMax, 2 / 3),
+      frequencyMax,
+    ].map(formatCompactFrequency),
+  );
+  let activeModeIndex = $derived(
+    snapshot.activeModeId === null
+      ? -1
+      : snapshot.modes.findIndex(
+          (mode) => mode.modeId === snapshot.activeModeId,
+        ),
+  );
+  let activeModePhase = $derived(
+    activeModeIndex >= 0
+      ? (snapshot.modes[activeModeIndex]?.phaseRad ?? 0)
+      : 0,
+  );
+  let modeLabel = $derived(
+    activeModeIndex < 0
+      ? "NO MODE"
+      : `MODE ${String(activeModeIndex + 1).padStart(2, "0")}`,
+  );
+  let regimeCopy = $derived(REGIME_COPY[snapshot.regime]);
+  let isVerifiedDataset = $derived(
+    presentation.datasetStatus === "verified",
+  );
+  let rendererKind = $derived(presentation.renderer?.kind ?? "static");
+  let renderQuality = $derived(
+    presentation.renderer?.quality ?? "reduced",
+  );
+  let oscilloscope = $derived(
+    presentOscilloscope({
+      recentSamples: snapshot.microphone.recentSamples,
+      rmsNormalized: snapshot.microphone.rmsNormalized,
+      peakNormalized: snapshot.microphone.peakNormalized,
+    }),
+  );
+  let stableAnnouncement = $derived(
+    snapshot.volume.status === "settled"
+      ? `Volume settled at ${displayedVolume} out of 100.`
+      : "",
+  );
+  let sceneStyle = $derived(
+    [
+      `--dial-angle: ${snapshot.dial.unwrappedAngleRad}rad`,
+      `--envelope: ${visualEnvelope}`,
+      `--measurement: ${Math.round(progress * 100)}%`,
+      `--volume: ${volume}`,
+      `--phase-angle: ${activeModePhase}rad`,
+      `--target-volume: ${presentation.challengeTarget ?? 0}`,
+    ].join("; "),
+  );
+
+  function clampUnit(value: number): number {
+    return Math.min(1, Math.max(0, value));
+  }
+
+  function formatFrequency(value: number): string {
+    if (value >= 1_000) {
+      const precision = value < 10_000 ? 2 : 1;
+      return `${(value / 1_000).toFixed(precision)} kHz`;
+    }
+    return `${value.toFixed(value < 100 ? 1 : 0)} Hz`;
+  }
+
+  function formatCompactFrequency(value: number): string {
+    if (value >= 1_000) {
+      return `${Number((value / 1_000).toPrecision(3))}k`;
+    }
+    return `${Math.round(value)}`;
+  }
+
+  function logarithmicTick(
+    minimum: number,
+    maximum: number,
+    normalized: number,
+  ): number {
+    return minimum * Math.pow(maximum / minimum, normalized);
+  }
+
+  function reportViewFailure(error: unknown): void {
+    try {
+      onAvailabilityFailure?.(error);
+    } catch {
+      // A supervisor callback must not recursively break the view boundary.
+    }
+  }
+
+  function dispatch(command: DialCommand): boolean {
+    try {
+      runtime.dispatchDial(command);
+      return true;
+    } catch (error) {
+      reportViewFailure(error);
+      return false;
+    }
+  }
+
+  function setDragging(value: boolean): void {
+    try {
+      runtime.setDragging(value);
+    } catch (error) {
+      reportViewFailure(error);
+    }
+  }
+
+  function activateAudio(): void {
+    // Invoke synchronously from the trusted input event. Awaiting before this
+    // call would lose the browser's user-activation token.
+    try {
+      void runtime.activateAudio().catch(() => {
+        // Audio unavailability is a shared capability diagnostic, not a
+        // framework-view failure and therefore must not trigger UI failover.
+      });
+    } catch {
+      // Synchronous AudioContext construction failures are handled by the
+      // safe audio engine and reflected through presentation diagnostics.
+    }
+  }
+
+  function onDialPointerDown(event: PointerEvent): void {
+    if (event.pointerType === "mouse" && event.button !== 0) return;
+    event.preventDefault();
+    const element = event.currentTarget;
+    if (!(element instanceof HTMLDivElement)) return;
+
+    try {
+      element.setPointerCapture(event.pointerId);
+    } catch {
+      // Assistive pointer adapters do not always expose pointer capture.
+    }
+    activePointerId = event.pointerId;
+    if (
+      dispatch(
+        createDialPointerCommand({
+          type: "pointer-start",
+          clientX: event.clientX,
+          clientY: event.clientY,
+          timestampMs: event.timeStamp,
+          bounds: element.getBoundingClientRect(),
+          radialDeadZone: presentation.radialDeadZone,
+        }),
+      )
+    ) {
+      setDragging(true);
+    }
+    activateAudio();
+  }
+
+  function onDialPointerMove(event: PointerEvent): void {
+    if (activePointerId !== event.pointerId) return;
+    event.preventDefault();
+    const element = event.currentTarget;
+    if (!(element instanceof HTMLDivElement)) return;
+    dispatch(
+      createDialPointerCommand({
+        type: "pointer-move",
+        clientX: event.clientX,
+        clientY: event.clientY,
+        timestampMs: event.timeStamp,
+        bounds: element.getBoundingClientRect(),
+        radialDeadZone: presentation.radialDeadZone,
+      }),
+    );
+  }
+
+  function finishPointerGesture(
+    event: PointerEvent,
+    commandType: "pointer-end" | "pointer-cancel",
+  ): void {
+    if (activePointerId !== event.pointerId) return;
+    event.preventDefault();
+    const element = event.currentTarget;
+    activePointerId = null;
+    dispatch({
+      type: commandType,
+      timestampMs: event.timeStamp,
+    });
+    setDragging(false);
+    if (
+      element instanceof HTMLDivElement &&
+      element.hasPointerCapture(event.pointerId)
+    ) {
+      element.releasePointerCapture(event.pointerId);
+    }
+  }
+
+  function onDialLostPointerCapture(event: PointerEvent): void {
+    if (activePointerId !== event.pointerId) return;
+    activePointerId = null;
+    dispatch({
+      type: "pointer-end",
+      timestampMs: event.timeStamp,
+    });
+    setDragging(false);
+  }
+
+  function onDialKeyDown(event: KeyboardEvent): void {
+    if (!isDialKeyboardKey(event.key)) return;
+    event.preventDefault();
+    dispatch(createDialKeyboardCommand(event.key, event.timeStamp));
+    activateAudio();
+  }
+
+  function onDialWheel(event: WheelEvent): void {
+    event.preventDefault();
+    dispatch(createDialWheelCommand(event.deltaY, event.timeStamp));
+    activateAudio();
+  }
+
+  function mountPlate(canvas: HTMLCanvasElement): { destroy(): void } {
+    try {
+      plateAttachment?.detach();
+      const sourceAttachment = runtime.mountPlate(canvas);
+      let attachmentDetached = false;
+      const attachment: MandelHowlViewAttachment = {
+        detach() {
+          if (attachmentDetached) return;
+          attachmentDetached = true;
+          sourceAttachment.detach();
+        },
+      };
+      plateAttachment = attachment;
+      plateAttached = true;
+      return {
+        destroy() {
+          if (plateAttachment === attachment) {
+            plateAttachment = null;
+          }
+          plateAttached = false;
+          attachment.detach();
+        },
+      };
+    } catch (error) {
+      reportViewFailure(error);
+      return { destroy() {} };
+    }
+  }
+
+  function handleBoundaryError(error: unknown): void {
+    reportViewFailure(error);
+  }
+
+  onMount(() => {
+    const unsubscribe = runtime.presentation.subscribe((next) => {
+      if (detached) return;
+      presentation = next;
+      void tick()
+        .then(() => {
+          if (!detached) onHeartbeat?.(next.runtime.sequence);
+        })
+        .catch(reportViewFailure);
+    });
+
+    void tick()
+      .then(() => {
+        if (detached || readyReported) return;
+        if (!dialElement || !plateAttached) {
+          reportViewFailure(
+            new Error("Svelte view did not attach its dial and plate."),
+          );
+          return;
+        }
+        readyReported = true;
+        onReady?.();
+        onHeartbeat?.(presentation.runtime.sequence);
+      })
+      .catch(reportViewFailure);
+
+    return () => {
+      detached = true;
+      unsubscribe();
+      if (activePointerId !== null) {
+        dispatch({
+          type: "pointer-cancel",
+          timestampMs: performance.now(),
+        });
+        activePointerId = null;
+        setDragging(false);
+      }
+      plateAttachment?.detach();
+      plateAttachment = null;
+      plateAttached = false;
+    };
+  });
+</script>
+
+<svelte:boundary onerror={handleBoundaryError}>
+  <main
+    class={`mh-shell mh-regime-${snapshot.regime}${
+      presentation.dragging ? " mh-is-dragging" : ""
+    } mh-measurement-${snapshot.volume.status}`}
+    data-regime={snapshot.regime}
+    data-ui-implementation="svelte5"
+    data-ui-revision={presentation.revision}
+    style={sceneStyle}
+  >
+    <header class="mh-header">
+      <div class="mh-brand" aria-label="MandelHowl">
+        <span class="mh-brand-mark" aria-hidden="true">
+          <span></span>
+        </span>
+        <div>
+          <p class="mh-kicker">Experimental acoustic interface</p>
+          <h1>MandelHowl</h1>
+        </div>
+      </div>
+
+      <div class="mh-header-readouts" aria-label="System status">
+        <p>
+          <span>DATASET</span>
+          {isVerifiedDataset
+            ? "VERIFIED THIN-PLATE BAKE"
+            : "PROTOTYPE / CENTER CLAMP"}
+        </p>
+        <p
+          class={presentation.audioEnabled
+            ? "mh-audio-on"
+            : "mh-audio-off"}
+          role="status"
+        >
+          <span class="mh-status-dot" aria-hidden="true"></span>
+          {presentation.audioEnabled
+            ? "SAFE MONITOR ACTIVE"
+            : "MONITOR MUTED"}
+        </p>
+      </div>
+    </header>
+
+    <section class="mh-workbench" aria-label="MandelHowl experiment">
+      <section class="mh-drive-panel" aria-labelledby="drive-title">
+        <div class="mh-section-heading">
+          <span>01 / DRIVE</span>
+          <h2 id="drive-title">Frequency input</h2>
+        </div>
+
+        <div
+          bind:this={dialElement}
+          class="mh-dial"
+          role="slider"
+          tabindex="0"
+          aria-label="Drive frequency"
+          aria-valuemin={frequencyMin}
+          aria-valuemax={frequencyMax}
+          aria-valuenow={Math.round(frequency)}
+          aria-valuetext={`${displayedFrequency}, ${regimeCopy.label.toLowerCase()}`}
+          aria-orientation="horizontal"
+          onpointerdown={onDialPointerDown}
+          onpointermove={onDialPointerMove}
+          onpointerup={(event) => finishPointerGesture(event, "pointer-end")}
+          onpointercancel={(event) =>
+            finishPointerGesture(event, "pointer-cancel")}
+          onlostpointercapture={onDialLostPointerCapture}
+          onkeydown={onDialKeyDown}
+          onwheel={onDialWheel}
+        >
+          <span class="mh-dial-scale" aria-hidden="true"></span>
+          <span class="mh-dial-track" aria-hidden="true"></span>
+          <span
+            class="mh-dial-label mh-dial-label-20"
+            aria-hidden="true"
+          >
+            {frequencyTicks[0]}
+          </span>
+          <span
+            class="mh-dial-label mh-dial-label-200"
+            aria-hidden="true"
+          >
+            {frequencyTicks[1]}
+          </span>
+          <span
+            class="mh-dial-label mh-dial-label-2k"
+            aria-hidden="true"
+          >
+            {frequencyTicks[2]}
+          </span>
+          <span
+            class="mh-dial-label mh-dial-label-20k"
+            aria-hidden="true"
+          >
+            {frequencyTicks[3]}
+          </span>
+
+          <span class="mh-dial-face">
+            <span class="mh-dial-type">DRIVE FREQUENCY</span>
+            <strong>{displayedFrequency}</strong>
+            <span class="mh-dial-hint">
+              {presentation.dragging ? "SWEEPING" : "DRAG · KEYS · WHEEL"}
+            </span>
+          </span>
+
+          <span class="mh-dial-pointer" aria-hidden="true">
+            <span></span>
+          </span>
+        </div>
+
+        <div class="mh-drive-footer" aria-label="Drive state">
+          <span>LOG SWEEP</span>
+          <span class="mh-drive-direction">
+            <i aria-hidden="true">−</i>
+            {formatFrequency(frequencyMin)}
+            <b aria-hidden="true"></b>
+            {formatFrequency(frequencyMax)}
+            <i aria-hidden="true">+</i>
+          </span>
+        </div>
+      </section>
+
+      <section
+        class="mh-apparatus-panel"
+        aria-labelledby="apparatus-title"
+      >
+        <div class="mh-section-heading mh-section-heading-wide">
+          <div>
+            <span>02 / RESONATOR</span>
+            <h2 id="apparatus-title">Closed-loop Chladni apparatus</h2>
+          </div>
+          <div class="mh-mode-readout">
+            <span>CAPTURE</span>
+            <strong>{modeLabel}</strong>
+          </div>
+        </div>
+
+        <div
+          class="mh-apparatus"
+          aria-label={`Signal path: speaker drives the ${
+            isVerifiedDataset
+              ? "verified Mandelbrot-encoded thin-plate bake"
+              : "explicitly labelled analytical prototype plate"
+          }, microphone returns the response through the feedback loop. ${regimeCopy.label}, ${regimeCopy.description}.`}
+        >
+          <div
+            class="mh-signal-key mh-signal-key-drive"
+            aria-hidden="true"
+          >
+            <span>DRIVE</span>
+            <i></i>
+          </div>
+          <div
+            class="mh-signal-key mh-signal-key-return"
+            aria-hidden="true"
+          >
+            <span>RETURN</span>
+            <i></i>
+          </div>
+
+          <div class="mh-speaker" aria-hidden="true">
+            <span class="mh-speaker-frame">
+              <span class="mh-speaker-cone">
+                <i></i>
+              </span>
+            </span>
+            <strong>SPEAKER</strong>
+            <small>EXCITER 01</small>
+          </div>
+
+          <div class="mh-drive-waves" aria-hidden="true">
+            <span></span>
+            <span></span>
+            <span></span>
+          </div>
+
+          <figure class="mh-plate-assembly">
+            <div class="mh-plate-title">
+              <span>
+                {isVerifiedDataset
+                  ? "MANDELBROT-ENCODED / THIN PLATE"
+                  : "ANALYTICAL PROTOTYPE"}
+              </span>
+              <strong>METAL PLATE + SAND</strong>
+            </div>
+            <div class="mh-plate-brace" aria-hidden="true">
+              <span></span>
+              <span></span>
+              <span></span>
+              <span></span>
+            </div>
+            <div class="mh-plate-hardware">
+              <div class="mh-plate-surface">
+                <!-- svelte-ignore a11y_no_interactive_element_to_noninteractive_role -->
+                <canvas
+                  use:mountPlate
+                  class="mh-plate-canvas"
+                  role="img"
+                  aria-label={`Animated Chladni sand pattern at ${displayedFrequency}; ${modeLabel.toLowerCase()}`}
+                >
+                  Chladni sand pattern visualization at {displayedFrequency}.
+                </canvas>
+                <span class="mh-plate-sheen" aria-hidden="true"></span>
+                <span class="mh-center-clamp" aria-hidden="true">
+                  <i></i>
+                </span>
+              </div>
+            </div>
+            <figcaption>
+              <span>
+                {isVerifiedDataset
+                  ? "VERIFIED MODAL DATA"
+                  : "DETERMINISTIC PREVIEW"}
+              </span>
+              <span>
+                {rendererKind.toUpperCase()} / {renderQuality.toUpperCase()}
+              </span>
+            </figcaption>
+          </figure>
+
+          <div class="mh-air-waves" aria-hidden="true">
+            <span></span>
+            <span></span>
+            <span></span>
+          </div>
+
+          <div class="mh-microphone" aria-hidden="true">
+            <span class="mh-mic-capsule">
+              <i></i>
+              <i></i>
+              <i></i>
+              <i></i>
+            </span>
+            <span class="mh-mic-body"></span>
+            <span class="mh-mic-mount"></span>
+            <strong>MIC</strong>
+            <small>VIRTUAL RETURN</small>
+          </div>
+
+          <div class="mh-feedback-cable" aria-hidden="true">
+            <span class="mh-feedback-flow mh-flow-one"></span>
+            <span class="mh-feedback-flow mh-flow-two"></span>
+            <span class="mh-feedback-label">FEEDBACK LOOP</span>
+          </div>
+        </div>
+
+        <div
+          class="mh-instrumentation"
+          aria-label="Read-only signal instruments"
+        >
+          <div
+            class="mh-oscilloscope"
+            role="img"
+            aria-label={`Microphone waveform; RMS ${oscilloscope.rmsPercent} percent, peak ${oscilloscope.peakPercent} percent`}
+          >
+            <div class="mh-instrument-label">
+              <span>MIC SIGNAL</span>
+              <strong>OSCILLOSCOPE</strong>
+            </div>
+            <div
+              class="mh-scope-screen"
+              aria-hidden="true"
+              data-auto-gain={oscilloscope.autoGainLinear.toFixed(3)}
+              data-display-peak={oscilloscope.displayPeakNormalized.toFixed(3)}
+            >
+              <i class="mh-scope-zero"></i>
+              {#each oscilloscope.samples as sample, index (index)}
+                <span
+                  class="mh-scope-sample"
+                  data-polarity={sample < 0 ? "negative" : "positive"}
+                  style={`--scope-magnitude: ${Math.abs(
+                    Math.min(
+                      1,
+                      Math.max(-1, Number.isFinite(sample) ? sample : 0),
+                    ),
+                  )}`}
+                ></span>
+              {/each}
+            </div>
+            <p>
+              RMS {oscilloscope.rmsPercent.toString().padStart(3, "0")}
+              <span>
+                AUTO ×{oscilloscope.autoGainLinear < 10
+                  ? oscilloscope.autoGainLinear.toFixed(1)
+                  : Math.round(oscilloscope.autoGainLinear)}
+              </span>
+              <span>
+                PEAK {oscilloscope.peakPercent.toString().padStart(3, "0")}
+              </span>
+            </p>
+          </div>
+
+          <div class="mh-phase-meter">
+            <div class="mh-instrument-label">
+              <span>LOOP ALIGNMENT</span>
+              <strong>MODE PHASE</strong>
+            </div>
+            <div
+              class="mh-phase-face"
+              role="img"
+              aria-label={`Active mode phase ${activeModePhase.toFixed(2)} radians`}
+            >
+              <i aria-hidden="true"></i>
+              <span aria-hidden="true">0</span>
+              <span aria-hidden="true">π</span>
+            </div>
+            <p>{activeModePhase.toFixed(2)} RAD</p>
+          </div>
+        </div>
+
+        <div class="mh-measurement" aria-label="Measurement status">
+          <div>
+            <span>
+              {snapshot.volume.status === "measuring"
+                ? "MEASURING"
+                : "SETTLED"}
+            </span>
+            <strong>
+              {Math.round(progress * 100).toString().padStart(3, "0")}%
+            </strong>
+          </div>
+          <div class="mh-measurement-track" aria-hidden="true">
+            <span></span>
+          </div>
+          <p>
+            <span class="mh-envelope-dot" aria-hidden="true"></span>
+            ENVELOPE {Math.round(visualEnvelope * 100)
+              .toString()
+              .padStart(3, "0")}
+          </p>
+        </div>
+      </section>
+
+      <section class="mh-output-panel" aria-labelledby="output-title">
+        <div class="mh-section-heading">
+          <span>03 / RESULT</span>
+          <h2 id="output-title">Virtual output</h2>
+        </div>
+
+        <div class="mh-volume-readout">
+          <span class="mh-output-label">VOLUME</span>
+          <strong>{displayedVolume}</strong>
+          <span class="mh-output-range">/ 100</span>
+          <span class="mh-output-state">
+            {snapshot.volume.status === "measuring"
+              ? "MEASURING"
+              : "SETTLED"}
+          </span>
+          {#if presentation.challengeTarget !== null}
+            <span class="mh-challenge-readonly">
+              READ-ONLY TARGET {presentation.challengeTarget
+                .toString()
+                .padStart(3, "0")}
+            </span>
+          {/if}
+        </div>
+        <span
+          class="mh-sr-only"
+          role="status"
+          aria-live="polite"
+          aria-atomic="true"
+        >
+          {stableAnnouncement}
+        </span>
+
+        <div class="mh-meter-block">
+          <div class="mh-volume-meter" aria-hidden="true">
+            <span class="mh-meter-fill"></span>
+            <span class="mh-meter-grid"></span>
+            {#if presentation.challengeTarget !== null}
+              <span class="mh-target-line">
+                <i>
+                  TARGET {presentation.challengeTarget
+                    .toString()
+                    .padStart(3, "0")}
+                </i>
+              </span>
+            {/if}
+            <i class="mh-meter-mark mh-meter-mark-100">100</i>
+            <i class="mh-meter-mark mh-meter-mark-75">75</i>
+            <i class="mh-meter-mark mh-meter-mark-50">50</i>
+            <i class="mh-meter-mark mh-meter-mark-25">25</i>
+            <i class="mh-meter-mark mh-meter-mark-0">0</i>
+          </div>
+          <div class="mh-regime-card">
+            <span>LOOP REGIME</span>
+            <strong>
+              <i aria-hidden="true"></i>
+              {regimeCopy.label}
+            </strong>
+            <p>{regimeCopy.description}</p>
+          </div>
+        </div>
+
+        {#if
+          presentation.diagnostic.title &&
+          presentation.diagnostic.message}
+          <aside
+            class={`mh-diagnostic mh-diagnostic-${presentation.diagnostic.severity}`}
+            aria-label="System diagnostic"
+          >
+            <span>{presentation.diagnostic.code ?? "SYSTEM"}</span>
+            <strong>{presentation.diagnostic.title}</strong>
+            <p>{presentation.diagnostic.message}</p>
+            {#if presentation.diagnostic.detail}
+              <code class="mh-diagnostic-detail">
+                {presentation.diagnostic.detail}
+              </code>
+            {/if}
+          </aside>
+        {/if}
+
+        <div class="mh-safety-note">
+          <span aria-hidden="true">↳</span>
+          <p>
+            <strong>VIRTUAL LEVEL</strong>
+            Listening gain remains independently limited.
+          </p>
+        </div>
+      </section>
+    </section>
+
+    <footer class="mh-footer">
+      <p>
+        FREQUENCY
+        <span aria-hidden="true">→</span>
+        RESONANCE
+        <span aria-hidden="true">→</span>
+        FEEDBACK
+        <span aria-hidden="true">→</span>
+        VOLUME
+      </p>
+      <p>ONE CONTROL / ONE RESULT / NO RANDOMNESS</p>
+      <p class="mh-prototype-status">
+        {isVerifiedDataset
+          ? "CONTENT-ADDRESSED / VERIFIED THIN-PLATE BAKE"
+          : "ANALYTICAL PROTOTYPE / PRODUCTION BAKE PENDING"}
+      </p>
+    </footer>
+  </main>
+
+  {#snippet failed()}
+    <main
+      class="mh-shell mh-regime-decaying"
+      data-ui-implementation="svelte5"
+      data-ui-failed="true"
+      aria-live="assertive"
+    >
+      <aside
+        class="mh-diagnostic mh-diagnostic-fatal"
+        aria-label="System diagnostic"
+      >
+        <span>MH-UI-SVELTE-FAILED</span>
+        <strong>Svelte view unavailable</strong>
+        <p>The runtime supervisor is switching to the standby view.</p>
+      </aside>
+    </main>
+  {/snippet}
+</svelte:boundary>

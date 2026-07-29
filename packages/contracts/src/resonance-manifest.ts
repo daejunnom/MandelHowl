@@ -26,6 +26,11 @@ export interface TextureAtlasReference extends AssetReference {
 export interface ResonanceManifest {
   readonly $schema?: string;
   readonly schemaVersion: "mandelhowl.resonance-manifest.v1";
+  /**
+   * Optional for compatibility with v1 datasets produced before the
+   * cross-language algorithm contract was introduced.
+   */
+  readonly algorithmRevision?: string;
   readonly datasetId: ContentAddressedId;
   readonly ownership: GeneratedArtifactOwnership;
   readonly contentAddressing: {

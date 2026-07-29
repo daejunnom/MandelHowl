@@ -2,7 +2,7 @@
   "schemaVersion": "mandelhowl.third-party-license-inventory.v1",
   "source": "package-lock.json",
   "packageLockVersion": 3,
-  "packageCount": 708,
+  "packageCount": 710,
   "packages": [
     {
       "path": "node_modules/@alloc/quick-lru",
@@ -1540,6 +1540,16 @@
       "version": "0.2.1",
       "license": "MIT",
       "integrity": "sha512-5m3B2cbqQ4TbwW6Xkh66Ntw6dD7gNc77cCxABTTesWcq9jxIzMgTk97pZx5vEtvQx8iokgi7GIphqZe+PGwcZA==",
+      "developmentOnly": true,
+      "optional": false,
+      "peer": false
+    },
+    {
+      "path": "node_modules/@sveltejs/vite-plugin-svelte",
+      "name": "@sveltejs/vite-plugin-svelte",
+      "version": "7.2.0",
+      "license": "MIT",
+      "integrity": "sha512-1SpkuMSRLfugrVX+IrKfE1RUegzo8AQzKQ6qQPfVzbcWi5IhuTPaKb5ZrLpucleFznkc4/RTeSPoRnGWFxX+EQ==",
       "developmentOnly": true,
       "optional": false,
       "peer": false
@@ -3200,6 +3210,16 @@
       "version": "0.1.4",
       "license": "MIT",
       "integrity": "sha512-oIPzksmTg4/MriiaYGO+okXDT7ztn/w3Eptv/+gSIdMdKsJo0u4CfYNFJPy+4SKMuCqGw2wxnA+URMg3t8a/bQ==",
+      "developmentOnly": true,
+      "optional": false,
+      "peer": false
+    },
+    {
+      "path": "node_modules/deepmerge",
+      "name": "deepmerge",
+      "version": "4.3.1",
+      "license": "MIT",
+      "integrity": "sha512-3sUqbMEc77XqpdNO7FRyRog+eW3ph+GYCbj+rK+uYyRMuwsVy0rMiVtPn+QJlKFvWP/1PYpapqYn0Me2knFn+A==",
       "developmentOnly": true,
       "optional": false,
       "peer": false

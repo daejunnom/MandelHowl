@@ -1,0 +1,84 @@
+{
+  "schemaVersion": "mandelhowl.baker-algorithm.v1",
+  "algorithmRevision": "kirchhoff-love-rayleigh-ritz-r1",
+  "numericPolicy": {
+    "floatPrecision": "binary64",
+    "fastMath": false,
+    "summationOrder": "source-loop-order",
+    "quantizationRounding": "ties-to-even",
+    "randomSource": "forbidden"
+  },
+  "field": {
+    "minimumResolutionPx": 32,
+    "escapeRadius": 2,
+    "gaussianApproximationBoxPasses": 3,
+    "manufacturingBevelBoxPasses": 10,
+    "conjugateSymmetryTolerance": 1e-15
+  },
+  "basis": {
+    "axisymmetricRadialOrders": 8,
+    "lowAngularOrderMinimum": 1,
+    "lowAngularOrderMaximum": 4,
+    "lowAngularRadialOrders": 4,
+    "highAngularOrderMinimum": 5,
+    "highAngularOrderMaximum": 8,
+    "highAngularRadialOrders": 3,
+    "hubClampPower": 2
+  },
+  "assembly": {
+    "finiteDifferenceHessianStepRatio": 0.0005
+  },
+  "eigensolver": {
+    "name": "cyclic-jacobi-generalized-symmetric",
+    "relativeTolerance": 1e-12,
+    "maximumSweeps": 100
+  },
+  "coupling": {
+    "probeRingSamples": 8,
+    "probeRingRadiusRatio": 0.72,
+    "radiationRadialSamples": 12,
+    "radiationAngularSamples": 32,
+    "radiationCoherenceFloor": 0.35,
+    "radiationCoherenceWeight": 0.65,
+    "signEpsilon": 1e-10,
+    "ordinalDampingSlope": 0.012
+  },
+  "response": {
+    "sampleCount": 512,
+    "spacing": "logarithmic",
+    "normalizationFloor": 1e-30
+  },
+  "texture": {
+    "nodalAbsoluteThreshold": 0.065,
+    "sandGaussianScale": 0.12,
+    "lowVelocityThreshold": 0.1,
+    "highVelocityThreshold": 0.5,
+    "normalVisualScale": 0.0015,
+    "finiteDifferenceCheckOrdinals": [1, 8, 16, 32, 48],
+    "maximumCrossValidationRelativeDifference": 0.15
+  },
+  "foundationCoverage": {
+    "captureRate": 1.85,
+    "maximumFraction": 0.985,
+    "minimumLogArgument": 0.000001,
+    "baseDetuneRatio": 0.00035,
+    "detuneStep": 0.000015,
+    "detuneCycle": 11
+  },
+  "differentialTolerance": {
+    "modeFrequencyRelative": 1e-9,
+    "modeScalarAbsolute": 1e-10,
+    "responseFrequencyRelative": 1e-12,
+    "responseComponentAbsolute": 2e-10,
+    "solverEvidenceRelative": 2e-9,
+    "solverEvidenceAbsolute": 2e-10,
+    "meshEvidenceRelative": 2e-9,
+    "meshEvidenceAbsolute": 2e-12,
+    "meshNodeAbsoluteM": 3e-8,
+    "reportScalarRelative": 2e-9,
+    "reportScalarAbsolute": 2e-10,
+    "textureMaximumLsb": 1,
+    "textureMaximumDifferentFraction": 0.0001,
+    "fieldMaximumLsb": 1
+  }
+}

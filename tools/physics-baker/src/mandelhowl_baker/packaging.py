@@ -11,6 +11,19 @@ from pathlib import Path
 from typing import Any
 
 from . import __version__
+from .algorithm import (
+    ALGORITHM_CONTRACT_BYTES,
+    ALGORITHM_CONTRACT_SHA256,
+    ALGORITHM_REVISION,
+    COVERAGE_BASE_DETUNE,
+    COVERAGE_CAPTURE_RATE,
+    COVERAGE_DETUNE_CYCLE,
+    COVERAGE_DETUNE_STEP,
+    COVERAGE_MAXIMUM_FRACTION,
+    COVERAGE_MINIMUM_LOG_ARGUMENT,
+    CROSS_VALIDATION_TOLERANCE,
+    HESSIAN_STEP_RATIO,
+)
 from .canonical import (
     canonical_json_bytes,
     pretty_json_bytes,
@@ -55,7 +68,17 @@ def _foundation_coverage(modes: PostprocessedDataset) -> dict[str, Any]:
         fraction = target / 100.0
         # This globally-defined exponential capture estimate seeds the runtime
         # trajectory search; it is not a per-value branch in the runtime engine.
-        dwell = 0.0 if target == 0 else -math.log(max(1e-6, 1.0 - 0.985 * fraction)) / 1.85
+        dwell = (
+            0.0
+            if target == 0
+            else -math.log(
+                max(
+                    COVERAGE_MINIMUM_LOG_ARGUMENT,
+                    1.0 - COVERAGE_MAXIMUM_FRACTION * fraction,
+                )
+            )
+            / COVERAGE_CAPTURE_RATE
+        )
         approach = -1 if target % 2 else 1
         outputs.append(
             {
@@ -66,7 +89,10 @@ def _foundation_coverage(modes: PostprocessedDataset) -> dict[str, Any]:
                     "naturalFrequencyHz": anchor.natural_frequency_hz,
                     "approachDirection": approach,
                     "estimatedDwellSeconds": dwell,
-                    "detuneRatio": (0.00035 + 0.000015 * (target % 11))
+                    "detuneRatio": (
+                        COVERAGE_BASE_DETUNE
+                        + COVERAGE_DETUNE_STEP * (target % COVERAGE_DETUNE_CYCLE)
+                    )
                     * approach,
                 },
             }
@@ -143,6 +169,10 @@ def package_dataset(
         # themselves so provenance identity and asset integrity are identical.
         _write(temporary / "plate-spec.json", canonical_json_bytes(spec))
         _write(temporary / "field" / "mandelbrot-field.bin", field.to_binary())
+        _write(
+            temporary / "science" / "baker-algorithm.v1.json",
+            ALGORITHM_CONTRACT_BYTES,
+        )
         mesh_report = {
             "schemaVersion": "mandelhowl.mesh-evidence.v1",
             "domain": "annulus from clamped hub radius to free outer rim",
@@ -187,7 +217,7 @@ def package_dataset(
         convergence = copy.deepcopy(convergence)
         convergence["meshEvidence"] = [mesh.as_dict() for mesh in meshes]
         cross_validation = copy.deepcopy(postprocessed.cross_validation)
-        cross_tolerance = 0.15
+        cross_tolerance = CROSS_VALIDATION_TOLERANCE
         cross_validation["criterion"] = {
             "maximumRelativeFrequencyDifference": cross_tolerance
         }
@@ -212,9 +242,11 @@ def package_dataset(
 
         solver_options = {
             "method": "variable-thickness-kirchhoff-love-rayleigh-ritz",
+            "algorithmRevision": ALGORITHM_REVISION,
+            "algorithmContractSha256": ALGORITHM_CONTRACT_SHA256,
             "basisCount": len(fine_result.basis),
             "quadrature": fine_result.quadrature,
-            "finiteDifferenceHessianStepRatio": 0.0005,
+            "finiteDifferenceHessianStepRatio": HESSIAN_STEP_RATIO,
             "floatPrecision": "binary64",
             "randomSource": "forbidden",
         }
@@ -247,6 +279,8 @@ def package_dataset(
                 "name": "tools/physics-baker",
                 "version": __version__,
                 "dependencies": "Python 3.10+ standard library only",
+                "algorithmRevision": ALGORITHM_REVISION,
+                "algorithmContractSha256": ALGORITHM_CONTRACT_SHA256,
                 "randomSource": "forbidden",
             },
             "canonicalInput": {
@@ -328,6 +362,8 @@ def package_dataset(
             "schemaVersion": "mandelhowl.generation-report.v1",
             "deterministic": True,
             "releaseBake": release,
+            "backend": "python-stdlib",
+            "algorithmRevision": ALGORITHM_REVISION,
             "manufacturingChecksPassed": all(
                 bool(field.statistics[key])
                 for key in (
@@ -395,6 +431,7 @@ def package_dataset(
 
         manifest: dict[str, Any] = {
             "schemaVersion": "mandelhowl.resonance-manifest.v1",
+            "algorithmRevision": ALGORITHM_REVISION,
             "ownership": {
                 "kind": "generated",
                 "generator": "tools/physics-baker",
