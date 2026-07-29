@@ -1,5 +1,6 @@
 export {
   advanceResonance,
+  classifyResonanceRegime,
   createResonanceState,
   getResonanceSnapshot,
   initResonance,

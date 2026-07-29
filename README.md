@@ -34,4 +34,5 @@ npm run lint
 ```
 
 상세 설계 기준은 `MandelHowl_핸드오프.md`와
-`MandelHowl_파일_구조.md`를 따른다.
+`MandelHowl_파일_구조.md`를 따른다. 현재 구현과 완료 조건의 대응 상태는
+`docs/handoff-coverage.md`에 기록한다.

@@ -66,6 +66,9 @@ envelopeFollower:
   releaseSeconds: 0.42
 
 regimeThresholds:
+  # Critical dynamics apply only inside this symmetric loop-gain margin.
+  # Residual mode energy and decay coefficients are intentionally unchanged.
+  criticalLoopMarginHalfWidth: 0.025
   decayingMaximumEnvelope: 0.004
   growingMinimumSlopePerSecond: 0.08
   saturatedMinimumEnvelope: 0.78

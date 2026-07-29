@@ -66,6 +66,7 @@ export interface FeedbackSpec {
     readonly releaseSeconds: number;
   };
   readonly regimeThresholds: {
+    readonly criticalLoopMarginHalfWidth: number;
     readonly decayingMaximumEnvelope: number;
     readonly growingMinimumSlopePerSecond: number;
     readonly saturatedMinimumEnvelope: number;

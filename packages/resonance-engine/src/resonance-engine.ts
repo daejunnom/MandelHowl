@@ -7,6 +7,7 @@ const TAU = Math.PI * 2;
 const FIXED_STEP_SECONDS = 1 / 120;
 const MAX_ADVANCE_SECONDS = 0.25;
 const MEASUREMENT_WINDOW_SECONDS = 1.25;
+const CRITICAL_LOOP_MARGIN_HALF_WIDTH = 0.025;
 
 export type ResonanceRegime =
   | "decaying"
@@ -116,17 +117,17 @@ function volumeFromRms(rms: number, envelope: number): number {
   return Math.round(1 + smoothstep(normalized) * 98);
 }
 
-function classifyRegime(
+export function classifyResonanceRegime(
   loopMargin: number,
   envelope: number,
 ): ResonanceRegime {
   if (envelope >= 0.92) {
     return "saturated";
   }
-  if (loopMargin > 0.075) {
+  if (loopMargin > CRITICAL_LOOP_MARGIN_HALF_WIDTH) {
     return "growing";
   }
-  if (loopMargin >= -0.075 || (envelope > 0.08 && envelope < 0.76)) {
+  if (loopMargin >= -CRITICAL_LOOP_MARGIN_HALF_WIDTH) {
     return "critical";
   }
   return "decaying";
@@ -270,12 +271,12 @@ function integrateFixedStep(
   const loopMargin = loopGain - 1;
 
   let envelope = state.feedbackEnvelope;
-  if (loopMargin > 0.075) {
+  if (loopMargin > CRITICAL_LOOP_MARGIN_HALF_WIDTH) {
     const growthRate = 0.42 + loopMargin * 2.25;
     envelope +=
       (1 - envelope) *
       (1 - Math.exp(-growthRate * FIXED_STEP_SECONDS));
-  } else if (loopMargin < -0.075) {
+  } else if (loopMargin < -CRITICAL_LOOP_MARGIN_HALF_WIDTH) {
     const decayRate = 0.68 + Math.abs(loopMargin) * 1.55;
     envelope *= Math.exp(-decayRate * FIXED_STEP_SECONDS);
   } else {
@@ -309,7 +310,7 @@ function integrateFixedStep(
     1,
   );
   const instantaneousVolume = volumeFromRms(microphoneRms, envelope);
-  const regime = classifyRegime(loopMargin, envelope);
+  const regime = classifyResonanceRegime(loopMargin, envelope);
 
   const frequencyMotion = Math.abs(sweepHzPerSecond);
   const changedFrequency =

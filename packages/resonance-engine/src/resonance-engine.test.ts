@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   advanceResonance,
+  classifyResonanceRegime,
   createResonanceState,
   getResonanceSnapshot,
 } from "./resonance-engine";
@@ -41,6 +42,43 @@ describe("resonance engine", () => {
     expect(snapshot.regime).toBe("decaying");
     expect(snapshot.volume).toBe(0);
     expect(snapshot.feedbackEnvelope).toBeLessThan(0.02);
+  });
+
+  it("keeps critical behavior inside a narrow symmetric loop-margin band", () => {
+    expect(classifyResonanceRegime(0.025, 0.5)).toBe("critical");
+    expect(classifyResonanceRegime(-0.025, 0.5)).toBe("critical");
+    expect(classifyResonanceRegime(0.025_001, 0.5)).toBe("growing");
+    expect(classifyResonanceRegime(-0.025_001, 0.5)).toBe("decaying");
+  });
+
+  it("does not let residual envelope widen the critical classification", () => {
+    expect(classifyResonanceRegime(-0.08, 0.5)).toBe("decaying");
+    expect(classifyResonanceRegime(-0.08, 0.93)).toBe("saturated");
+  });
+
+  it("retains a gradual residual tail after leaving a saturated mode", () => {
+    let state = createResonanceState({ initialFrequencyHz: 221.4 });
+    for (let elapsed = 0; elapsed < 12; elapsed += 1 / 60) {
+      state = advanceResonance(state, 1 / 60, {
+        frequencyHz: 221.4,
+        sweepHzPerSecond: 0,
+        direction: 0,
+      });
+    }
+
+    const saturatedEnvelope = state.feedbackEnvelope;
+    for (let elapsed = 0; elapsed < 0.25; elapsed += 1 / 60) {
+      state = advanceResonance(state, 1 / 60, {
+        frequencyHz: 760,
+        sweepHzPerSecond: 0,
+        direction: 0,
+      });
+    }
+
+    expect(saturatedEnvelope).toBeGreaterThanOrEqual(0.92);
+    expect(state.feedbackEnvelope).toBeGreaterThan(0.5);
+    expect(state.feedbackEnvelope).toBeLessThan(saturatedEnvelope);
+    expect(state.regime).toBe("decaying");
   });
 
   it("guards the numerical state against non-finite drive input", () => {
