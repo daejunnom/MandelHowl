@@ -3,7 +3,7 @@
   "contentAddressing": {
     "algorithm": "sha256",
     "canonicalization": "RFC8785",
-    "directoryName": "a958193dbe4468f353db6c0973eda5b78181ae878689bfdd4b65afd683a2d9d7",
+    "directoryName": "92d15f158419992bee4289328d8529f1cd8fdda82a4fbe2a6ba139200b28b19d",
     "identityScope": "manifest-with-datasetId-and-directoryName-omitted-and-all-referenced-file-digests"
   },
   "coordinateSystem": {
@@ -14,13 +14,13 @@
     "yAxis": "mandelbrot-imaginary-positive",
     "zAxis": "front-normal"
   },
-  "datasetId": "sha256:a958193dbe4468f353db6c0973eda5b78181ae878689bfdd4b65afd683a2d9d7",
+  "datasetId": "sha256:92d15f158419992bee4289328d8529f1cd8fdda82a4fbe2a6ba139200b28b19d",
   "files": {
     "checksums": {
       "byteLength": 10309,
       "mediaType": "application/json",
       "path": "checksums.json",
-      "sha256": "e711fce156cabe6b831fc9ee29696fca7ae3a1180594d61f83e38aee9a66402d"
+      "sha256": "973a31aba27ecdcb92fd8ab42d52b8b179b2a59b95ceab1898c33a2b168953e2"
     },
     "convergenceReport": {
       "byteLength": 15098,
@@ -50,7 +50,7 @@
       "byteLength": 82777,
       "mediaType": "application/json",
       "path": "provenance.json",
-      "sha256": "c75fa1f84ac6a5c8c354b8fb1ac80192fb91208b5f3bc583151bf771dc598a16"
+      "sha256": "992a2d179ce6c8f5ba368d5522649002cc528d55413534f1840920211b5ad111"
     },
     "response": {
       "byteLength": 12304,
@@ -1020,7 +1020,7 @@
   },
   "schemaVersion": "mandelhowl.resonance-manifest.v1",
   "solverProvenance": {
-    "containerImageDigest": "sha256:0a04693369dff090d3ea015209290e0c697d98c0dabdb040d1dccfa6e56847e2",
+    "containerImageDigest": "sha256:6382ed4eef8be1ef5a944b25ca84f1630a8422bbdf3542e5b85ac5ed1e28f421",
     "executionKind": "oci-container",
     "optionsSha256": "76f8153c13c8cabc84a420f4b33165e2afb7ad7a3cd18f1f9912d07dc333909e",
     "solverName": "mandelhowl-kirchhoff-love-finite-strip",

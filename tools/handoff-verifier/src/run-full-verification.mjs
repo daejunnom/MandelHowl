@@ -23,6 +23,7 @@ import {
   createFullVerificationStages,
   verifyTestRunnerPolicy,
 } from "./full-verification-plan.mjs";
+import { resolveStageInvocation } from "./stage-execution.mjs";
 import { resolvePinnedAttestation } from "../../release-packager/src/pinned-attestation.mjs";
 
 function usageError(message) {
@@ -262,15 +263,26 @@ const report = {
 for (const stage of stages) {
   const stageStarted = performance.now();
   process.stdout.write(`\n[handoff] ${stage.id}\n`);
-  const result = spawnSync(stage.command, stage.arguments, {
-    cwd: process.cwd(),
-    env: verificationEnvironment,
-    stdio: "inherit",
+  const invocation = resolveStageInvocation({
+    stage,
+    platform: process.platform,
+    nodeExecutable: process.execPath,
+    npmExecPath: process.env.npm_execpath,
   });
+  const result = spawnSync(
+    invocation.command,
+    invocation.arguments,
+    {
+      cwd: process.cwd(),
+      env: verificationEnvironment,
+      stdio: "inherit",
+    },
+  );
   const durationMs = Math.round(performance.now() - stageStarted);
   const stageReport = {
     id: stage.id,
     script: stage.script,
+    executionKind: invocation.executionKind,
     durationMs,
     exitCode: result.status,
     signal: result.signal,

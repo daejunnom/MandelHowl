@@ -54,6 +54,10 @@ every native-capable Baker/physics script and native command token, and checks
 the canonical DAG digest. Child stages also receive
 `MANDELHOWL_EVIDENCE_ONLY_NO_NATIVE_SPAWN=1`; the Baker broker refuses a native
 process before spawn if a transitive path reaches it.
+On Windows the stage runner invokes the current absolute `node.exe` with
+the current absolute `npm-cli.js` entrypoint. It does not add a separate CMD
+wrapper, which avoids the `.cmd` `spawnSync` failure mode and keeps the
+Application Control execution surface smaller.
 
 The structural gate scopes native workflow evidence to the exact
 `native-baker-nversion` job, requires the Windows job to depend on it, and

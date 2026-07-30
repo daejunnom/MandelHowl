@@ -1,12 +1,12 @@
 {
   "algorithmRevision": "kirchhoff-love-c1-finite-strip-r2",
-  "backend": "python-stdlib",
+  "backend": "rust-native",
   "convergenceChecksPassed": true,
   "coverageSource": "external-runtime-replay-report",
   "deterministic": true,
   "executionEnvironment": {
     "containerDigestMeaning": "OCI image content digest supplied by the executing container runner; it identifies the image used for this bake.",
-    "containerImageDigest": "sha256:0a04693369dff090d3ea015209290e0c697d98c0dabdb040d1dccfa6e56847e2",
+    "containerImageDigest": "sha256:6382ed4eef8be1ef5a944b25ca84f1630a8422bbdf3542e5b85ac5ed1e28f421",
     "containerRunnerAttestation": "trusted-runner-attested",
     "containerized": true,
     "executionKind": "oci-container"

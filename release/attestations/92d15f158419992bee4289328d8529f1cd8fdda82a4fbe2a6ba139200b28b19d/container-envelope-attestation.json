@@ -4,14 +4,14 @@
   "artifacts": [
     {
       "path": "attestation.json",
-      "sha256": "3526b655a780fb545ddcb3a0e9b3f2ed64f802ab229951cb3cc111b8dfdcb380"
+      "sha256": "274f68d138d252d1dbd81b502bdc5ddd871a468ab679c8fadbf964b52996cbcb"
     },
     {
       "path": "container-runner-attestation.json",
-      "sha256": "d85b36cd212ea565566238b37113568a44be892508d08e6404787c315536960c"
+      "sha256": "ee9b23c176e86d60cbff4637e2bed7c2e0edbd52a08159d6634d7ce0a37d45e0"
     }
   ],
-  "imageId": "sha256:0a04693369dff090d3ea015209290e0c697d98c0dabdb040d1dccfa6e56847e2",
+  "imageId": "sha256:6382ed4eef8be1ef5a944b25ca84f1630a8422bbdf3542e5b85ac5ed1e28f421",
   "supervisorState": "dual-verified",
   "releaseEligible": true
 }

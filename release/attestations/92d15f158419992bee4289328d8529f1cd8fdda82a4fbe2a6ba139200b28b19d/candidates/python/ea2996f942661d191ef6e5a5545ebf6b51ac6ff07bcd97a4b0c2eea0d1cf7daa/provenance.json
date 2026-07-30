@@ -37,10 +37,10 @@
   "generator": {
     "algorithmContractSha256": "4fac7c12618d1e561dab27214ce47e2b94cbc91e734ce9a100f32a143dc222ca",
     "algorithmRevision": "kirchhoff-love-c1-finite-strip-r2",
-    "dependencies": "Rust native; locked Cargo workspace",
-    "name": "tools/physics-baker-rs",
+    "dependencies": "Python 3.10+ standard library only",
+    "name": "tools/physics-baker",
     "randomSource": "forbidden",
-    "version": "0.1.0"
+    "version": "1.0.0"
   },
   "manufacturing": {
     "actualMinimumFeatureM": 0.0028125,
@@ -69,7 +69,7 @@
       {
         "angularDivisions": 189,
         "connectedComponentCount": 1,
-        "fingerprintSha256": "eef0ccab28d6e2ffab76f47b8d03190c446ce295766e7f561ffcb3d69465ced1",
+        "fingerprintSha256": "baf758d8f82d3eeefae72d8b64ade36ff42eedb4fb3a365a4fc5bc01ebc97632",
         "invertedTriangleCount": 0,
         "levelName": "coarse",
         "maximumAspectRatio": 2.0335591094475207,
@@ -83,7 +83,7 @@
       {
         "angularDivisions": 377,
         "connectedComponentCount": 1,
-        "fingerprintSha256": "1357deb7fbd7b534888894be6f3e3d9370b9045d49ddb356fa70e9e05f319a16",
+        "fingerprintSha256": "6ee3233ced3b163563abb357144bf78217235394e36c3ae24d793d66b2c3ace0",
         "invertedTriangleCount": 0,
         "levelName": "medium",
         "maximumAspectRatio": 2.0167410864227135,
@@ -97,7 +97,7 @@
       {
         "angularDivisions": 754,
         "connectedComponentCount": 1,
-        "fingerprintSha256": "b7e7b359f1ad53fa979b05f31ccd06cdac16655e80c706c50be74ca42fcdedf7",
+        "fingerprintSha256": "7d7d2c9a2c5f1e353ef5e69f43406c2abe79f0bdd6de2a75d76d1751cc0eb3e6",
         "invertedTriangleCount": 0,
         "levelName": "fine",
         "maximumAspectRatio": 2.0083534095713773,
@@ -412,7 +412,7 @@
       "modeId": "mode-010",
       "naturalFrequencyHz": 501.0559196472168,
       "ordinal": 10,
-      "radiationEfficiency": 1,
+      "radiationEfficiency": 1.0,
       "signReference": "actuator-positive",
       "surfaceKinematics": {
         "accelerationPhaseOffsetRad": 3.141592653589793,
@@ -1354,7 +1354,7 @@
       "textureLayer": 40
     },
     {
-      "actuatorCoupling": 1,
+      "actuatorCoupling": 1.0,
       "adjacentFrequencySpacingHz": {
         "nearest": 4.304682731628418,
         "next": 4.304682731628418,
@@ -1398,7 +1398,7 @@
         "radialNodeIndex": 5,
         "symmetry": "cosine"
       },
-      "microphoneCoupling": -1,
+      "microphoneCoupling": -1.0,
       "modeId": "mode-043",
       "naturalFrequencyHz": 2507.5079040527344,
       "ordinal": 43,
@@ -1577,8 +1577,8 @@
   },
   "response": {
     "definition": "sum(g_i*m_i*r_i*omega_i^2/(omega_i^2-omega^2+j*2*zeta_i*omega_i*omega))",
-    "maximumFrequencyHz": 6000,
-    "minimumFrequencyHz": 45,
+    "maximumFrequencyHz": 6000.0,
+    "minimumFrequencyHz": 45.0,
     "normalizationDivisor": 29.21250998055777,
     "sampleCount": 512,
     "spacing": "logarithmic"
@@ -1607,14 +1607,9 @@
       "requestedModeCount": 48
     },
     "containerDigestMeaning": "OCI image content digest supplied by the executing container runner; it identifies the image used for this bake.",
-    "containerImageDigest": "sha256:0a04693369dff090d3ea015209290e0c697d98c0dabdb040d1dccfa6e56847e2",
+    "containerImageDigest": "sha256:6382ed4eef8be1ef5a944b25ca84f1630a8422bbdf3542e5b85ac5ed1e28f421",
     "containerRunnerAttestation": "trusted-runner-attested",
     "containerized": true,
-    "eigensolver": {
-      "finalMaximumOffDiagonal": 0.16538564852059748,
-      "name": "cyclic-jacobi-generalized-symmetric",
-      "sweeps": 9
-    },
     "executedMethod": "c1-cubic-hermite-annular-finite-strip",
     "executionKind": "oci-container",
     "methodRequestMismatchRecorded": false,
@@ -1654,7 +1649,7 @@
     "optionsSha256": "76f8153c13c8cabc84a420f4b33165e2afb7ad7a3cd18f1f9912d07dc333909e",
     "signRule": "positive-at-actuator-or-first-nonzero-node",
     "strictLiteralSection10_3Conformance": true,
-    "version": "0.1.0"
+    "version": "1.0.0"
   },
   "textures": {
     "emittedRuntimeLod": {

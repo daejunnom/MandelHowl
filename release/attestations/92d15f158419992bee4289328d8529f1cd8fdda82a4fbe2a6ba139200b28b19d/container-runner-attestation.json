@@ -8,7 +8,7 @@
     "operatingSystem": "linux"
   },
   "image": {
-    "id": "sha256:0a04693369dff090d3ea015209290e0c697d98c0dabdb040d1dccfa6e56847e2",
+    "id": "sha256:6382ed4eef8be1ef5a944b25ca84f1630a8422bbdf3542e5b85ac5ed1e28f421",
     "identitySource": "docker image inspect .Id",
     "targetPlatform": "linux/amd64",
     "pinnedBaseImages": [
@@ -25,7 +25,7 @@
     "outputMount": "read-write"
   },
   "injectedEnvironment": {
-    "MANDELHOWL_CONTAINER_IMAGE_DIGEST": "sha256:0a04693369dff090d3ea015209290e0c697d98c0dabdb040d1dccfa6e56847e2",
+    "MANDELHOWL_CONTAINER_IMAGE_DIGEST": "sha256:6382ed4eef8be1ef5a944b25ca84f1630a8422bbdf3542e5b85ac5ed1e28f421",
     "MANDELHOWL_CONTAINER_RUNNER_ATTESTED": "1",
     "MANDELHOWL_MANAGED_INSTALL": "1",
     "MANDELHOWL_NATIVE_BAKER": "/opt/mandelhowl/bin/mandelhowl-baker-native",
@@ -34,7 +34,7 @@
   "containerExitCode": 0,
   "supervisorReport": {
     "path": "attestation.json",
-    "sha256": "3526b655a780fb545ddcb3a0e9b3f2ed64f802ab229951cb3cc111b8dfdcb380",
+    "sha256": "274f68d138d252d1dbd81b502bdc5ddd871a468ab679c8fadbf964b52996cbcb",
     "state": "dual-verified",
     "releaseEligible": true,
     "promotionAllowed": true

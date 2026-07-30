@@ -8,13 +8,13 @@
   "promotionAllowed": true,
   "releaseEligible": true,
   "selectedSource": "rust-native",
-  "selectedDataset": "/out/datasets/a958193dbe4468f353db6c0973eda5b78181ae878689bfdd4b65afd683a2d9d7",
+  "selectedDataset": "/out/datasets/92d15f158419992bee4289328d8529f1cd8fdda82a4fbe2a6ba139200b28b19d",
   "reason": "both implementations accepted semantically equivalent output",
   "backends": {
     "rust": {
       "backend": "rust-native",
       "executable": "/opt/mandelhowl/bin/mandelhowl-baker-native",
-      "durationMs": 5052,
+      "durationMs": 6151,
       "exitCode": 0,
       "signal": null,
       "status": "success",
@@ -25,19 +25,19 @@
         "algorithmContractSha256": "4fac7c12618d1e561dab27214ce47e2b94cbc91e734ce9a100f32a143dc222ca",
         "algorithmRevision": "kirchhoff-love-c1-finite-strip-r2",
         "backend": "rust-native",
-        "datasetId": "sha256:a958193dbe4468f353db6c0973eda5b78181ae878689bfdd4b65afd683a2d9d7",
-        "datasetPath": "/tmp/mandelhowl-nversion-sHrRGA/rust/a958193dbe4468f353db6c0973eda5b78181ae878689bfdd4b65afd683a2d9d7",
+        "datasetId": "sha256:92d15f158419992bee4289328d8529f1cd8fdda82a4fbe2a6ba139200b28b19d",
+        "datasetPath": "/tmp/mandelhowl-nversion-rQFoli/rust/92d15f158419992bee4289328d8529f1cd8fdda82a4fbe2a6ba139200b28b19d",
         "datasetSemanticReport": {
           "algorithmContractSha256": "4fac7c12618d1e561dab27214ce47e2b94cbc91e734ce9a100f32a143dc222ca",
           "algorithmRevision": "kirchhoff-love-c1-finite-strip-r2",
           "backend": "rust-native",
-          "datasetId": "sha256:a958193dbe4468f353db6c0973eda5b78181ae878689bfdd4b65afd683a2d9d7",
-          "datasetRoot": "/tmp/mandelhowl-nversion-sHrRGA/rust/a958193dbe4468f353db6c0973eda5b78181ae878689bfdd4b65afd683a2d9d7",
+          "datasetId": "sha256:92d15f158419992bee4289328d8529f1cd8fdda82a4fbe2a6ba139200b28b19d",
+          "datasetRoot": "/tmp/mandelhowl-nversion-rQFoli/rust/92d15f158419992bee4289328d8529f1cd8fdda82a4fbe2a6ba139200b28b19d",
           "exactScientificPayloadSha256": "ef676be557b3103533d41196211f9e783922ed8b5eb2f31725c3c9b746787060",
           "fieldResolution": 1024,
           "firstModeId": "mode-001",
           "lastModeId": "mode-048",
-          "manifestSha256": "165da94c3d75b2d204bc0c003838fe7e63adeba50c0f9921da92a6f6f50e336f",
+          "manifestSha256": "16f0d8a00dfd7ef06b5fda9dade5b79114f22afc1298d48d10f7f234bcb94bb3",
           "maximumModalMassDiagonalError": 6.661338147750939e-16,
           "maximumModalMassOffDiagonal": 3.6904681293201255e-15,
           "maximumModeFrequencyHz": 2888.27667427063,
@@ -329,7 +329,7 @@
             "manifest-assets-checksums-and-content-identity"
           ]
         },
-        "manifestSha256": "165da94c3d75b2d204bc0c003838fe7e63adeba50c0f9921da92a6f6f50e336f",
+        "manifestSha256": "16f0d8a00dfd7ef06b5fda9dade5b79114f22afc1298d48d10f7f234bcb94bb3",
         "schemaVersion": "mandelhowl.native-generation-result.v1",
         "status": "generated-and-validated"
       },
@@ -345,7 +345,7 @@
     "python": {
       "backend": "python-stdlib",
       "executable": "/usr/bin/python3",
-      "durationMs": 152846,
+      "durationMs": 190356,
       "exitCode": 0,
       "signal": null,
       "status": "success",
@@ -363,9 +363,9 @@
         "pythonExecutable": "/usr/bin/python3.11",
         "pythonExecutableSha256": "6d972cf21be56fe3c947ab6ba257ff8d08c342dd2714442986791bd9a6dfabfe",
         "status": "generated-and-validated",
-        "datasetPath": "/tmp/mandelhowl-nversion-sHrRGA/python/34f700befc619248d2313483cb821309104a0b38ae1c1ecfb19052b308e89bec",
-        "datasetId": "sha256:34f700befc619248d2313483cb821309104a0b38ae1c1ecfb19052b308e89bec",
-        "manifestSha256": "9685c4c51291f6a7576bc721ff6d94fd163632629553161f4ebf73ede70289de",
+        "datasetPath": "/tmp/mandelhowl-nversion-rQFoli/python/ea2996f942661d191ef6e5a5545ebf6b51ac6ff07bcd97a4b0c2eea0d1cf7daa",
+        "datasetId": "sha256:ea2996f942661d191ef6e5a5545ebf6b51ac6ff07bcd97a4b0c2eea0d1cf7daa",
+        "manifestSha256": "d6385d1a7d48aba5ee925ffe14ff475f8836965f9695378e80d548aad45d27ba",
         "modeCount": 48,
         "responseSampleCount": 512,
         "textureCount": 48,
@@ -394,10 +394,10 @@
       "rightManifestRevision": "kirchhoff-love-c1-finite-strip-r2",
       "leftGenerator": "tools/physics-baker-rs",
       "rightGenerator": "tools/physics-baker",
-      "leftDatasetId": "sha256:a958193dbe4468f353db6c0973eda5b78181ae878689bfdd4b65afd683a2d9d7",
-      "rightDatasetId": "sha256:34f700befc619248d2313483cb821309104a0b38ae1c1ecfb19052b308e89bec",
-      "leftManifestSha256": "165da94c3d75b2d204bc0c003838fe7e63adeba50c0f9921da92a6f6f50e336f",
-      "rightManifestSha256": "9685c4c51291f6a7576bc721ff6d94fd163632629553161f4ebf73ede70289de",
+      "leftDatasetId": "sha256:92d15f158419992bee4289328d8529f1cd8fdda82a4fbe2a6ba139200b28b19d",
+      "rightDatasetId": "sha256:ea2996f942661d191ef6e5a5545ebf6b51ac6ff07bcd97a4b0c2eea0d1cf7daa",
+      "leftManifestSha256": "16f0d8a00dfd7ef06b5fda9dade5b79114f22afc1298d48d10f7f234bcb94bb3",
+      "rightManifestSha256": "d6385d1a7d48aba5ee925ffe14ff475f8836965f9695378e80d548aad45d27ba",
       "legacyManifestRevisionAssumed": false
     },
     "metrics": {
@@ -482,8 +482,8 @@
   },
   "stagingRetained": false,
   "stagingDirectory": null,
-  "sourceTreeSha256": "3975078a3df1d28ae880bb0e03a4483de89cb92560120420fb33f9d1884eca84",
-  "sourceTreeFileCount": 165,
+  "sourceTreeSha256": "a8c2d7a85eef31fc144f5e9be940763f732821b03568ae358993827d068e3eab",
+  "sourceTreeFileCount": 167,
   "sourceTreeDigestAlgorithm": "sha256(path-nul-content-sha256-lf:v1)",
   "sourceTreeRoots": [
     "specs/acceptance",
@@ -520,31 +520,31 @@
     "valid": true,
     "code": "MH_BAKER_LKG_VERIFIED",
     "reason": "release lock, exact package inventory, and semantic self-check agree",
-    "datasetId": "sha256:03ec74235a4648ea1466165865514c82f1cc900f76d7bf6440163da7a03b43a2",
-    "datasetDirectory": "assets/generated/03ec74235a4648ea1466165865514c82f1cc900f76d7bf6440163da7a03b43a2",
-    "lockSha256": "81bfe12ce9b1dca39fd98a349863e45b21e3449dbc337e99b31ccab8ee8f3942",
-    "manifestSha256": "871650d53757051bc70b573e246c8714ddbab61cb1b45534d2b85e6946c16c3b",
-    "exactPackageFingerprintSha256": "905efebf6cd11e8dc7148359a22d1b14f35b3f8f1c92aa57f2a01180a7adc872"
+    "datasetId": "sha256:a958193dbe4468f353db6c0973eda5b78181ae878689bfdd4b65afd683a2d9d7",
+    "datasetDirectory": "assets/generated/a958193dbe4468f353db6c0973eda5b78181ae878689bfdd4b65afd683a2d9d7",
+    "lockSha256": "6c4ebecf30c98fd458bc7fee09ae8dfae245225eda6538dc05677db5d45ac923",
+    "manifestSha256": "165da94c3d75b2d204bc0c003838fe7e63adeba50c0f9921da92a6f6f50e336f",
+    "exactPackageFingerprintSha256": "3e0579680ef7f03078ee0ff842f45f398b32afa8869fe92968281702163d27e6"
   },
   "priorLastKnownGood": {
     "valid": true,
     "code": "MH_BAKER_LKG_VERIFIED",
     "reason": "release lock, exact package inventory, and semantic self-check agree",
-    "datasetId": "sha256:03ec74235a4648ea1466165865514c82f1cc900f76d7bf6440163da7a03b43a2",
-    "datasetDirectory": "assets/generated/03ec74235a4648ea1466165865514c82f1cc900f76d7bf6440163da7a03b43a2",
-    "lockSha256": "81bfe12ce9b1dca39fd98a349863e45b21e3449dbc337e99b31ccab8ee8f3942",
-    "manifestSha256": "871650d53757051bc70b573e246c8714ddbab61cb1b45534d2b85e6946c16c3b",
-    "exactPackageFingerprintSha256": "905efebf6cd11e8dc7148359a22d1b14f35b3f8f1c92aa57f2a01180a7adc872"
+    "datasetId": "sha256:a958193dbe4468f353db6c0973eda5b78181ae878689bfdd4b65afd683a2d9d7",
+    "datasetDirectory": "assets/generated/a958193dbe4468f353db6c0973eda5b78181ae878689bfdd4b65afd683a2d9d7",
+    "lockSha256": "6c4ebecf30c98fd458bc7fee09ae8dfae245225eda6538dc05677db5d45ac923",
+    "manifestSha256": "165da94c3d75b2d204bc0c003838fe7e63adeba50c0f9921da92a6f6f50e336f",
+    "exactPackageFingerprintSha256": "3e0579680ef7f03078ee0ff842f45f398b32afa8869fe92968281702163d27e6"
   },
   "attestationBundle": {
     "schemaVersion": "mandelhowl.baker-attestation-bundle.v1",
     "reportRelativePath": "attestation.json",
     "candidates": {
       "rust": {
-        "relativePath": "candidates/rust/a958193dbe4468f353db6c0973eda5b78181ae878689bfdd4b65afd683a2d9d7",
-        "datasetId": "sha256:a958193dbe4468f353db6c0973eda5b78181ae878689bfdd4b65afd683a2d9d7",
-        "manifestSha256": "165da94c3d75b2d204bc0c003838fe7e63adeba50c0f9921da92a6f6f50e336f",
-        "checksumsSha256": "e711fce156cabe6b831fc9ee29696fca7ae3a1180594d61f83e38aee9a66402d",
+        "relativePath": "candidates/rust/92d15f158419992bee4289328d8529f1cd8fdda82a4fbe2a6ba139200b28b19d",
+        "datasetId": "sha256:92d15f158419992bee4289328d8529f1cd8fdda82a4fbe2a6ba139200b28b19d",
+        "manifestSha256": "16f0d8a00dfd7ef06b5fda9dade5b79114f22afc1298d48d10f7f234bcb94bb3",
+        "checksumsSha256": "973a31aba27ecdcb92fd8ab42d52b8b179b2a59b95ceab1898c33a2b168953e2",
         "files": [
           {
             "path": "convergence-report.json",
@@ -564,7 +564,7 @@
           {
             "path": "generation-report.json",
             "byteLength": 900,
-            "sha256": "5acca6b498218a882ae952cb9ad92597dc95bf9cf55194fd7c8de2020ffcea5b"
+            "sha256": "0e0670b9d4377e6fc33e154312ef4ebf15372ea7fe547fd11202a9cafc5bad66"
           },
           {
             "path": "mesh/fine-polar-mesh.mhmz",
@@ -589,7 +589,7 @@
           {
             "path": "provenance.json",
             "byteLength": 82777,
-            "sha256": "c75fa1f84ac6a5c8c354b8fb1ac80192fb91208b5f3bc583151bf771dc598a16"
+            "sha256": "992a2d179ce6c8f5ba368d5522649002cc528d55413534f1840920211b5ad111"
           },
           {
             "path": "response.bin",
@@ -847,13 +847,13 @@
             "sha256": "f01f83506a3a8f21e34deab242201129edd0163c428a5944325de07e2de4903a"
           }
         ],
-        "exactPackageFingerprintSha256": "3e0579680ef7f03078ee0ff842f45f398b32afa8869fe92968281702163d27e6"
+        "exactPackageFingerprintSha256": "cab0d8206bf4eb361a5fe2e0786dee516cc835e731361e091db743376cab1628"
       },
       "python": {
-        "relativePath": "candidates/python/34f700befc619248d2313483cb821309104a0b38ae1c1ecfb19052b308e89bec",
-        "datasetId": "sha256:34f700befc619248d2313483cb821309104a0b38ae1c1ecfb19052b308e89bec",
-        "manifestSha256": "9685c4c51291f6a7576bc721ff6d94fd163632629553161f4ebf73ede70289de",
-        "checksumsSha256": "07d4b24bf55dbadf49fad8377cc2730c48cec651880069be7f0700a7bc350237",
+        "relativePath": "candidates/python/ea2996f942661d191ef6e5a5545ebf6b51ac6ff07bcd97a4b0c2eea0d1cf7daa",
+        "datasetId": "sha256:ea2996f942661d191ef6e5a5545ebf6b51ac6ff07bcd97a4b0c2eea0d1cf7daa",
+        "manifestSha256": "d6385d1a7d48aba5ee925ffe14ff475f8836965f9695378e80d548aad45d27ba",
+        "checksumsSha256": "a909ea74c69fdebb78d29fb3b37cc885b760f543f36e4e2a06a68b2cada7af4e",
         "files": [
           {
             "path": "convergence-report.json",
@@ -873,7 +873,7 @@
           {
             "path": "generation-report.json",
             "byteLength": 902,
-            "sha256": "831b6aaa910a8568075781001fd2193cc5b240a2e08af93594a1650dfd5c8c2a"
+            "sha256": "638c92d5cbf378b5a2198b735060835c1af6b8088f83d506eadefa66274ec3ca"
           },
           {
             "path": "mesh/fine-polar-mesh.mhmz",
@@ -898,7 +898,7 @@
           {
             "path": "provenance.json",
             "byteLength": 82630,
-            "sha256": "a24c8b994926d0194ceecce6c6bac77f6be4faca0f9530d5abe326e724d94cde"
+            "sha256": "e9995d92c8ee020bab822faee82a2694b7bd87e884b42843d9828d0a7d294fd1"
           },
           {
             "path": "response.bin",
@@ -1156,7 +1156,7 @@
             "sha256": "fbc03edaaef99955abc5cbe624156903c57eae4cbd9589faea482f1857e4c65a"
           }
         ],
-        "exactPackageFingerprintSha256": "f92a82c652b3e6c0d52bab7978c72a3ee3db33695ea7cb0fb4e2b29fcf6e8eb9"
+        "exactPackageFingerprintSha256": "c80c1a1aedfcf085d45ec9726465f7feb8c01db20d065f84ee787b960657010e"
       }
     }
   },
