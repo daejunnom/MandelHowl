@@ -1,0 +1,813 @@
+{
+  "schemaVersion": "mandelhowl.release-provenance.v4",
+  "webCommit": "aeb4c973fea6b28b1bf3ac8113f498bde7dd8e7c",
+  "webCommitTimestamp": "2026-07-31T05:14:00+09:00",
+  "sourceTreeDirty": false,
+  "datasetId": "sha256:09bdf3f7023e677b5ad07cda9b69a67143dd7b589eec7e7dc6395962851b6f38",
+  "datasetManifestSha256": "c4e295af1d22d1025ddacf85858efef79a656920f255915e1f6fadc386de36c9",
+  "plateSpecSha256": "a016cde1eac30d0022521c9ca6ae9a401a5857b9586ba34562b9d60130f4939c",
+  "solver": {
+    "containerImageDigest": "sha256:c878d65dd0d71a302228c4729092878398ab405c390226a5c3135ea51264474e",
+    "executionKind": "oci-container",
+    "optionsSha256": "76f8153c13c8cabc84a420f4b33165e2afb7ad7a3cd18f1f9912d07dc333909e",
+    "solverName": "mandelhowl-kirchhoff-love-finite-strip",
+    "solverVersion": "0.1.0"
+  },
+  "webglShaderIntegrity": {
+    "schemaVersion": "mandelhowl.release-webgl-shader-integrity.v1",
+    "allowlistPath": "specs/visual/webgl-shader-allowlist.v1.json",
+    "allowlistSha256": "0efce9656e0ce20dd90781070d398888ace38f529180b877c489c215ec931e80",
+    "implementationPath": "packages/render-engine/src/webgl-plate-renderer.ts",
+    "implementationSha256": "da7befc75f4f71cfc69886a67cf89f271e0f11d212eb316033b8498ade5859d9",
+    "runtimeHasherPath": "packages/render-engine/src/shader-integrity.ts",
+    "runtimeHasherSha256": "c8a0130290210c38c3589175bf11a6ef820f47e5a0b30f599bf113442760a0c2",
+    "loadingPolicy": "embedded-only-no-network-fetch",
+    "networkShaderFetchAllowed": false,
+    "program": {
+      "id": "mandelhowl-plate-main",
+      "vertexSha256": "a2d2fb4aca84a9ea5db0e206b24c30ba68f6e374915d7006abea17f5741bfda2",
+      "fragmentSha256": "083c2a22e09e97ac491d1389ba2495ea7addf5093cf67c57cdc492bca3b05c2e"
+    }
+  },
+  "bakerNVersion": {
+    "policy": {
+      "schemaVersion": "mandelhowl.baker-nversion-policy.v1",
+      "primary": "rust-native",
+      "standby": "python-stdlib",
+      "promotionRequiresDualAgreement": true,
+      "releaseRequiresDualAgreement": true,
+      "availabilityFailureSelection": "surviving-version-degraded",
+      "scientificDisagreementSelection": "last-known-good",
+      "degradedPromotionAllowed": false,
+      "degradedReleaseEligible": false,
+      "rawSha256": "7f57c3fbe150a926bdf21509d4b002c7a00c2aa168062593405a843674cfff7d"
+    },
+    "algorithm": {
+      "schemaVersion": "mandelhowl.baker-algorithm.v1",
+      "revision": "kirchhoff-love-c1-finite-strip-r2",
+      "rawSha256": "4fac7c12618d1e561dab27214ce47e2b94cbc91e734ce9a100f32a143dc222ca"
+    },
+    "sourceTree": {
+      "schemaVersion": "mandelhowl.baker-source-tree.v1",
+      "digestAlgorithm": "sha256(path-nul-content-sha256-lf:v1)",
+      "roots": [
+        "specs/acceptance",
+        "specs/physics",
+        "specs/plate",
+        "specs/runtime",
+        "specs/visual",
+        "packages/contracts/schemas",
+        "packages/contracts/src",
+        "packages/asset-runtime/src",
+        "packages/resonance-engine/src",
+        "packages/render-engine/src",
+        "tests/runtime",
+        "tools/baker-supervisor",
+        "tools/container-baker-runner",
+        "tools/handoff-verifier",
+        "tools/physics-baker",
+        "tools/physics-baker-rs",
+        "tools/reachability-generator",
+        "tools/release-packager",
+        ".dockerignore",
+        "package.json",
+        "Cargo.toml",
+        "Cargo.lock",
+        "rust-toolchain.toml",
+        ".github/workflows"
+      ],
+      "excludedPaths": [
+        "specs/runtime/dataset-release.v1.yaml",
+        "packages/contracts/src/generated/dataset-release.generated.ts"
+      ],
+      "sha256": "2696d58e3c850619723518558fce6b79f60cca291c7a40b71337cad53a93b6f2",
+      "fileCount": 169,
+      "files": [
+        {
+          "path": ".dockerignore",
+          "sha256": "e292e3736d4dbd2d59de8c21e58ca8c33a44b09ab123bfcc797817a88f9baf86"
+        },
+        {
+          "path": ".github/workflows/verify.yml",
+          "sha256": "830992a147e233b80fc47a8e611d6e53dd7b7b62b92b4de604723e018d71bdb4"
+        },
+        {
+          "path": "Cargo.lock",
+          "sha256": "badb7922c988e8e3902934a97f0dd84fde13b4d08baf63849358cd0019b29950"
+        },
+        {
+          "path": "Cargo.toml",
+          "sha256": "62a4669327ee8bd23b93917d9b47c92344968d65518739fb44b4b696eec6c3f3"
+        },
+        {
+          "path": "package.json",
+          "sha256": "8c82f3b69c1df676ab745eea44834d2ef00af273a46704e30559c314a1eed3fc"
+        },
+        {
+          "path": "packages/asset-runtime/src/asset-loader.ts",
+          "sha256": "ad89b41536217cabaae2a576cc998819a4ef557535877d3f33ec5f778c4c8448"
+        },
+        {
+          "path": "packages/asset-runtime/src/asset-runtime.test.ts",
+          "sha256": "fa874ea6f9c3f99ea49d366ed0951914440a4a433bbb3618a3ef3bb5f5a1b561"
+        },
+        {
+          "path": "packages/asset-runtime/src/binary-decoders.ts",
+          "sha256": "a045c56726a4c32a5a142759c0b284b32b52ba5fd0552a7c9d23cacd533c36fa"
+        },
+        {
+          "path": "packages/asset-runtime/src/canonical-json.ts",
+          "sha256": "39734628b51d2868639577a09991e6a65e4e08c775ce3c0a19bef96240082884"
+        },
+        {
+          "path": "packages/asset-runtime/src/diagnostics.ts",
+          "sha256": "74be03f82e644d5c9c0452cd609c9de488e01c1a8e237fe7ef3fa0b66c2fb5f9"
+        },
+        {
+          "path": "packages/asset-runtime/src/index.ts",
+          "sha256": "09b69c5c58469d8ac5aff218c1e2949543d85813b28e74b3ec87ecad2a2eb2ce"
+        },
+        {
+          "path": "packages/asset-runtime/src/ktx2-validator.ts",
+          "sha256": "870825c300d73b240636d7ae8c6fbe37e5eb168abc948b0b01b59a443c9aa8cd"
+        },
+        {
+          "path": "packages/asset-runtime/src/manifest-validator.ts",
+          "sha256": "840a13035b21ae261fdbcfcab2a3d42f14851c2a609dc6455b2251578499e887"
+        },
+        {
+          "path": "packages/asset-runtime/src/sha256.ts",
+          "sha256": "7aa219abd8e98a1cdbdd1dae404eb7a9aa347144e59851f9c26a68a263ed74ed"
+        },
+        {
+          "path": "packages/contracts/schemas/checksums.schema.json",
+          "sha256": "1451a9d7ec5993ed1958615a5c5451f9310da7ddadc8dc599026da9c379b1e53"
+        },
+        {
+          "path": "packages/contracts/schemas/coverage-report.schema.json",
+          "sha256": "f4d1fedda16dc4dd0bd8774d476227ebf50f9566d64f0d84b47c55015696163e"
+        },
+        {
+          "path": "packages/contracts/schemas/dataset-release.schema.json",
+          "sha256": "be26e4e9aeb7c1f36955cb54d85db8204e84bdd3092be511502d4c56d3f73c5c"
+        },
+        {
+          "path": "packages/contracts/schemas/dial-gesture-trace.schema.json",
+          "sha256": "c7681e75ed9e532c7ce81cbb0b167f09f665fc355cf81e3243ad56b0bc0dacb0"
+        },
+        {
+          "path": "packages/contracts/schemas/plate-spec.schema.json",
+          "sha256": "a978fcd136556309897b5679a13b0187e6f180604800f3f7510575746e9ef071"
+        },
+        {
+          "path": "packages/contracts/schemas/resonance-manifest.schema.json",
+          "sha256": "46b2846c7e8b5711e35e49aefd1b3dc60983f47a563cb9a7c5dc0e2547ba021b"
+        },
+        {
+          "path": "packages/contracts/schemas/resonance-trajectory-trace.schema.json",
+          "sha256": "2123fe750d158d0baf2906c06360933b58b52f3352c27403ecd9a44134b2f532"
+        },
+        {
+          "path": "packages/contracts/schemas/runtime-snapshot.schema.json",
+          "sha256": "d1a25d4494005f4bda813df2df73a025c9b0e5b543a5ff3a8460ded846f0d125"
+        },
+        {
+          "path": "packages/contracts/src/architecture-boundary.test.ts",
+          "sha256": "aa9e0b196248bdd98a73ebe63ec70784f32b00f55251dc9f832f8654a17ccb41"
+        },
+        {
+          "path": "packages/contracts/src/binary-formats.ts",
+          "sha256": "86c01943fa5cd58c020576dc82e17148682a73fb52e5ea3f5488924640ca5f13"
+        },
+        {
+          "path": "packages/contracts/src/contract-metadata.ts",
+          "sha256": "9510de0fbf3663271f000d0da84a7bbb7543c388d4c07ca8d3e8ee3bed70b8fc"
+        },
+        {
+          "path": "packages/contracts/src/coordinate-system.ts",
+          "sha256": "50d6648fe6d256d834a23fe8a304fdf36c742beb87bac03a8bd41d465d137593"
+        },
+        {
+          "path": "packages/contracts/src/coverage-report-contract.test.ts",
+          "sha256": "dfd9ee165dabe20589c9bb1c4f4b139bf2fbb2d0f149404898e65f1b5f5119a7"
+        },
+        {
+          "path": "packages/contracts/src/diagnostic-record.ts",
+          "sha256": "da4acedb52ebfc82dca3144b205f277e43ad24523ac383cd2b62a0870a864eef"
+        },
+        {
+          "path": "packages/contracts/src/dial-gesture-trace.ts",
+          "sha256": "de1f82a9983bb8320789b32d29c6bdac69198e805f6edd5a3fee392d4721bc01"
+        },
+        {
+          "path": "packages/contracts/src/feedback-spec.ts",
+          "sha256": "f0fac4a23f3de2592d1e2471643b65bc7962d45ea69cec279f2b725a3cdfc078"
+        },
+        {
+          "path": "packages/contracts/src/frequency-fixed-point.test.ts",
+          "sha256": "e1bd97f2f003f3eb7573767ddf54996c3897b35a61bb096625737dbbf61b3a3b"
+        },
+        {
+          "path": "packages/contracts/src/frequency-fixed-point.ts",
+          "sha256": "7369fb2fe0d6788c184f1e635c9bf721636282219327eb02e3f27b29d8cb2439"
+        },
+        {
+          "path": "packages/contracts/src/generated-asset-ownership.test.ts",
+          "sha256": "a0a1eaa3488f42bc51930d63f0b7172dd364547373e6b9075d634e0cac5d77bd"
+        },
+        {
+          "path": "packages/contracts/src/generated/runtime-specs.generated.test.ts",
+          "sha256": "9f08769ca9513f391ad1941b6cf8fe5e65a21990475e4a8690a59dc3564e164b"
+        },
+        {
+          "path": "packages/contracts/src/generated/runtime-specs.generated.ts",
+          "sha256": "8ff2a5093035109a3890adf8f4c89b6dc3ec392c16f6f0941d34c8feffc1b672"
+        },
+        {
+          "path": "packages/contracts/src/index.ts",
+          "sha256": "41edb8f4650345508256cd5835f62a4010b3efa4c46f0361e5cfdc1b13c470e1"
+        },
+        {
+          "path": "packages/contracts/src/mode-record.ts",
+          "sha256": "e0d708fe781d735492d085dabf8266bf933216430002d950e00b0ff755e98a01"
+        },
+        {
+          "path": "packages/contracts/src/performance-budget.ts",
+          "sha256": "2b6c1dd35c28b4966415f286ec7785da60d55a288c87940b6183ae30b44e44a9"
+        },
+        {
+          "path": "packages/contracts/src/plate-spec.ts",
+          "sha256": "a34bbe0dc9a340f8be74a96cf4d1a7d217970463b4add5e9389181cdb789a7e4"
+        },
+        {
+          "path": "packages/contracts/src/resonance-manifest.ts",
+          "sha256": "db3803abe88207c09baa83267d738d7fd5af52f3182c871a333a488a804c7b37"
+        },
+        {
+          "path": "packages/contracts/src/resonance-trajectory.ts",
+          "sha256": "9652c75cccd01ad14ae2bee4787905f62764e15b3a93715e166ca07e52e850e4"
+        },
+        {
+          "path": "packages/contracts/src/runtime-config.ts",
+          "sha256": "1ec4a67144d3912488546c6e240eb54d895e686e3b2dc1113783779cf8d5f88e"
+        },
+        {
+          "path": "packages/contracts/src/runtime-snapshot-contract.test.ts",
+          "sha256": "e92e7599d95d6510111c9f9f320dd91fed5f2db1ee634697baea00c84bf20a53"
+        },
+        {
+          "path": "packages/contracts/src/runtime-snapshot.ts",
+          "sha256": "2881da97263027da163ff39934f5873eb548c606bf14020d9bc6dd92b5d36c58"
+        },
+        {
+          "path": "packages/contracts/src/visual-specs.ts",
+          "sha256": "e0cf1fda1adae3cbb8ca7d2538fdd2255f186ff075fd5e27ba587e6a07d8bd2d"
+        },
+        {
+          "path": "packages/render-engine/src/canvas-plate-renderer.ts",
+          "sha256": "d338ee1d61b282522aab439a373b5de8e4e58ddbbaec72237e1cdb89fb5f07dc"
+        },
+        {
+          "path": "packages/render-engine/src/index.ts",
+          "sha256": "3749671cd2a93bd14cbe704a17c4d6bfbb65676a2ad907e2964ced87a47f6ff3"
+        },
+        {
+          "path": "packages/render-engine/src/ktx2-texture.ts",
+          "sha256": "afa3854135fed7e5dcc1bde1cc0a9539cb848325e34fa60d51af63bf08d8cd97"
+        },
+        {
+          "path": "packages/render-engine/src/plate-renderer.ts",
+          "sha256": "75a00df4dde223c4e9b22676fdb757d72f84b46405c1895dd8be688b29ac637f"
+        },
+        {
+          "path": "packages/render-engine/src/render-engine.test.ts",
+          "sha256": "6dd5c9a13bc4f82515e45732461325173b74a6199fe20955a167cf4546b7e348"
+        },
+        {
+          "path": "packages/render-engine/src/render-quality-governor.test.ts",
+          "sha256": "9e5dd10583d6b53c7b685615b59d21c19b51186d7c19ec52885834d85a0c613a"
+        },
+        {
+          "path": "packages/render-engine/src/render-quality-governor.ts",
+          "sha256": "f3f83dd750301335cc9936665453cb60c1acce7cac8e97dac245a8ae332ed688"
+        },
+        {
+          "path": "packages/render-engine/src/render-types.ts",
+          "sha256": "797fd1c8577d8407c1d0d38be70204d8a811b7a1439eeed1572d867961e97167"
+        },
+        {
+          "path": "packages/render-engine/src/shader-integrity.ts",
+          "sha256": "c8a0130290210c38c3589175bf11a6ef820f47e5a0b30f599bf113442760a0c2"
+        },
+        {
+          "path": "packages/render-engine/src/texture-layer-residency.test.ts",
+          "sha256": "04cf3ffd047d9e62e6fe1899713fe0f8733d35e438e26b77323b1ab1ab4c8c4e"
+        },
+        {
+          "path": "packages/render-engine/src/texture-layer-residency.ts",
+          "sha256": "90732683e26a345a700d0fa492a7d97cb6262a23b90c4393a55e5ccc15806ee2"
+        },
+        {
+          "path": "packages/render-engine/src/texture-shard-cache.test.ts",
+          "sha256": "47144ec98ec115d64d6acaa8e616b9675be530974423bcea880e942df5ed1459"
+        },
+        {
+          "path": "packages/render-engine/src/texture-shard-cache.ts",
+          "sha256": "6c3671e4c1af3989f90a11af5470d76bfa00406d0e393729dd0fa429dcc5e4fd"
+        },
+        {
+          "path": "packages/render-engine/src/webgl-plate-renderer.ts",
+          "sha256": "da7befc75f4f71cfc69886a67cf89f271e0f11d212eb316033b8498ade5859d9"
+        },
+        {
+          "path": "packages/resonance-engine/src/index.ts",
+          "sha256": "da98c1eb5c0643bf693df05438454d99ace4308145b2df5bdd7833961f08c059"
+        },
+        {
+          "path": "packages/resonance-engine/src/prototype-dataset.ts",
+          "sha256": "30540a8ca6d0b670c2ad233b70016ea78c2b3ddada7c0fcc507eba8001e14353"
+        },
+        {
+          "path": "packages/resonance-engine/src/resonance-engine.test.ts",
+          "sha256": "2f68877ae17e7c79e904df98f5bc46e035d8b22f637ed2afbfa9302b0d9fecad"
+        },
+        {
+          "path": "packages/resonance-engine/src/resonance-engine.ts",
+          "sha256": "5e1d6d4c02da140256056235122f0d930d4533a62aef3d76e50221f4fa4412ec"
+        },
+        {
+          "path": "packages/resonance-engine/src/runtime-compliance.test.ts",
+          "sha256": "7b43a7dc0bcd37dda5b7194a92e935ebe73917515d25ece3eef2a4d9fff48343"
+        },
+        {
+          "path": "packages/resonance-engine/src/runtime-engine.ts",
+          "sha256": "0380a8114c5eaaace3168ee562fb50bcb42a8476145bba3c45afe6dbdb0aee39"
+        },
+        {
+          "path": "packages/resonance-engine/src/runtime-snapshot-writer.test.ts",
+          "sha256": "6000e51ada528770819d7327ccc23cc1b3ae0c46c9e660939e8b50a85c39a3d6"
+        },
+        {
+          "path": "rust-toolchain.toml",
+          "sha256": "fb0a56ca2fc09db10159f6983e9d747f4afeb64e1d6d941dc36a3c20bf3a5749"
+        },
+        {
+          "path": "specs/acceptance/handoff-verification.v1.json",
+          "sha256": "515600b4b8b3f7dcd58f3ad2185d112b3e3a7115e3d67a3c6787d92ed1ce213a"
+        },
+        {
+          "path": "specs/physics/baker-algorithm.v1.json",
+          "sha256": "4fac7c12618d1e561dab27214ce47e2b94cbc91e734ce9a100f32a143dc222ca"
+        },
+        {
+          "path": "specs/physics/baker-nversion.v1.json",
+          "sha256": "7f57c3fbe150a926bdf21509d4b002c7a00c2aa168062593405a843674cfff7d"
+        },
+        {
+          "path": "specs/plate/mandelbrot-plate.v1.yaml",
+          "sha256": "aa3f5dea471eea3aef5281d7b5670153badfc023a4d9ec8f2ebf6c3a91bf5623"
+        },
+        {
+          "path": "specs/runtime/audio-safety.v1.yaml",
+          "sha256": "ec7e0358f7ce0bc16c9295ffc0797be0bbd0b2c3876d7438e85144856cfc00e6"
+        },
+        {
+          "path": "specs/runtime/dial.v1.yaml",
+          "sha256": "07f831116a2193ae88dc2b98b8d29d020d77e6bdd83de1b845afbf1aa7a98e76"
+        },
+        {
+          "path": "specs/runtime/feedback.v1.yaml",
+          "sha256": "3031dc82b8f3f9e9d4279e2bcde7fb92d06e5601767dbcce67b576a4caf386a4"
+        },
+        {
+          "path": "specs/runtime/ui-nversion.v1.json",
+          "sha256": "6d2da47fbae613748a920516c5d303c1e92970703a23897ae10acc7f191cfb26"
+        },
+        {
+          "path": "specs/runtime/volume-map.v1.yaml",
+          "sha256": "7fda34e109a98993a818e488aa5e0e81566659e085aec921f1e575822539c90a"
+        },
+        {
+          "path": "specs/visual/motion-safety.v1.yaml",
+          "sha256": "8479993cab1ee14e6b3e59a36830b2ace92d1c054af25cacc6c07318dfb49b8d"
+        },
+        {
+          "path": "specs/visual/performance-budget.v1.yaml",
+          "sha256": "91ed596c5c25a1606bb2a481878ac164be156664f813bc2602a98e27301d8e81"
+        },
+        {
+          "path": "specs/visual/quality-tiers.v1.yaml",
+          "sha256": "fb97f419a4d4a9b89787535cf4700e59e1a00116795a991001ee29df0335f2bd"
+        },
+        {
+          "path": "specs/visual/scene.v1.yaml",
+          "sha256": "2072d7a2e8494b37c8a6ed499d361f6e7bb4add1a6e8348c826e3480237504ec"
+        },
+        {
+          "path": "specs/visual/webgl-shader-allowlist.v1.json",
+          "sha256": "0efce9656e0ce20dd90781070d398888ace38f529180b877c489c215ec931e80"
+        },
+        {
+          "path": "tests/runtime/fixtures/reachability-report.json",
+          "sha256": "11ac22f00b6b716c9917c37d3089017c67a1c00213523242b673a023be1d6837"
+        },
+        {
+          "path": "tests/runtime/generate-reachability-report.ts",
+          "sha256": "bada53a7f66ddd876ec324f9969a831d4f6f4f33b38b8cf53d8952c808478f4a"
+        },
+        {
+          "path": "tools/baker-supervisor/README.md",
+          "sha256": "7f3d2fb291e77ad3cd3588a8b3960f197767824330cb69b96b9ebeab26d97755"
+        },
+        {
+          "path": "tools/baker-supervisor/src/attestation-bundle.mjs",
+          "sha256": "880f3c084251b5ff20914560415beb757207ff784edd26f602e43f505a719b3b"
+        },
+        {
+          "path": "tools/baker-supervisor/src/backend-process.mjs",
+          "sha256": "88a4cee6131781bcbcc5349313a29eb4facbf88a8a4c2d2a96a17c3660ba18cc"
+        },
+        {
+          "path": "tools/baker-supervisor/src/package-integrity.mjs",
+          "sha256": "9bf5cb6481bead9a714bb4ef353bee7c6e28d2d43ff5c736a3c7fd3f92a1d7af"
+        },
+        {
+          "path": "tools/baker-supervisor/src/policy.mjs",
+          "sha256": "c91c0f250848ff0cb0c664fc1055da728b78cc96ce646ca842b610da9817c215"
+        },
+        {
+          "path": "tools/baker-supervisor/src/semantic-diff.mjs",
+          "sha256": "094bb3962430a1d9f72fc8a202106c03d6d215fc7d92a53b62bdea673c33b29f"
+        },
+        {
+          "path": "tools/baker-supervisor/src/source-tree.mjs",
+          "sha256": "5d81db487823ea8c173cacf8062f8456e43e0f4506fb5ff93cbfa57e3ff9547d"
+        },
+        {
+          "path": "tools/baker-supervisor/src/supervisor.mjs",
+          "sha256": "4c64b8f600241f200d1e26137c9b7444cbf01edd18d68c9771a7e9ea40d17c0e"
+        },
+        {
+          "path": "tools/baker-supervisor/test/attestation-bundle.test.mjs",
+          "sha256": "5751312dddb9fc4ba682bd1a6d706535c05a221da0ffbc19a6b03a031cc86663"
+        },
+        {
+          "path": "tools/baker-supervisor/test/backend-process.test.mjs",
+          "sha256": "f70abe26d8722c7d9db29d53743147af98508cb6d30f88433092b591f01feedc"
+        },
+        {
+          "path": "tools/baker-supervisor/test/policy.test.mjs",
+          "sha256": "d0aaaa056a5219b174d3d1df1c9305fecbb56755b05701d0704437b63fa699a2"
+        },
+        {
+          "path": "tools/baker-supervisor/test/semantic-diff.test.mjs",
+          "sha256": "32ff04b358a29baf1e0c03776a2004e5849edf60374bc089aab28e9a2739e63b"
+        },
+        {
+          "path": "tools/baker-supervisor/test/source-tree.test.mjs",
+          "sha256": "d2db8ba1c48936111f1fb4597196465c11548b316eb03209e8a11447b3f32e49"
+        },
+        {
+          "path": "tools/baker-supervisor/test/supervisor-integrity.test.mjs",
+          "sha256": "5fdb7f2abf68f54623ec7cb5eeff113c08b43604469e973715441362abaaaaa5"
+        },
+        {
+          "path": "tools/container-baker-runner/Dockerfile",
+          "sha256": "09e8ce76daf4fc1fe9a11cf7c28db02dd4412db5fe885f63154d0a2622984ff7"
+        },
+        {
+          "path": "tools/container-baker-runner/README.md",
+          "sha256": "94b693a02afed3c190414401ff8c6aaae759649a7564187c18185b2e7ea2cb85"
+        },
+        {
+          "path": "tools/container-baker-runner/src/attestation-envelope.mjs",
+          "sha256": "0b570d0a3aa69dde2a4c16b699a1d8dad738a3b1e30a0ee7ba28c18b9678ad5b"
+        },
+        {
+          "path": "tools/container-baker-runner/src/runner.mjs",
+          "sha256": "f480fc83edac9cbe9f65a4209f03b6f1615445896b079f43b629e5f941896078"
+        },
+        {
+          "path": "tools/container-baker-runner/test/runner.test.mjs",
+          "sha256": "280bffcc23e1b52a9d1cbc3864c319c415d339a82cc7ab6e1ca667d576d3d180"
+        },
+        {
+          "path": "tools/handoff-verifier/README.md",
+          "sha256": "bf538833659509241485194a0f7b1766199a0a424e58f5e94850c1061536e93e"
+        },
+        {
+          "path": "tools/handoff-verifier/src/check-handoff-coverage.mjs",
+          "sha256": "9bce6cc1807fd27406109e55354e98b91c641293de79b47d2b13f6d6c8df79e1"
+        },
+        {
+          "path": "tools/handoff-verifier/src/full-verification-plan.mjs",
+          "sha256": "e2abd70393128911f1c177e9d40d0603201eaef978fc1b44129bc11332b039b8"
+        },
+        {
+          "path": "tools/handoff-verifier/src/run-full-verification.mjs",
+          "sha256": "940895aa2447f5acf63724494b05468b355c5f73cf037e37c450f54b6fafb226"
+        },
+        {
+          "path": "tools/handoff-verifier/src/stage-execution.mjs",
+          "sha256": "e9275fa1157882963989894d16e235ef4d1c0e17aca2405f79fabd254339ea93"
+        },
+        {
+          "path": "tools/handoff-verifier/src/verification-core.mjs",
+          "sha256": "56938a2e3482817f37ff0102ea563e65ca6a28ea2f4cbd37a314757406d01749"
+        },
+        {
+          "path": "tools/handoff-verifier/test/full-verification-plan.test.mjs",
+          "sha256": "82bca8a8138f2d87012eec7f364176f25798134d804cad194c1a788ea6f2d6e3"
+        },
+        {
+          "path": "tools/handoff-verifier/test/release-contract-bindings.test.mjs",
+          "sha256": "3424e8f770dca7c139ddf387d70bbf4680115ba548deaea332d83585b9047387"
+        },
+        {
+          "path": "tools/handoff-verifier/test/release-security-inputs.test.mjs",
+          "sha256": "e5d66ad9e074d716227afcc5b0326e69a558269f9fc9790a735191b8050882d3"
+        },
+        {
+          "path": "tools/handoff-verifier/test/stage-execution.test.mjs",
+          "sha256": "0659e0adf790391aecea64fb1b04eedc9723295fbd0422882cba66617784d51d"
+        },
+        {
+          "path": "tools/handoff-verifier/test/verification-core.test.mjs",
+          "sha256": "e287c2ce902c086e954e42b79df565b8ec9dd5dc07a8b251ee1224d877f47a36"
+        },
+        {
+          "path": "tools/handoff-verifier/test/webgl-shader-integrity.test.mjs",
+          "sha256": "577a3cd12d8953dbf533e88062513d76c62645ab845f90be4124983695195dcc"
+        },
+        {
+          "path": "tools/physics-baker-rs/Cargo.toml",
+          "sha256": "1518dc3e22650c6c7adae58fbfbda703f80544402700a167a9bf314ea9bcba81"
+        },
+        {
+          "path": "tools/physics-baker-rs/README.md",
+          "sha256": "eca73e1b76f827132b5a4562f03f63005361c193a89aed56fa04af671a89e65c"
+        },
+        {
+          "path": "tools/physics-baker-rs/bin/README.md",
+          "sha256": "9622a4cb6350ce4ca82b0b2670b32a854b5d96dc2d325fd20b6a47bd5ae0bfd6"
+        },
+        {
+          "path": "tools/physics-baker-rs/src/algorithm.rs",
+          "sha256": "d239e94630373dd28de05384adcf8da1fe049eda145168cbeeffb705898245c3"
+        },
+        {
+          "path": "tools/physics-baker-rs/src/dataset.rs",
+          "sha256": "cbe3b15988abebe69e32b569c969f978f1cdc305acb92a6cdb59ddec534f83b2"
+        },
+        {
+          "path": "tools/physics-baker-rs/src/field.rs",
+          "sha256": "0bc8c345582390677c8cf9e555d83514b0cd45e6fa2e6288bccdde73dde19fb5"
+        },
+        {
+          "path": "tools/physics-baker-rs/src/generator.rs",
+          "sha256": "0dba715da23b7bda372fe0c953c376c8ed59f015b306f3cf17686b694cc27482"
+        },
+        {
+          "path": "tools/physics-baker-rs/src/json.rs",
+          "sha256": "670ddf6b7ae65ea828a6fb78a897123e772f3889828143be494e5b58660d2b00"
+        },
+        {
+          "path": "tools/physics-baker-rs/src/ktx2.rs",
+          "sha256": "28fc4c89548d552abdb7d0e185c2a2db8a817191e72bbcea9534b7e4122c6172"
+        },
+        {
+          "path": "tools/physics-baker-rs/src/lib.rs",
+          "sha256": "6bb2118d5d42e422d533b067081407032d6d0ebda70b7d09ad20c0c9b2eca840"
+        },
+        {
+          "path": "tools/physics-baker-rs/src/linear_algebra.rs",
+          "sha256": "92b406c6a4515ce3fc623b8a654888125f1d40d628b28494ea9d6dfe953db2ab"
+        },
+        {
+          "path": "tools/physics-baker-rs/src/main.rs",
+          "sha256": "7982f0c0acae5992c0c6a1f810d6226c898117f4637db9b382de3e730ad02354"
+        },
+        {
+          "path": "tools/physics-baker-rs/src/mesh.rs",
+          "sha256": "eec9029b1ef802bfd6e53009b3932dd0c0371ed21dad9ce52ac8bbf32c901d10"
+        },
+        {
+          "path": "tools/physics-baker-rs/src/packaging.rs",
+          "sha256": "85552c4ee59a27663ea01fd168f56d01f80106660251b7761591e80a746b461a"
+        },
+        {
+          "path": "tools/physics-baker-rs/src/postprocess.rs",
+          "sha256": "27244e95085a3fb93919b8d1ef9131d44bde56eeb67b3845f28f62f19b018d68"
+        },
+        {
+          "path": "tools/physics-baker-rs/src/sha256.rs",
+          "sha256": "1b57105902e097ee47392289167877439262b4df87aa37b23d692361b0ca863f"
+        },
+        {
+          "path": "tools/physics-baker-rs/src/solver.rs",
+          "sha256": "b59d57aa1e5ba5bb77440c99a399904cec909d820fd07a7d57123e0083c7c37c"
+        },
+        {
+          "path": "tools/physics-baker-rs/src/spec.rs",
+          "sha256": "ae1fa3b183b192f4fb56eef6d9ddafb8d5fdee2d9e5d63276d527fae4b618633"
+        },
+        {
+          "path": "tools/physics-baker-rs/src/yaml.rs",
+          "sha256": "77b2d2fe0ac2736b42fe320574ab56a6b6ad2d01fbda23a7252581894a3b2423"
+        },
+        {
+          "path": "tools/physics-baker/README.md",
+          "sha256": "62c190b5c89512ee862189308b7e195060b3e001191dce81db97819fb3533241"
+        },
+        {
+          "path": "tools/physics-baker/bake.py",
+          "sha256": "f49d60c3cb353162f82b61f582e1228d797821fbc0e545d08c4852f1e0dffce2"
+        },
+        {
+          "path": "tools/physics-baker/pyproject.toml",
+          "sha256": "a38aded7b47019ca1d2cee0c757ee70492b7f4ff2b15686658aff323c492bf7d"
+        },
+        {
+          "path": "tools/physics-baker/src/mandelhowl_baker/__init__.py",
+          "sha256": "f07c3551d297f9344edca86cef0224b2019b5996204c6eea3d300ea2c3803484"
+        },
+        {
+          "path": "tools/physics-baker/src/mandelhowl_baker/algorithm.py",
+          "sha256": "24e2ec8754c4c0c7c26d8a9f9e64bd2a1d4c96f8176365d06d8b5b02bc7bcd36"
+        },
+        {
+          "path": "tools/physics-baker/src/mandelhowl_baker/canonical.py",
+          "sha256": "8dee82f0556a15b75ec0419a70ddc7815d34fa0002b2187ab4a6674d01ef4e0c"
+        },
+        {
+          "path": "tools/physics-baker/src/mandelhowl_baker/cli.py",
+          "sha256": "29cc50f32a42abe800797f7e5fdda98c3d3df7065ad92c8e47d31cd3b006911d"
+        },
+        {
+          "path": "tools/physics-baker/src/mandelhowl_baker/diagnostics.py",
+          "sha256": "fe1494a09125dab4141bd84d6b85605217ad09c88d278d81bbe56b301f1ead75"
+        },
+        {
+          "path": "tools/physics-baker/src/mandelhowl_baker/field.py",
+          "sha256": "9c55fdc6dfbba0a1d281d13acb70c8309d22d6494937937c0e80aac8fadbe64c"
+        },
+        {
+          "path": "tools/physics-baker/src/mandelhowl_baker/ktx2.py",
+          "sha256": "5155ce7e4d940e058cc19df89046436a3462918867e2c8c54bded68dc474b4d3"
+        },
+        {
+          "path": "tools/physics-baker/src/mandelhowl_baker/linear_algebra.py",
+          "sha256": "0670b339819dcbf303810b5177d65261145347672eac25ba3cead98830047f0d"
+        },
+        {
+          "path": "tools/physics-baker/src/mandelhowl_baker/mesh.py",
+          "sha256": "cdc97e2ec9c27dc02c3fda047a0b42e62882bd5481535e86b1b93ee7f79895dd"
+        },
+        {
+          "path": "tools/physics-baker/src/mandelhowl_baker/packaging.py",
+          "sha256": "f9b3ef242c986cd96f69ec3159917e4d2d144d671c5ee6625fbad2b29a231508"
+        },
+        {
+          "path": "tools/physics-baker/src/mandelhowl_baker/postprocess.py",
+          "sha256": "d444004b54db6013bb55c294cfa614d192c3bf0b7778a44c822843ccd5d22e0f"
+        },
+        {
+          "path": "tools/physics-baker/src/mandelhowl_baker/schema_validation.py",
+          "sha256": "a47b7468b2a7f6ff29c82a33b78450e7ca28dd83a784ba24f68a9ffe8ce9e0fe"
+        },
+        {
+          "path": "tools/physics-baker/src/mandelhowl_baker/solver.py",
+          "sha256": "3ccf5cf9c4faac042b8726bdaa95f7d62cd92a060e5f04b4a94f1b54cf03fa5f"
+        },
+        {
+          "path": "tools/physics-baker/src/mandelhowl_baker/spec_validation.py",
+          "sha256": "84710ae5f2ed70f595ef2449ccd1eb8544553d7e62c068928dd515325f9c62c4"
+        },
+        {
+          "path": "tools/physics-baker/src/mandelhowl_baker/validation.py",
+          "sha256": "bcba07c4deb6b963e6008519f0c554d13f79cc25abd5a54d0fd70b723a92c779"
+        },
+        {
+          "path": "tools/physics-baker/src/mandelhowl_baker/yaml_min.py",
+          "sha256": "21fa7d9b2ed5d94ca66a2540d99401cd9394bda533bf22dbca6e5ab9d3415333"
+        },
+        {
+          "path": "tools/reachability-generator/README.md",
+          "sha256": "c54c2e8ad57d2f43b5a7f792e3a7093763c55b5e9fcb72062d4c7b4a0a9bcd96"
+        },
+        {
+          "path": "tools/reachability-generator/src/trajectory-coverage.ts",
+          "sha256": "13c2cff882a110d0ae791b9265e660f74d9aee177b294259d7be837e231a740a"
+        },
+        {
+          "path": "tools/release-packager/package.json",
+          "sha256": "6cdf70f85e5c51360d352603ee45d15fa3d7ea54164f2d70adc8c369bde8246b"
+        },
+        {
+          "path": "tools/release-packager/src/build-provenance.mjs",
+          "sha256": "36427f5039d65a74f66eb6e8672333258d7ef3de8acc968671e1895ad23d40b3"
+        },
+        {
+          "path": "tools/release-packager/src/create-release-archive.mjs",
+          "sha256": "48fa2a35f92ab21ad2f1de33266f06275e2b0bc0852534f703f56dcf750f1c8d"
+        },
+        {
+          "path": "tools/release-packager/src/generate-license-inventory.mjs",
+          "sha256": "0d8ffd3ca2d025a54de3f9acc4443b94e4ebb6c4812accd1f99980aec419cd68"
+        },
+        {
+          "path": "tools/release-packager/src/pinned-attestation.mjs",
+          "sha256": "09347cffabbe520303b40cb9a6a940cd78354dda7441a6c69808290be646935a"
+        },
+        {
+          "path": "tools/release-packager/src/release-contract-bindings.mjs",
+          "sha256": "edddbdd83490cb7317fae256b8adff28a456e9458b80899ea581c2e1c361ea97"
+        },
+        {
+          "path": "tools/release-packager/src/release-input-bindings.mjs",
+          "sha256": "966e857c3391aa17aec396b012e22d2c5e1b49d48c9b4f227d4fdac767579c92"
+        },
+        {
+          "path": "tools/release-packager/src/runtime-source-policy.mjs",
+          "sha256": "667d2dc0bc7f7eb68d6de8801110d4c0201f037a8647efbd9f1068a55f4e98e5"
+        },
+        {
+          "path": "tools/release-packager/src/security-headers-policy.mjs",
+          "sha256": "6a88a818d8adb2cf740418d2d83308d3d0075ae7c5e2727bb04ed6058bf64e6f"
+        },
+        {
+          "path": "tools/release-packager/src/stage-runtime-assets.mjs",
+          "sha256": "df2930bae2eb89f7c8029ae3d8177c32e3d7e90fcfd8afec6bc3d43ff3441d5b"
+        },
+        {
+          "path": "tools/release-packager/src/validate-pinned-dataset.mjs",
+          "sha256": "5f48cdd975d49b6b57a2c5e2279b3b7f706767fb287bac0039d913c9e101049c"
+        },
+        {
+          "path": "tools/release-packager/src/verify-forbidden-runtime.mjs",
+          "sha256": "641994ac6ba13ca433bf04b6bfcb00b01810bfd26db9c217a3e81112ca2ac04c"
+        },
+        {
+          "path": "tools/release-packager/src/verify-release.mjs",
+          "sha256": "405aed68c74f0e3c1e4493039b7d46f7e9614063e1abf220853cdda6f697efc3"
+        },
+        {
+          "path": "tools/release-packager/src/webgl-shader-integrity.mjs",
+          "sha256": "81f5c4ed8ca07b0e6cd179167d503e947d0b2c84bb2d70f974062fbd22e942b9"
+        },
+        {
+          "path": "tools/release-packager/src/write-security-headers.mjs",
+          "sha256": "87a631aea9749cf7ce0f851b5c392362d14623f1906c4850e71e53d4d7889233"
+        }
+      ]
+    },
+    "pinnedDatasetCompatibility": {
+      "status": "current-versioned-dataset",
+      "manifestAlgorithmRevision": "kirchhoff-love-c1-finite-strip-r2",
+      "contractBound": true,
+      "algorithmEvidenceSha256": "4fac7c12618d1e561dab27214ce47e2b94cbc91e734ce9a100f32a143dc222ca"
+    },
+    "attestation": {
+      "status": "not-embedded",
+      "claim": "none",
+      "attestationScope": "dataset-bound",
+      "verificationOption": "--pinned-nversion-attestation"
+    }
+  },
+  "uiNVersion": {
+    "schemaVersion": "mandelhowl.ui-nversion.v1",
+    "primary": "svelte5",
+    "standby": "react",
+    "inputs": {
+      "specSha256": "6d2da47fbae613748a920516c5d303c1e92970703a23897ae10acc7f191cfb26",
+      "svelteEntrySha256": "27b72ee34960a37ac037f2d52e1c73e2b1127748f35be4d22026086acec209fb",
+      "svelteSourceSha256": "36aa4bff4872a94acd1fcb21270b2dd26cb6146c7fe7e323172d037734b8757d",
+      "reactEntrySha256": "7e6b8cb62e220cae855f463edd953abb402bfdaf6f5da830593d34acc86e5101",
+      "reactSourceSha256": "ebe765496d96fc343cde2084bd13507b0efea3acf652dfcc44eee7a10742ac21",
+      "supervisorSourceSha256": "98d38db377e1f1155fce1918f16e4b79b375ca654882677b0771235acb323ddd",
+      "hostSourceSha256": "8f19c0de8fbf1677e74df5986805216991a793adc84c77918b101bd3b0027620"
+    }
+  },
+  "acceptance": {
+    "schemaVersion": "mandelhowl.handoff-verification.v1",
+    "verificationContractPath": "specs/acceptance/handoff-verification.v1.json",
+    "verificationContractSha256": "515600b4b8b3f7dcd58f3ad2185d112b3e3a7115e3d67a3c6787d92ed1ce213a",
+    "handoffPath": "MandelHowl_핸드오프.md",
+    "handoffSha256": "f557737498ce29c9a5654fdc5a4860e779513e54c941d6e4ad307acdeeed6b27",
+    "architectureReferencePath": "MandelHowl_파일_구조.md",
+    "architectureReferenceSha256": "e35f169ddf2d6693dc785912dd956fbd1f4eace91dddc4647b95f1bbccaed39b"
+  },
+  "inputs": {
+    "packageLockSha256": "df048d48f336ecd1b682f197962ee98f11c27d3faa090495714158bf86dc505b",
+    "licenseSha256": "f07ed8d6a2ee46c10de60070fff0cc2588645463ca4090128c8ec866c85dcb42",
+    "thirdPartyNoticesSha256": "32663d3b50ec7f6ee310880f9d492f17d4e5a63a436dbb62d555accfcc9ab4d1",
+    "thirdPartyLicenseInventorySha256": "7e3e8a6eeac31ffdd786a9a60a0124c6c3ca063ea0185e98d2bcc7babb1d5b75",
+    "securityHeadersSha256": "7dd62722218d129dea9fac6814b871307d3fd9c02d4cb485081dc61ff2120a2e"
+  },
+  "buildContract": {
+    "packageManager": "npm",
+    "nodeVersion": "v24.16.0",
+    "buildCommand": "npm run build",
+    "workerEntrypoint": "dist/server/index.js"
+  }
+}

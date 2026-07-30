@@ -1,0 +1,21 @@
+{
+  "algorithmRevision": "kirchhoff-love-c1-finite-strip-r2",
+  "backend": "rust-native",
+  "convergenceChecksPassed": true,
+  "coverageSource": "external-runtime-replay-report",
+  "deterministic": true,
+  "executionEnvironment": {
+    "containerDigestMeaning": "OCI image content digest supplied by the executing container runner; it identifies the image used for this bake.",
+    "containerImageDigest": "sha256:c878d65dd0d71a302228c4729092878398ab405c390226a5c3135ea51264474e",
+    "containerRunnerAttestation": "trusted-runner-attested",
+    "containerized": true,
+    "executionKind": "oci-container"
+  },
+  "handoffFullConformance": true,
+  "handoffOperationalDisposition": "strict-thin-plate-finite-element-adapter",
+  "knownContractDeviations": [],
+  "manufacturingChecksPassed": true,
+  "meshChecksPassed": true,
+  "releaseBake": true,
+  "schemaVersion": "mandelhowl.generation-report.v1"
+}
