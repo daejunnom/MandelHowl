@@ -1,6 +1,8 @@
+import { createHash } from "node:crypto";
 import {
   cpSync,
   existsSync,
+  lstatSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
@@ -19,17 +21,23 @@ import {
   runPythonBackend,
   runRustBackend,
 } from "./backend-process.mjs";
+import { createAttestationBundle } from "./attestation-bundle.mjs";
 import { decideNVersion } from "./policy.mjs";
 import {
   inspectDatasetPackage,
   packagesAreExactlyIdentical,
 } from "./package-integrity.mjs";
 import { compareDatasetsSafely } from "./semantic-diff.mjs";
+import { collectBakerSourceTree } from "./source-tree.mjs";
 
 const sourceDirectory = path.dirname(fileURLToPath(import.meta.url));
 const projectRoot = path.resolve(sourceDirectory, "..", "..", "..");
 const DEFAULT_OPERATION_TIMEOUT_MS = 120_000;
 const DEFAULT_GENERATION_TIMEOUT_MS = 30 * 60_000;
+
+function sha256(bytes) {
+  return createHash("sha256").update(bytes).digest("hex");
+}
 
 function parsePositiveInteger(value, label) {
   const parsed = Number(value);
@@ -45,6 +53,7 @@ function stripSupervisorOptions(arguments_) {
   let keepStaging = false;
   let timeoutMs = null;
   let reportFile = null;
+  let attestationBundle = null;
   for (let index = 0; index < arguments_.length; index += 1) {
     const value = arguments_[index];
     if (value === "--strict" || value === "--require-rust") {
@@ -63,6 +72,12 @@ function stripSupervisorOptions(arguments_) {
       }
       reportFile = arguments_[index + 1];
       index += 1;
+    } else if (value === "--attestation-bundle") {
+      if (index + 1 >= arguments_.length) {
+        throw new Error("--attestation-bundle requires a path");
+      }
+      attestationBundle = arguments_[index + 1];
+      index += 1;
     } else {
       backendArguments.push(value);
     }
@@ -73,6 +88,7 @@ function stripSupervisorOptions(arguments_) {
     keepStaging,
     timeoutMs,
     reportFile,
+    attestationBundle,
   };
 }
 
@@ -104,15 +120,29 @@ function invalidLastKnownGood(code, reason, lock = {}) {
 }
 
 export function loadLastKnownGood(root = projectRoot) {
-  let lock;
+  let lockBytes;
   try {
-    lock = JSON.parse(
-      readFileSync(path.join(root, "release", "dataset-lock.json"), "utf8"),
+    lockBytes = readFileSync(
+      path.join(root, "release", "dataset-lock.json"),
     );
   } catch (error) {
     return invalidLastKnownGood(
       "MH_BAKER_LKG_LOCK_INVALID",
       `unable to read release/dataset-lock.json: ${error.message}`,
+    );
+  }
+  const lockSha256 = sha256(lockBytes);
+  let lock;
+  try {
+    lock = {
+      ...JSON.parse(lockBytes.toString("utf8")),
+      lockSha256,
+    };
+  } catch (error) {
+    return invalidLastKnownGood(
+      "MH_BAKER_LKG_LOCK_INVALID",
+      `unable to parse release/dataset-lock.json: ${error.message}`,
+      { lockSha256 },
     );
   }
   if (
@@ -219,6 +249,7 @@ function publicLastKnownGood(lkg) {
     reason: lkg.reason,
     datasetId: lkg.datasetId ?? null,
     datasetDirectory: lkg.datasetDirectory ?? null,
+    lockSha256: lkg.lockSha256 ?? null,
     manifestSha256: lkg.manifestSha256 ?? null,
     exactPackageFingerprintSha256:
       lkg.exactPackageFingerprintSha256 ?? null,
@@ -315,7 +346,15 @@ function exitFor(decision, strict) {
 }
 
 function capabilityCommand(command, args) {
-  const { strict, timeoutMs, reportFile } = stripSupervisorOptions(args);
+  const {
+    strict,
+    timeoutMs,
+    reportFile,
+    attestationBundle,
+  } = stripSupervisorOptions(args);
+  if (attestationBundle !== null) {
+    throw new Error("--attestation-bundle is valid only for generate");
+  }
   const timeout = timeoutMs ?? DEFAULT_OPERATION_TIMEOUT_MS;
   const rust = runRustBackend({
     projectRoot,
@@ -348,8 +387,16 @@ function capabilityCommand(command, args) {
 }
 
 function validateCommand(args) {
-  const { backendArguments, strict, timeoutMs, reportFile } =
-    stripSupervisorOptions(args);
+  const {
+    backendArguments,
+    strict,
+    timeoutMs,
+    reportFile,
+    attestationBundle,
+  } = stripSupervisorOptions(args);
+  if (attestationBundle !== null) {
+    throw new Error("--attestation-bundle is valid only for generate");
+  }
   const lkg = loadLastKnownGood();
   if (backendArguments.length > 1) {
     throw new Error("validate accepts at most one dataset directory");
@@ -403,7 +450,21 @@ function validateCommand(args) {
   return exitFor(decision, strict);
 }
 
-function candidatePath(result, stagingRoot) {
+export function normalizeBackendDatasetPath(
+  candidate,
+  platform = process.platform,
+) {
+  if (platform !== "win32") return candidate;
+  if (/^\\\\\?\\[A-Za-z]:\\/.test(candidate)) {
+    return candidate.slice(4);
+  }
+  if (candidate.startsWith("\\\\?\\UNC\\")) {
+    return `\\\\${candidate.slice(8)}`;
+  }
+  return candidate;
+}
+
+export function candidatePath(result, stagingRoot) {
   if (result.status !== "success") return null;
   const candidate = result.output?.datasetPath;
   if (typeof candidate !== "string") {
@@ -412,9 +473,14 @@ function candidatePath(result, stagingRoot) {
     result.code = "MH_BAKER_DATASET_PATH_MISSING";
     return null;
   }
-  const absolute = path.resolve(projectRoot, candidate);
-  const relative = path.relative(stagingRoot, absolute);
+  const absolute = path.resolve(
+    projectRoot,
+    normalizeBackendDatasetPath(candidate),
+  );
+  const stagingAbsolute = path.resolve(stagingRoot);
+  const relative = path.relative(stagingAbsolute, absolute);
   if (
+    relative === "" ||
     path.isAbsolute(relative) ||
     relative.startsWith("..") ||
     !existsSync(absolute)
@@ -424,7 +490,51 @@ function candidatePath(result, stagingRoot) {
     result.code = "MH_BAKER_DATASET_PATH_UNSAFE";
     return null;
   }
-  return absolute;
+  let canonicalCandidate;
+  try {
+    const metadata = lstatSync(absolute);
+    const canonicalStaging = realpathSync(stagingAbsolute);
+    canonicalCandidate = realpathSync(absolute);
+    const canonicalRelative = path.relative(
+      canonicalStaging,
+      canonicalCandidate,
+    );
+    if (
+      !metadata.isDirectory() ||
+      metadata.isSymbolicLink() ||
+      canonicalRelative === "" ||
+      path.isAbsolute(canonicalRelative) ||
+      canonicalRelative.startsWith("..")
+    ) {
+      throw new Error("candidate does not resolve to a contained directory");
+    }
+  } catch {
+    result.status = "protocol-error";
+    result.availabilityFailure = false;
+    result.scientificFailure = true;
+    result.code = "MH_BAKER_DATASET_PATH_UNSAFE";
+    result.error =
+      "backend dataset path did not resolve to a contained real directory";
+    return null;
+  }
+  try {
+    const identity = inspectDatasetPackage(canonicalCandidate);
+    if (
+      result.output?.datasetId !== identity.datasetId ||
+      result.output?.manifestSha256 !== identity.manifestSha256
+    ) {
+      throw new Error("backend output identity disagrees with its package");
+    }
+  } catch {
+    result.status = "protocol-error";
+    result.availabilityFailure = false;
+    result.scientificFailure = true;
+    result.code = "MH_BAKER_DATASET_PACKAGE_INVALID";
+    result.error =
+      "backend candidate failed exact package inventory or identity validation";
+    return null;
+  }
+  return canonicalCandidate;
 }
 
 export function installCandidate(source, requestedOutputRoot) {
@@ -488,6 +598,24 @@ function generateCommand(args) {
   const strict = parsed.strict || release;
   const timeout = parsed.timeoutMs ?? DEFAULT_GENERATION_TIMEOUT_MS;
   const lkg = loadLastKnownGood();
+  const sourceTreeBefore = collectBakerSourceTree(projectRoot);
+  const attestationBundleRoot =
+    parsed.attestationBundle === null
+      ? null
+      : path.resolve(projectRoot, parsed.attestationBundle);
+  const attestationReportFile =
+    attestationBundleRoot === null
+      ? parsed.reportFile
+      : path.join(attestationBundleRoot, "attestation.json");
+  if (
+    attestationBundleRoot !== null &&
+    parsed.reportFile !== null &&
+    path.resolve(projectRoot, parsed.reportFile) !== attestationReportFile
+  ) {
+    throw new Error(
+      "--report-file must name <attestation-bundle>/attestation.json",
+    );
+  }
   const staging = mkdtempSync(path.join(tmpdir(), "mandelhowl-nversion-"));
   const rustOutput = path.join(staging, "rust");
   const pythonOutput = path.join(staging, "python");
@@ -530,6 +658,19 @@ function generateCommand(args) {
         expectedRightGenerator: "tools/physics-baker",
       });
     }
+    const sourceTreeAfter = collectBakerSourceTree(projectRoot);
+    if (
+      sourceTreeAfter.sourceTreeSha256 !==
+        sourceTreeBefore.sourceTreeSha256 ||
+      sourceTreeAfter.sourceTreeFileCount !==
+        sourceTreeBefore.sourceTreeFileCount ||
+      JSON.stringify(sourceTreeAfter.excludedPaths) !==
+        JSON.stringify(sourceTreeBefore.excludedPaths)
+    ) {
+      throw new Error(
+        "Baker N-version source tree changed during generation; candidate attestation was refused.",
+      );
+    }
     let decision = decideNVersion({
       rust,
       python,
@@ -550,6 +691,32 @@ function generateCommand(args) {
       );
       decision = { ...decision, selectedDataset: installed };
     }
+    let attestationBundle = null;
+    let attestationBundleDiagnostic = null;
+    if (attestationBundleRoot !== null) {
+      if (
+        decision.state !== "dual-verified" ||
+        !comparison?.equivalent ||
+        rustCandidate === null ||
+        pythonCandidate === null
+      ) {
+        attestationBundleDiagnostic = {
+          code: "MH_BAKER_ATTESTATION_DUAL_REQUIRED",
+          message:
+            "attestation bundle requires two valid, semantically equivalent candidates",
+          state: decision.state,
+          rustStatus: rust.status,
+          pythonStatus: python.status,
+          comparisonEquivalent: comparison?.equivalent ?? false,
+        };
+      } else {
+        attestationBundle = createAttestationBundle({
+          bundleRoot: attestationBundleRoot,
+          rustCandidate,
+          pythonCandidate,
+        });
+      }
+    }
     report = emit(
       "generate",
       rust,
@@ -559,12 +726,23 @@ function generateCommand(args) {
       {
         stagingRetained: parsed.keepStaging,
         stagingDirectory: parsed.keepStaging ? staging : null,
+        sourceTreeSha256: sourceTreeAfter.sourceTreeSha256,
+        sourceTreeFileCount: sourceTreeAfter.sourceTreeFileCount,
+        sourceTreeDigestAlgorithm: sourceTreeAfter.digestAlgorithm,
+        sourceTreeRoots: sourceTreeAfter.roots,
+        sourceTreeExcludedPaths: sourceTreeAfter.excludedPaths,
         lastKnownGoodPreserved: lkg.valid,
         lastKnownGood: publicLastKnownGood(lkg),
+        priorLastKnownGood: publicLastKnownGood(lkg),
+        attestationBundle,
+        attestationBundleDiagnostic,
       },
-      parsed.reportFile,
+      attestationReportFile,
     );
-    return exitFor(decision, strict);
+    const decisionExitCode = exitFor(decision, strict);
+    return attestationBundleDiagnostic !== null && decisionExitCode === 0
+      ? 1
+      : decisionExitCode;
   } finally {
     if (!parsed.keepStaging) {
       // `staging` is an explicit directory returned by mkdtempSync above.
@@ -576,6 +754,9 @@ function generateCommand(args) {
 
 function compareCommand(args) {
   const parsed = stripSupervisorOptions(args);
+  if (parsed.attestationBundle !== null) {
+    throw new Error("--attestation-bundle is valid only for generate");
+  }
   if (parsed.backendArguments.length !== 2) {
     throw new Error("compare requires left and right dataset directories");
   }

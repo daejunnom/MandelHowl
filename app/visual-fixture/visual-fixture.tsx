@@ -7,11 +7,17 @@ import {
 } from "@/packages/asset-runtime/src";
 import {
   GENERATED_DATASET_RELEASE_SPEC,
+  GENERATED_DIAL_SPEC,
   type RuntimeSnapshot,
 } from "@/packages/contracts/src";
+import {
+  DEFAULT_DIAL_CONFIG,
+  frequencyToAngle,
+} from "@/packages/dial-engine/src";
 import { CanvasPlateRenderer } from "@/packages/render-engine/src/canvas-plate-renderer";
 import {
   createPlateRenderer,
+  nearestInBandTextureModeId,
   type PlateRenderer,
   type PlateRendererOptions,
   type PlateRendererStatus,
@@ -30,6 +36,10 @@ interface VisualState {
   readonly regime: MandelHowlRegime;
   readonly envelope: number;
   readonly activeMode: number | null;
+  /** Dataset-relative selection resolved only after the pinned modes load. */
+  readonly modeQuantile?: number;
+  /** Presentation fixture offset from the selected natural frequency. */
+  readonly modeFrequencyRatio?: number;
   readonly measurementProgress: number;
   readonly measurementStatus: "measuring" | "settled";
   readonly microphoneRms: number;
@@ -41,9 +51,30 @@ interface VisualState {
   readonly renderQuality: "high" | "reduced" | "canvas";
 }
 
+interface ModalIdentity {
+  readonly modeId: string;
+  readonly naturalFrequencyHz: number;
+}
+
+const DIAL_MINIMUM_FREQUENCY_HZ =
+  GENERATED_DIAL_SPEC.mapping.minimumFrequencyHz;
+const DIAL_MAXIMUM_FREQUENCY_HZ =
+  GENERATED_DIAL_SPEC.mapping.maximumFrequencyHz;
+
+function logarithmicFrequencyAt(normalized: number): number {
+  const bounded = Math.min(1, Math.max(0, normalized));
+  return (
+    DIAL_MINIMUM_FREQUENCY_HZ *
+    Math.pow(
+      DIAL_MAXIMUM_FREQUENCY_HZ / DIAL_MINIMUM_FREQUENCY_HZ,
+      bounded,
+    )
+  );
+}
+
 const STATES: Readonly<Record<string, VisualState>> = Object.freeze({
   decayed: {
-    frequency: 45,
+    frequency: DIAL_MINIMUM_FREQUENCY_HZ,
     volume: 0,
     regime: "decaying",
     envelope: 0,
@@ -59,11 +90,13 @@ const STATES: Readonly<Record<string, VisualState>> = Object.freeze({
     renderQuality: "high",
   },
   "weak-nonresonant": {
-    frequency: 842,
+    frequency: logarithmicFrequencyAt(0.25),
     volume: 0,
     regime: "decaying",
     envelope: 0.08,
-    activeMode: 11,
+    activeMode: null,
+    modeQuantile: 0.25,
+    modeFrequencyRatio: 0.97,
     measurementProgress: 0.62,
     measurementStatus: "measuring",
     microphoneRms: 0.018,
@@ -75,11 +108,12 @@ const STATES: Readonly<Record<string, VisualState>> = Object.freeze({
     renderQuality: "high",
   },
   critical: {
-    frequency: 4_629.35,
+    frequency: logarithmicFrequencyAt(0.75),
     volume: 50,
     regime: "critical",
     envelope: 0.48,
-    activeMode: 44,
+    activeMode: null,
+    modeQuantile: 0.75,
     measurementProgress: 1,
     measurementStatus: "settled",
     microphoneRms: 0.31,
@@ -91,11 +125,13 @@ const STATES: Readonly<Record<string, VisualState>> = Object.freeze({
     renderQuality: "high",
   },
   burst: {
-    frequency: 4_630.9,
+    frequency: logarithmicFrequencyAt(0.75),
     volume: 75,
     regime: "critical",
     envelope: 0.7,
-    activeMode: 44,
+    activeMode: null,
+    modeQuantile: 0.75,
+    modeFrequencyRatio: 1.0003,
     measurementProgress: 0.78,
     measurementStatus: "measuring",
     microphoneRms: 0.47,
@@ -107,11 +143,13 @@ const STATES: Readonly<Record<string, VisualState>> = Object.freeze({
     renderQuality: "high",
   },
   growing: {
-    frequency: 4_632.1,
+    frequency: logarithmicFrequencyAt(0.75),
     volume: 88,
     regime: "growing",
     envelope: 0.84,
-    activeMode: 44,
+    activeMode: null,
+    modeQuantile: 0.75,
+    modeFrequencyRatio: 1.0006,
     measurementProgress: 0.92,
     measurementStatus: "measuring",
     microphoneRms: 0.56,
@@ -123,11 +161,12 @@ const STATES: Readonly<Record<string, VisualState>> = Object.freeze({
     renderQuality: "high",
   },
   saturated: {
-    frequency: 4_690.89,
+    frequency: logarithmicFrequencyAt(0.9),
     volume: 100,
     regime: "saturated",
     envelope: 1,
-    activeMode: 45,
+    activeMode: null,
+    modeQuantile: 0.9,
     measurementProgress: 1,
     measurementStatus: "settled",
     microphoneRms: 0.62,
@@ -139,11 +178,13 @@ const STATES: Readonly<Record<string, VisualState>> = Object.freeze({
     renderQuality: "high",
   },
   "reverse-reverb": {
-    frequency: 4_627.2,
+    frequency: logarithmicFrequencyAt(0.75),
     volume: 37,
     regime: "critical",
     envelope: 0.36,
-    activeMode: 44,
+    activeMode: null,
+    modeQuantile: 0.75,
+    modeFrequencyRatio: 0.9995,
     measurementProgress: 0.34,
     measurementStatus: "measuring",
     microphoneRms: 0.22,
@@ -155,11 +196,12 @@ const STATES: Readonly<Record<string, VisualState>> = Object.freeze({
     renderQuality: "high",
   },
   "reduced-motion": {
-    frequency: 4_629.35,
+    frequency: logarithmicFrequencyAt(0.75),
     volume: 50,
     regime: "critical",
     envelope: 0.48,
-    activeMode: 44,
+    activeMode: null,
+    modeQuantile: 0.75,
     measurementProgress: 1,
     measurementStatus: "settled",
     microphoneRms: 0.31,
@@ -171,11 +213,12 @@ const STATES: Readonly<Record<string, VisualState>> = Object.freeze({
     renderQuality: "reduced",
   },
   "canvas-fallback": {
-    frequency: 4_629.35,
+    frequency: logarithmicFrequencyAt(0.75),
     volume: 50,
     regime: "critical",
     envelope: 0.48,
-    activeMode: 44,
+    activeMode: null,
+    modeQuantile: 0.75,
     measurementProgress: 1,
     measurementStatus: "settled",
     microphoneRms: 0.31,
@@ -186,14 +229,49 @@ const STATES: Readonly<Record<string, VisualState>> = Object.freeze({
     rendererKind: "canvas2d",
     renderQuality: "canvas",
   },
+  "runtime-pressure-canvas": {
+    frequency: logarithmicFrequencyAt(0.75),
+    volume: 50,
+    regime: "critical",
+    envelope: 0.48,
+    activeMode: null,
+    modeQuantile: 0.75,
+    measurementProgress: 1,
+    measurementStatus: "settled",
+    microphoneRms: 0.31,
+    microphonePeak: 0.43,
+    phase: 1.22,
+    dragging: false,
+    audioEnabled: true,
+    rendererKind: "webgl2",
+    renderQuality: "high",
+  },
+  "runtime-pressure-normal": {
+    frequency: logarithmicFrequencyAt(0.75),
+    volume: 50,
+    regime: "critical",
+    envelope: 0.48,
+    activeMode: null,
+    modeQuantile: 0.75,
+    measurementProgress: 1,
+    measurementStatus: "settled",
+    microphoneRms: 0.31,
+    microphonePeak: 0.43,
+    phase: 1.22,
+    dragging: false,
+    audioEnabled: true,
+    rendererKind: "webgl2",
+    renderQuality: "high",
+  },
 });
 
 const TEMPORAL_OLD_STATE: VisualState = Object.freeze({
-  frequency: 4_629.35,
+  frequency: logarithmicFrequencyAt(0.25),
   volume: 63,
   regime: "growing",
   envelope: 0.82,
-  activeMode: 44,
+  activeMode: null,
+  modeQuantile: 0.25,
   measurementProgress: 1,
   measurementStatus: "settled",
   microphoneRms: 0.48,
@@ -206,11 +284,12 @@ const TEMPORAL_OLD_STATE: VisualState = Object.freeze({
 });
 
 const TEMPORAL_NEW_STATE: VisualState = Object.freeze({
-  frequency: 4_690.89,
+  frequency: logarithmicFrequencyAt(0.75),
   volume: 77,
   regime: "critical",
   envelope: 0.78,
-  activeMode: 45,
+  activeMode: null,
+  modeQuantile: 0.75,
   measurementProgress: 0.52,
   measurementStatus: "measuring",
   microphoneRms: 0.41,
@@ -242,6 +321,11 @@ interface ModalFixtureOverride {
   readonly phase: number;
 }
 
+interface TemporalFixtureSelection {
+  readonly oldState: VisualState;
+  readonly newState: VisualState;
+}
+
 interface FixtureSnapshotOptions {
   readonly sequence?: number;
   readonly simulationTimeSeconds?: number;
@@ -261,6 +345,8 @@ interface RenderObservation {
   readonly oldModeId: string;
   readonly newModeId: string;
   readonly frequency: string;
+  readonly canvasWidth: number;
+  readonly canvasHeight: number;
 }
 
 const PENDING_OBSERVATION: RenderObservation = Object.freeze({
@@ -273,11 +359,94 @@ const PENDING_OBSERVATION: RenderObservation = Object.freeze({
   oldModeId: "pending",
   newModeId: "pending",
   frequency: "pending",
+  canvasWidth: 0,
+  canvasHeight: 0,
 });
 
 function angleForFrequency(frequency: number): number {
-  const normalized = Math.log(frequency / 45) / Math.log(6_000 / 45);
-  return -Math.PI * 3 + normalized * Math.PI * 6;
+  return frequencyToAngle(frequency, DEFAULT_DIAL_CONFIG);
+}
+
+function modeIndexAtQuantile(
+  modes: readonly ModalIdentity[],
+  quantile: number,
+): number {
+  if (modes.length === 0) {
+    throw new Error("The pinned visual fixture dataset contains no modes.");
+  }
+  const bounded = Math.min(1, Math.max(0, quantile));
+  return Math.round((modes.length - 1) * bounded);
+}
+
+function resolveVisualState(
+  template: VisualState,
+  modes: readonly ModalIdentity[],
+  explicitModeId: string | null = null,
+): VisualState {
+  if (template.modeQuantile === undefined && explicitModeId === null) {
+    return template;
+  }
+  const activeMode =
+    explicitModeId === null
+      ? modeIndexAtQuantile(modes, template.modeQuantile ?? 0)
+      : modes.findIndex((mode) => mode.modeId === explicitModeId);
+  if (activeMode < 0) {
+    throw new Error(
+      `The requested pinned visual fixture mode ${explicitModeId} is unavailable.`,
+    );
+  }
+  const naturalFrequencyHz = modes[activeMode]?.naturalFrequencyHz;
+  if (
+    naturalFrequencyHz === undefined ||
+    !Number.isFinite(naturalFrequencyHz)
+  ) {
+    throw new Error("The selected visual fixture mode has no finite frequency.");
+  }
+  const frequency = Math.min(
+    DIAL_MAXIMUM_FREQUENCY_HZ,
+    Math.max(
+      DIAL_MINIMUM_FREQUENCY_HZ,
+      naturalFrequencyHz * (template.modeFrequencyRatio ?? 1),
+    ),
+  );
+  return Object.freeze({
+    ...template,
+    frequency,
+    activeMode,
+  });
+}
+
+function createTemporalFixtureSelection(
+  modes: readonly ModalIdentity[],
+  usesCanvas: boolean,
+): TemporalFixtureSelection {
+  const parameters = new URLSearchParams(window.location.search);
+  const oldTemplate = usesCanvas
+    ? TEMPORAL_OLD_CANVAS_STATE
+    : TEMPORAL_OLD_STATE;
+  const newTemplate = usesCanvas
+    ? TEMPORAL_NEW_CANVAS_STATE
+    : TEMPORAL_NEW_STATE;
+  const oldState = resolveVisualState(
+    oldTemplate,
+    modes,
+    parameters.get("oldModeId"),
+  );
+  const newState = resolveVisualState(
+    newTemplate,
+    modes,
+    parameters.get("newModeId"),
+  );
+  if (
+    oldState.activeMode === null ||
+    newState.activeMode === null ||
+    oldState.activeMode === newState.activeMode
+  ) {
+    throw new Error(
+      "Temporal fixtures require two distinct pinned dataset modes.",
+    );
+  }
+  return Object.freeze({ oldState, newState });
 }
 
 function microphoneSamples(
@@ -298,21 +467,35 @@ function microphoneSamples(
 function plateTextureSource(
   result: Extract<ResonanceDatasetLoadResult, { status: "ready" }>,
 ): PlateTextureSource {
+  const deferredByPath = new Map(
+    Object.values(result.textureAssets)
+      .flat()
+      .map((texture) => [texture.path, texture] as const),
+  );
   return Object.freeze({
     datasetId: result.manifest.datasetId,
+    loadingPolicy:
+      result.manifest.algorithmRevision === undefined
+        ? "eager-verified"
+        : "mode-sharded-lazy-verified",
+    materialSectionProfile:
+      result.manifest.plate.materialSectionProfile,
+    presentationModes: result.presentationModes,
     atlases: Object.freeze(
-      result.manifest.files.textures.map((texture) =>
-        Object.freeze({
+      result.manifest.files.textures.map((texture) => {
+        const deferred = deferredByPath.get(texture.path);
+        return Object.freeze({
           kind: texture.kind,
-          url: result.assetUrls.byPath[texture.path],
+          url: deferred?.url ?? result.assetUrls.byPath[texture.path],
           mediaType: texture.mediaType,
           modeIds: texture.modeIds,
           width: texture.widthPx,
           height: texture.heightPx,
           layers: texture.layers,
           bytes: result.assets.get(texture.path),
-        }),
-      ),
+          loadBytes: deferred?.loadBytes,
+        });
+      }),
     ),
   });
 }
@@ -512,23 +695,25 @@ function platePixelMetrics(
 function temporalSnapshot(
   base: RuntimeSnapshot,
   stage: TemporalStage | "new-only" | "150ms",
+  selection: TemporalFixtureSelection,
 ): RuntimeSnapshot {
-  const oldMode = TEMPORAL_OLD_STATE.activeMode;
-  const newMode = TEMPORAL_NEW_STATE.activeMode;
+  const { oldState, newState } = selection;
+  const oldMode = oldState.activeMode;
+  const newMode = newState.activeMode;
   if (oldMode === null || newMode === null) {
     throw new Error("Temporal fixture modes must be defined.");
   }
 
   if (stage === "baseline") {
-    return rendererSnapshot(base, TEMPORAL_OLD_STATE, {
+    return rendererSnapshot(base, oldState, {
       sequence: 1,
       simulationTimeSeconds: 1,
       activeMode: oldMode,
       modes: [
         {
           index: oldMode,
-          energy: TEMPORAL_OLD_STATE.envelope,
-          phase: TEMPORAL_OLD_STATE.phase,
+          energy: oldState.envelope,
+          phase: oldState.phase,
         },
       ],
     });
@@ -536,12 +721,12 @@ function temporalSnapshot(
 
   const commonOptions: FixtureSnapshotOptions = {
     activeMode: newMode,
-    previousFrequency: TEMPORAL_OLD_STATE.frequency,
+    previousFrequency: oldState.frequency,
     sweepRateHzPerSecond:
-      TEMPORAL_NEW_STATE.frequency - TEMPORAL_OLD_STATE.frequency,
+      newState.frequency - oldState.frequency,
   };
   if (stage === "one-frame" || stage === "new-only") {
-    return rendererSnapshot(base, TEMPORAL_NEW_STATE, {
+    return rendererSnapshot(base, newState, {
       ...commonOptions,
       sequence: 2,
       simulationTimeSeconds: 1 + 1 / 60,
@@ -549,18 +734,18 @@ function temporalSnapshot(
         {
           index: oldMode,
           energy: 0,
-          phase: TEMPORAL_OLD_STATE.phase,
+          phase: oldState.phase,
         },
         {
           index: newMode,
           energy: 0,
-          phase: TEMPORAL_NEW_STATE.phase,
+          phase: newState.phase,
         },
       ],
     });
   }
   if (stage === "50ms") {
-    return rendererSnapshot(base, TEMPORAL_NEW_STATE, {
+    return rendererSnapshot(base, newState, {
       ...commonOptions,
       sequence: 3,
       simulationTimeSeconds: 1.05,
@@ -568,18 +753,18 @@ function temporalSnapshot(
         {
           index: oldMode,
           energy: 0,
-          phase: TEMPORAL_OLD_STATE.phase,
+          phase: oldState.phase,
         },
         {
           index: newMode,
           energy: 0.56,
-          phase: TEMPORAL_NEW_STATE.phase,
+          phase: newState.phase,
         },
       ],
     });
   }
   if (stage === "150ms") {
-    return rendererSnapshot(base, TEMPORAL_NEW_STATE, {
+    return rendererSnapshot(base, newState, {
       ...commonOptions,
       sequence: 4,
       simulationTimeSeconds: 1.15,
@@ -587,17 +772,17 @@ function temporalSnapshot(
         {
           index: oldMode,
           energy: 0,
-          phase: TEMPORAL_OLD_STATE.phase,
+          phase: oldState.phase,
         },
         {
           index: newMode,
           energy: 0.68,
-          phase: TEMPORAL_NEW_STATE.phase,
+          phase: newState.phase,
         },
       ],
     });
   }
-  return rendererSnapshot(base, TEMPORAL_NEW_STATE, {
+  return rendererSnapshot(base, newState, {
     ...commonOptions,
     sequence: 5,
     simulationTimeSeconds: 1.25,
@@ -605,12 +790,12 @@ function temporalSnapshot(
       {
         index: oldMode,
         energy: 0,
-        phase: TEMPORAL_OLD_STATE.phase,
+        phase: oldState.phase,
       },
       {
         index: newMode,
-        energy: TEMPORAL_NEW_STATE.envelope,
-        phase: TEMPORAL_NEW_STATE.phase,
+        energy: newState.envelope,
+        phase: newState.phase,
       },
     ],
   });
@@ -621,19 +806,19 @@ function renderAndObserve(
   canvas: HTMLCanvasElement,
   snapshot: RuntimeSnapshot,
   stage: RenderObservation["stage"],
+  selection: TemporalFixtureSelection | null = null,
 ): RenderObservation {
   renderer.render(snapshot);
+  const oldModeIndex = selection?.oldState.activeMode ?? null;
+  const newModeIndex = selection?.newState.activeMode ?? null;
   const oldModeId =
-    TEMPORAL_OLD_STATE.activeMode === null
-      ? null
-      : snapshot.modes[TEMPORAL_OLD_STATE.activeMode]?.modeId;
+    oldModeIndex === null ? null : snapshot.modes[oldModeIndex]?.modeId;
   const newModeId =
-    TEMPORAL_NEW_STATE.activeMode === null
-      ? null
-      : snapshot.modes[TEMPORAL_NEW_STATE.activeMode]?.modeId;
+    newModeIndex === null ? null : snapshot.modes[newModeIndex]?.modeId;
   const rendererKind =
     renderer.status.kind === "webgl2" ? "webgl2" : "canvas2d";
-  const pixelMetrics = platePixelMetrics(canvas, rendererKind);
+  const activeCanvas = renderer.canvas ?? canvas;
+  const pixelMetrics = platePixelMetrics(activeCanvas, rendererKind);
   return Object.freeze({
     stage,
     pixelSignature: pixelMetrics.signature,
@@ -644,7 +829,37 @@ function renderAndObserve(
     oldModeId: oldModeId ?? "none",
     newModeId: newModeId ?? "none",
     frequency: snapshot.dial.driveFrequencyHz.toFixed(2),
+    canvasWidth: activeCanvas.width,
+    canvasHeight: activeCanvas.height,
   });
+}
+
+async function waitForLazyTextureShards(
+  renderer: PlateRenderer,
+  snapshot: RuntimeSnapshot,
+  loadingPolicy: PlateTextureSource["loadingPolicy"],
+): Promise<void> {
+  if (loadingPolicy !== "mode-sharded-lazy-verified") return;
+  if (
+    snapshot.activeModeId === null &&
+    snapshot.modes.every((mode) => mode.energyNormalized <= 0) &&
+    nearestInBandTextureModeId(snapshot) === null
+  ) {
+    return;
+  }
+  renderer.render(snapshot);
+  const deadline = performance.now() + 10_000;
+  while (!renderer.status.textureReady) {
+    if (performance.now() >= deadline) {
+      throw new Error("The selected verified texture shards did not load.");
+    }
+    await new Promise<void>((resolve) => {
+      globalThis.setTimeout(resolve, 10);
+    });
+  }
+  // The load callback resets GPU residency. Paint once after readiness so the
+  // next observation samples uploaded selected layers, not the fallback frame.
+  renderer.render(snapshot);
 }
 
 export function MandelHowlVisualFixture({
@@ -652,6 +867,16 @@ export function MandelHowlVisualFixture({
 }: {
   readonly stateName: string;
 }) {
+  const pressureStageMatch = /^runtime-pressure-([0-6])$/u.exec(
+    stateName,
+  );
+  const pressureStage = pressureStageMatch
+    ? Number(pressureStageMatch[1])
+    : stateName === "runtime-pressure-canvas"
+      ? 6
+      : stateName === "runtime-pressure-normal"
+        ? 2
+        : null;
   const temporalTransition =
     stateName === "temporal-transition" ||
     stateName === "temporal-transition-canvas";
@@ -668,10 +893,14 @@ export function MandelHowlVisualFixture({
       ? usesCanvas
         ? TEMPORAL_NEW_CANVAS_STATE
         : TEMPORAL_NEW_STATE
-      : (STATES[stateName] ?? STATES.decayed);
+      : pressureStage !== null
+        ? STATES.critical
+        : (STATES[stateName] ?? STATES.decayed);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const rendererRef = useRef<PlateRenderer | null>(null);
   const baseSnapshotRef = useRef<RuntimeSnapshot | null>(null);
+  const temporalSelectionRef =
+    useRef<TemporalFixtureSelection | null>(null);
   const frameRequestRef = useRef<number | null>(null);
   const [rendererStatus, setRendererStatus] =
     useState<PlateRendererStatus | null>(null);
@@ -707,8 +936,19 @@ export function MandelHowlVisualFixture({
       } else {
         renderer = createPlateRenderer(canvas, options);
       }
+      if (pressureStage !== null) {
+        (
+          renderer as PlateRenderer & {
+            setDegradationStageForTesting(
+              stage: 0 | 1 | 2 | 3 | 4 | 5 | 6,
+            ): void;
+          }
+        ).setDegradationStageForTesting(
+          pressureStage as 0 | 1 | 2 | 3 | 4 | 5 | 6,
+        );
+      }
       renderer.resize();
-      setRendererStatus(renderer.status);
+      setRendererStatus(Object.freeze({ ...renderer.status }));
     } catch {
       setFixtureStatus("error");
       return;
@@ -724,40 +964,100 @@ export function MandelHowlVisualFixture({
         setFixtureStatus("error");
         return;
       }
-      await activeRenderer.setTextureSource(plateTextureSource(result));
+      const textureSource = plateTextureSource(result);
+      await activeRenderer.setTextureSource(textureSource);
       if (
         disposed ||
-        !activeRenderer.status.textureReady ||
+        activeRenderer.status.contextLost ||
+        (textureSource.loadingPolicy !==
+          "mode-sharded-lazy-verified" &&
+          !activeRenderer.status.textureReady) ||
         activeRenderer.status.datasetId !== result.manifest.datasetId
       ) {
         if (!disposed) setFixtureStatus("error");
         return;
       }
+      const temporalSelection = isTemporal
+        ? createTemporalFixtureSelection(result.dataset.modes, usesCanvas)
+        : null;
+      const resolvedState =
+        temporalSelection === null
+          ? resolveVisualState(state, result.dataset.modes)
+          : temporalTransition
+            ? temporalSelection.oldState
+            : temporalSelection.newState;
       const runtime = createMandelHowlRuntime({
         dataset: result.dataset,
-        initialFrequencyHz: isTemporal
-          ? TEMPORAL_OLD_STATE.frequency
-          : state.frequency,
+        initialFrequencyHz:
+          temporalSelection?.oldState.frequency ?? resolvedState.frequency,
         datasetReadiness: "verified",
       });
       const baseSnapshot = getRuntimeSnapshot(runtime);
       rendererRef.current = activeRenderer;
       baseSnapshotRef.current = baseSnapshot;
+      temporalSelectionRef.current = temporalSelection;
+      setPresentedState(resolvedState);
       if (temporalNewOnly) {
-        const snapshot = temporalSnapshot(baseSnapshot, "new-only");
+        if (temporalSelection === null) {
+          throw new Error("Temporal new-only fixture selection is unavailable.");
+        }
+        const snapshot = temporalSnapshot(
+          baseSnapshot,
+          "new-only",
+          temporalSelection,
+        );
+        await waitForLazyTextureShards(
+          activeRenderer,
+          snapshot,
+          textureSource.loadingPolicy,
+        );
         setObservation(
-          renderAndObserve(activeRenderer, canvas, snapshot, "new-only"),
+          renderAndObserve(
+            activeRenderer,
+            canvas,
+            snapshot,
+            "new-only",
+            temporalSelection,
+          ),
         );
       } else if (temporalTransition) {
-        const snapshot = temporalSnapshot(baseSnapshot, "baseline");
+        if (temporalSelection === null) {
+          throw new Error("Temporal transition fixture selection is unavailable.");
+        }
+        const snapshot = temporalSnapshot(
+          baseSnapshot,
+          "baseline",
+          temporalSelection,
+        );
+        await waitForLazyTextureShards(
+          activeRenderer,
+          snapshot,
+          textureSource.loadingPolicy,
+        );
         setObservation(
-          renderAndObserve(activeRenderer, canvas, snapshot, "baseline"),
+          renderAndObserve(
+            activeRenderer,
+            canvas,
+            snapshot,
+            "baseline",
+            temporalSelection,
+          ),
         );
       } else {
-        activeRenderer.render(rendererSnapshot(baseSnapshot, state));
+        const snapshot = rendererSnapshot(baseSnapshot, resolvedState);
+        await waitForLazyTextureShards(
+          activeRenderer,
+          snapshot,
+          textureSource.loadingPolicy,
+        );
+        setObservation(
+          renderAndObserve(activeRenderer, canvas, snapshot, "static"),
+        );
       }
-      setRendererStatus(activeRenderer.status);
+      setRendererStatus(Object.freeze({ ...activeRenderer.status }));
       setFixtureStatus("ready");
+    }).catch(() => {
+      if (!disposed) setFixtureStatus("error");
     });
 
     return () => {
@@ -768,15 +1068,31 @@ export function MandelHowlVisualFixture({
       }
       rendererRef.current = null;
       baseSnapshotRef.current = null;
+      temporalSelectionRef.current = null;
       activeRenderer.dispose();
     };
-  }, [isTemporal, state, temporalNewOnly, temporalTransition]);
+  }, [
+    isTemporal,
+    pressureStage,
+    state,
+    stateName,
+    temporalNewOnly,
+    temporalTransition,
+    usesCanvas,
+  ]);
 
   const renderTemporalStage = (stage: TemporalStage) => {
     const renderer = rendererRef.current;
     const baseSnapshot = baseSnapshotRef.current;
+    const temporalSelection = temporalSelectionRef.current;
     const canvas = canvasRef.current;
-    if (!temporalTransition || !renderer || !baseSnapshot || !canvas) {
+    if (
+      !temporalTransition ||
+      !renderer ||
+      !baseSnapshot ||
+      !temporalSelection ||
+      !canvas
+    ) {
       return;
     }
     const renderStage = () => {
@@ -784,15 +1100,27 @@ export function MandelHowlVisualFixture({
         // The visual filter intentionally caps one integration delta at
         // 100 ms. Advance through 150 ms first so this stage represents the
         // full 250 ms transition rather than a capped 150 ms approximation.
-        renderer.render(temporalSnapshot(baseSnapshot, "150ms"));
-      }
-      const snapshot = temporalSnapshot(baseSnapshot, stage);
-      setObservation(renderAndObserve(renderer, canvas, snapshot, stage));
-      setRendererStatus(renderer.status);
-      if (stage !== "baseline") {
-        setPresentedState(
-          usesCanvas ? TEMPORAL_NEW_CANVAS_STATE : TEMPORAL_NEW_STATE,
+        renderer.render(
+          temporalSnapshot(baseSnapshot, "150ms", temporalSelection),
         );
+      }
+      const snapshot = temporalSnapshot(
+        baseSnapshot,
+        stage,
+        temporalSelection,
+      );
+      setObservation(
+        renderAndObserve(
+          renderer,
+          canvas,
+          snapshot,
+          stage,
+          temporalSelection,
+        ),
+      );
+      setRendererStatus(Object.freeze({ ...renderer.status }));
+      if (stage !== "baseline") {
+        setPresentedState(temporalSelection.newState);
       }
     };
     if (stage === "one-frame") {
@@ -812,6 +1140,7 @@ export function MandelHowlVisualFixture({
     <>
       <MandelHowlScene
         frequency={presentedState.frequency}
+        snapshotSequence={1}
         angle={angleForFrequency(presentedState.frequency)}
         volume={presentedState.volume}
         regime={presentedState.regime}
@@ -829,6 +1158,10 @@ export function MandelHowlVisualFixture({
         audioEnabled={presentedState.audioEnabled}
         rendererKind={rendererStatus?.kind ?? presentedState.rendererKind}
         renderQuality={rendererStatus?.quality ?? presentedState.renderQuality}
+        renderDegradationStage={rendererStatus?.degradationStage ?? 0}
+        materialSectionReady={
+          rendererStatus?.materialSectionReady ?? false
+        }
         datasetStatus="verified"
         dragging={presentedState.dragging}
         onDialPointerDown={() => {}}
@@ -845,7 +1178,11 @@ export function MandelHowlVisualFixture({
         data-testid="visual-renderer-status"
         data-status={fixtureStatus}
         data-renderer={rendererStatus?.kind ?? "pending"}
+        data-render-quality={rendererStatus?.quality ?? "pending"}
         data-texture-ready={String(rendererStatus?.textureReady ?? false)}
+        data-degradation-stage={String(
+          rendererStatus?.degradationStage ?? -1,
+        )}
         data-temporal-stage={observation.stage}
         data-pixel-signature={observation.pixelSignature}
         data-sand-like-samples={observation.sandLikeSamples}
@@ -855,6 +1192,8 @@ export function MandelHowlVisualFixture({
         data-old-mode-id={observation.oldModeId}
         data-new-mode-id={observation.newModeId}
         data-frequency={observation.frequency}
+        data-canvas-width={String(observation.canvasWidth)}
+        data-canvas-height={String(observation.canvasHeight)}
       />
       {isTemporal ? (
         <div hidden>

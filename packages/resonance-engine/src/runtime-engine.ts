@@ -13,12 +13,14 @@ import {
   createDialState,
   reduceDialState,
   stepDialState,
+  stepDialStateInPlace,
   type DialCommand,
   type DialConfig,
   type DialState,
 } from "../../dial-engine/src";
 import {
   advanceResonance,
+  advanceResonanceScalars,
   createResonanceState,
   replaceResonanceDataset,
   resetResonanceAfterPausedGap,
@@ -196,6 +198,29 @@ export function advanceMandelHowlRuntime(
   });
 }
 
+/**
+ * Production RAF tick that preserves the runtime, dial, resonance and scratch
+ * identities. Immutable dispatch/snapshot APIs remain available at the input
+ * and retaining-consumer boundaries.
+ */
+export function advanceMandelHowlRuntimeInPlace(
+  state: MandelHowlRuntimeState,
+  frameDeltaSeconds: number,
+): MandelHowlRuntimeState {
+  const dial = stepDialStateInPlace(
+    state.dial,
+    frameDeltaSeconds,
+  );
+  advanceResonanceScalars(
+    state.resonance,
+    frameDeltaSeconds,
+    dial.frequencyHz,
+    dial.frequencySweepHzPerSecond,
+    dial.direction,
+  );
+  return state;
+}
+
 export function resetMandelHowlRuntimeAfterPausedGap(
   state: MandelHowlRuntimeState,
 ): MandelHowlRuntimeState {
@@ -268,6 +293,15 @@ function createMutableSnapshot(
   for (let index = 0; index < modes.length; index += 1) {
     modes[index] = {
       modeId: resonance.dataset.modes[index].id,
+      naturalFrequencyHz: resonance.dataset.modes[index].frequencyHz,
+      audibleWeightNormalized: Math.min(
+        1,
+        Math.max(
+          -1,
+          resonance.dataset.modes[index].microphoneCoupling *
+            resonance.dataset.modes[index].radiationEfficiency,
+        ),
+      ),
       amplitudeNormalized: 0,
       phaseRad: 0,
       energyNormalized: 0,
@@ -513,6 +547,16 @@ class ReusableRuntimeSnapshotWriter
       );
       const mode = target.modes[index];
       mode.modeId = resonance.dataset.modes[index].id;
+      mode.naturalFrequencyHz =
+        resonance.dataset.modes[index].frequencyHz;
+      mode.audibleWeightNormalized = Math.min(
+        1,
+        Math.max(
+          -1,
+          resonance.dataset.modes[index].microphoneCoupling *
+            resonance.dataset.modes[index].radiationEfficiency,
+        ),
+      );
       mode.amplitudeNormalized = Math.sqrt(energy);
       mode.phaseRad = resonance.modePhaseRadians[index] ?? 0;
       mode.energyNormalized = energy;
@@ -601,6 +645,15 @@ export function getRuntimeSnapshot(
         );
         return Object.freeze({
           modeId: mode.id,
+          naturalFrequencyHz: mode.frequencyHz,
+          audibleWeightNormalized: Math.min(
+            1,
+            Math.max(
+              -1,
+              mode.microphoneCoupling *
+                mode.radiationEfficiency,
+            ),
+          ),
           amplitudeNormalized: Math.sqrt(energy),
           phaseRad: resonance.modePhaseRadians[index] ?? 0,
           energyNormalized: energy,

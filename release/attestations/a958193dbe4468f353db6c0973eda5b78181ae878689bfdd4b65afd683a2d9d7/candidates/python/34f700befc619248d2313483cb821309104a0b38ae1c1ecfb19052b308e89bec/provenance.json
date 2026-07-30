@@ -1,0 +1,2393 @@
+{
+  "canonicalInput": {
+    "canonicalJsonSha256": "a016cde1eac30d0022521c9ca6ae9a401a5857b9586ba34562b9d60130f4939c",
+    "path": "specs/plate/mandelbrot-plate.v1.yaml",
+    "plateId": "mandelhowl-al6061-circular-360-v1"
+  },
+  "convergenceReport": "convergence-report.json",
+  "coverage": {
+    "path": "coverage-report.json",
+    "releaseBake": true,
+    "source": "external-runtime-replay-report"
+  },
+  "derivedRuntimeFields": {
+    "emissiveTexture": {
+      "basisAliasPolicy": "byte-identical-basis-reuse",
+      "basisEquivalence": "emissiveBasisUNorm8(x,mode)=nodalMaskUNorm8(x,mode)",
+      "basisTextureKind": "nodal-mask",
+      "fullScreenFlashAllowed": false,
+      "runtimeFormula": "localEmissive(x)=modalEnergyWeightedNodalMask(x)*localSaturationEnvelope",
+      "scientificRole": "visual-abstraction"
+    },
+    "surfaceKinematics": {
+      "accelerationFormula": "a(x,t)=sum_i(qDoubleDot_i(t)*D_i(x))",
+      "basisTextureKind": "signed-displacement",
+      "displacementFormula": "u(x,t)=sum_i(q_i(t)*D_i(x))",
+      "harmonicDerivativeConvention": "q=A*cos(omega*t+phase); qDot=A*omega*cos(omega*t+phase+pi/2); qDoubleDot=A*omega^2*cos(omega*t+phase+pi)",
+      "velocityFormula": "v(x,t)=sum_i(qDot_i(t)*D_i(x))"
+    }
+  },
+  "extraEvidenceFiles": [
+    "field/mandelbrot-field.bin",
+    "mesh/mesh-evidence.json",
+    "mesh/fine-polar-mesh.mhmz",
+    "science/baker-algorithm.v1.json",
+    "science/solver-evidence.bin"
+  ],
+  "generator": {
+    "algorithmContractSha256": "4fac7c12618d1e561dab27214ce47e2b94cbc91e734ce9a100f32a143dc222ca",
+    "algorithmRevision": "kirchhoff-love-c1-finite-strip-r2",
+    "dependencies": "Python 3.10+ standard library only",
+    "name": "tools/physics-baker",
+    "randomSource": "forbidden",
+    "version": "1.0.0"
+  },
+  "manufacturing": {
+    "actualMinimumFeatureM": 0.0028125,
+    "analysisResolutionPx": 1024,
+    "centreOfMassOffsetM": 0.00985422303160239,
+    "centreOfMassWithinLimit": true,
+    "centreOfMassXM": 0.00985422303160239,
+    "centreOfMassYM": -1.6519766060254712e-16,
+    "filterRadiusPx": 4,
+    "gradientWithinLimit": true,
+    "manufacturingBevelPasses": 10,
+    "massWithinLimits": true,
+    "maximumThicknessGradient": 0.4136646119734884,
+    "maximumThicknessM": 0.0042,
+    "minimumFeatureMeasurement": "conservative close/open structuring-element diameter on the sampled field",
+    "minimumFeatureWithinLimit": true,
+    "minimumThicknessM": 0.0018,
+    "minimumThicknessWithinLimit": true,
+    "pixelPitchM": 0.0003515625,
+    "quantizationLevels": 12,
+    "totalMassKg": 0.6418442030842223
+  },
+  "mesh": {
+    "domain": "annulus from clamped hub radius to free outer rim",
+    "levels": [
+      {
+        "angularDivisions": 189,
+        "connectedComponentCount": 1,
+        "fingerprintSha256": "baf758d8f82d3eeefae72d8b64ade36ff42eedb4fb3a365a4fc5bc01ebc97632",
+        "invertedTriangleCount": 0,
+        "levelName": "coarse",
+        "maximumAspectRatio": 2.0335591094475207,
+        "minimumEdgeM": 0.0005983710451101258,
+        "minimumSignedAreaM2": 1.8006660030121778e-07,
+        "nodeCount": 13419,
+        "radialDivisions": 70,
+        "targetElementSizeM": 0.006,
+        "triangleCount": 26460
+      },
+      {
+        "angularDivisions": 377,
+        "connectedComponentCount": 1,
+        "fingerprintSha256": "6ee3233ced3b163563abb357144bf78217235394e36c3ae24d793d66b2c3ace0",
+        "invertedTriangleCount": 0,
+        "levelName": "medium",
+        "maximumAspectRatio": 2.0167410864227135,
+        "minimumEdgeM": 0.00029998946047348965,
+        "minimumSignedAreaM2": 4.509583196960298e-08,
+        "nodeCount": 52780,
+        "radialDivisions": 139,
+        "targetElementSizeM": 0.003,
+        "triangleCount": 104806
+      },
+      {
+        "angularDivisions": 754,
+        "connectedComponentCount": 1,
+        "fingerprintSha256": "7d7d2c9a2c5f1e353ef5e69f43406c2abe79f0bdd6de2a75d76d1751cc0eb3e6",
+        "invertedTriangleCount": 0,
+        "levelName": "fine",
+        "maximumAspectRatio": 2.0083534095713773,
+        "minimumEdgeM": 0.00014999603222239538,
+        "minimumSignedAreaM2": 1.1268360559369594e-08,
+        "nodeCount": 209612,
+        "radialDivisions": 277,
+        "targetElementSizeM": 0.0015,
+        "triangleCount": 417716
+      }
+    ],
+    "qualityPolicy": {
+      "accepted": true,
+      "disconnectedComponentsAllowed": false,
+      "fingerprint": "sha256 over float64 node positions and uint32 triangle indices",
+      "maximumAspectRatio": 2.1,
+      "maximumInvertedTriangleCount": 0,
+      "minimumEdgeM": 0.00014,
+      "minimumSignedAreaM2": 1e-08,
+      "negativeAreaAllowed": false,
+      "requiredConnectedComponentCount": 1
+    },
+    "schemaVersion": "mandelhowl.mesh-evidence.v1"
+  },
+  "modes": [
+    {
+      "actuatorCoupling": 0.10234253108501434,
+      "adjacentFrequencySpacingHz": {
+        "nearest": 1.3550968170166016,
+        "next": 1.3550968170166016,
+        "previous": null
+      },
+      "angularFrequencyRadPerSecond": 604.5443991219734,
+      "dampingRatio": 0.004,
+      "dominantBasis": {
+        "angularOrder": 1,
+        "radialDof": "slope",
+        "radialNodeIndex": 4,
+        "symmetry": "sine"
+      },
+      "microphoneCoupling": -0.27634846419095993,
+      "modeId": "mode-001",
+      "naturalFrequencyHz": 96.21622943878174,
+      "ordinal": 1,
+      "radiationEfficiency": 0.36717861145734787,
+      "signReference": "actuator-positive",
+      "surfaceKinematics": {
+        "accelerationPhaseOffsetRad": 3.141592653589793,
+        "accelerationScalePerUnitModalAmplitudePerSecondSquared": 365473.9305097478,
+        "signedDisplacementTextureLayer": 0,
+        "velocityPhaseOffsetRad": 1.5707963267948966,
+        "velocityScalePerUnitModalAmplitudePerSecond": 604.5443991219734
+      },
+      "textureLayer": 0
+    },
+    {
+      "actuatorCoupling": 0.0543394610285759,
+      "adjacentFrequencySpacingHz": {
+        "nearest": 1.3550968170166016,
+        "next": 30.18770408630371,
+        "previous": 1.3550968170166016
+      },
+      "angularFrequencyRadPerSecond": 613.058723532458,
+      "dampingRatio": 0.004048,
+      "dominantBasis": {
+        "angularOrder": 0,
+        "radialDof": "slope",
+        "radialNodeIndex": 4,
+        "symmetry": "axisymmetric"
+      },
+      "microphoneCoupling": -0.29304467141628265,
+      "modeId": "mode-002",
+      "naturalFrequencyHz": 97.57132625579834,
+      "ordinal": 2,
+      "radiationEfficiency": 0.9398458078503609,
+      "signReference": "actuator-positive",
+      "surfaceKinematics": {
+        "accelerationPhaseOffsetRad": 3.141592653589793,
+        "accelerationScalePerUnitModalAmplitudePerSecondSquared": 375840.9984992467,
+        "signedDisplacementTextureLayer": 1,
+        "velocityPhaseOffsetRad": 1.5707963267948966,
+        "velocityScalePerUnitModalAmplitudePerSecond": 613.058723532458
+      },
+      "textureLayer": 1
+    },
+    {
+      "actuatorCoupling": 0.07899043709039688,
+      "adjacentFrequencySpacingHz": {
+        "nearest": 11.431808471679688,
+        "next": 11.431808471679688,
+        "previous": 30.18770408630371
+      },
+      "angularFrequencyRadPerSecond": 802.7336623050065,
+      "dampingRatio": 0.004096,
+      "dominantBasis": {
+        "angularOrder": 2,
+        "radialDof": "slope",
+        "radialNodeIndex": 5,
+        "symmetry": "cosine"
+      },
+      "microphoneCoupling": -0.03081785887479782,
+      "modeId": "mode-003",
+      "naturalFrequencyHz": 127.75903034210205,
+      "ordinal": 3,
+      "radiationEfficiency": 0.6131452098488808,
+      "signReference": "actuator-positive",
+      "surfaceKinematics": {
+        "accelerationPhaseOffsetRad": 3.141592653589793,
+        "accelerationScalePerUnitModalAmplitudePerSecondSquared": 644381.3325976082,
+        "signedDisplacementTextureLayer": 2,
+        "velocityPhaseOffsetRad": 1.5707963267948966,
+        "velocityScalePerUnitModalAmplitudePerSecond": 802.7336623050065
+      },
+      "textureLayer": 2
+    },
+    {
+      "actuatorCoupling": 0.4514993503689766,
+      "adjacentFrequencySpacingHz": {
+        "nearest": 8.577420234680176,
+        "next": 8.577420234680176,
+        "previous": 11.431808471679688
+      },
+      "angularFrequencyRadPerSecond": 874.5618333287555,
+      "dampingRatio": 0.004144,
+      "dominantBasis": {
+        "angularOrder": 2,
+        "radialDof": "slope",
+        "radialNodeIndex": 5,
+        "symmetry": "sine"
+      },
+      "microphoneCoupling": 0.1748582273721695,
+      "modeId": "mode-004",
+      "naturalFrequencyHz": 139.19083881378174,
+      "ordinal": 4,
+      "radiationEfficiency": 0.4013684391975403,
+      "signReference": "actuator-positive",
+      "surfaceKinematics": {
+        "accelerationPhaseOffsetRad": 3.141592653589793,
+        "accelerationScalePerUnitModalAmplitudePerSecondSquared": 764858.4003153539,
+        "signedDisplacementTextureLayer": 3,
+        "velocityPhaseOffsetRad": 1.5707963267948966,
+        "velocityScalePerUnitModalAmplitudePerSecond": 874.5618333287555
+      },
+      "textureLayer": 3
+    },
+    {
+      "actuatorCoupling": 0.7699275761842728,
+      "adjacentFrequencySpacingHz": {
+        "nearest": 8.577420234680176,
+        "next": 76.86251640319824,
+        "previous": 8.577420234680176
+      },
+      "angularFrequencyRadPerSecond": 928.4553541208029,
+      "dampingRatio": 0.004192,
+      "dominantBasis": {
+        "angularOrder": 0,
+        "radialDof": "slope",
+        "radialNodeIndex": 4,
+        "symmetry": "axisymmetric"
+      },
+      "microphoneCoupling": -0.006344936788082123,
+      "modeId": "mode-005",
+      "naturalFrequencyHz": 147.7682590484619,
+      "ordinal": 5,
+      "radiationEfficiency": 0.8697108998894691,
+      "signReference": "actuator-positive",
+      "surfaceKinematics": {
+        "accelerationPhaseOffsetRad": 3.141592653589793,
+        "accelerationScalePerUnitModalAmplitudePerSecondSquared": 862029.3445955855,
+        "signedDisplacementTextureLayer": 4,
+        "velocityPhaseOffsetRad": 1.5707963267948966,
+        "velocityScalePerUnitModalAmplitudePerSecond": 928.4553541208029
+      },
+      "textureLayer": 4
+    },
+    {
+      "actuatorCoupling": 0.4273928925395012,
+      "adjacentFrequencySpacingHz": {
+        "nearest": 3.6275787353515625,
+        "next": 3.6275787353515625,
+        "previous": 76.86251640319824
+      },
+      "angularFrequencyRadPerSecond": 1411.396787858228,
+      "dampingRatio": 0.004240000000000001,
+      "dominantBasis": {
+        "angularOrder": 3,
+        "radialDof": "slope",
+        "radialNodeIndex": 5,
+        "symmetry": "sine"
+      },
+      "microphoneCoupling": -0.13352791219949722,
+      "modeId": "mode-006",
+      "naturalFrequencyHz": 224.63077545166016,
+      "ordinal": 6,
+      "radiationEfficiency": 0.37566519528627396,
+      "signReference": "actuator-positive",
+      "surfaceKinematics": {
+        "accelerationPhaseOffsetRad": 3.141592653589793,
+        "accelerationScalePerUnitModalAmplitudePerSecondSquared": 1992040.8927765237,
+        "signedDisplacementTextureLayer": 5,
+        "velocityPhaseOffsetRad": 1.5707963267948966,
+        "velocityScalePerUnitModalAmplitudePerSecond": 1411.396787858228
+      },
+      "textureLayer": 5
+    },
+    {
+      "actuatorCoupling": 0.141031913459301,
+      "adjacentFrequencySpacingHz": {
+        "nearest": 3.6275787353515625,
+        "next": 130.1106367111206,
+        "previous": 3.6275787353515625
+      },
+      "angularFrequencyRadPerSecond": 1434.189537268826,
+      "dampingRatio": 0.004288,
+      "dominantBasis": {
+        "angularOrder": 3,
+        "radialDof": "slope",
+        "radialNodeIndex": 5,
+        "symmetry": "cosine"
+      },
+      "microphoneCoupling": 0.11370585858821869,
+      "modeId": "mode-007",
+      "naturalFrequencyHz": 228.25835418701172,
+      "ordinal": 7,
+      "radiationEfficiency": 0.4446420446038246,
+      "signReference": "actuator-positive",
+      "surfaceKinematics": {
+        "accelerationPhaseOffsetRad": 3.141592653589793,
+        "accelerationScalePerUnitModalAmplitudePerSecondSquared": 2056899.628811369,
+        "signedDisplacementTextureLayer": 6,
+        "velocityPhaseOffsetRad": 1.5707963267948966,
+        "velocityScalePerUnitModalAmplitudePerSecond": 1434.189537268826
+      },
+      "textureLayer": 6
+    },
+    {
+      "actuatorCoupling": 0.026049144566059113,
+      "adjacentFrequencySpacingHz": {
+        "nearest": 1.422745704650879,
+        "next": 1.422745704650879,
+        "previous": 130.1106367111206
+      },
+      "angularFrequencyRadPerSecond": 2251.69877815992,
+      "dampingRatio": 0.0043360000000000004,
+      "dominantBasis": {
+        "angularOrder": 4,
+        "radialDof": "slope",
+        "radialNodeIndex": 5,
+        "symmetry": "cosine"
+      },
+      "microphoneCoupling": 0.1483687311410904,
+      "modeId": "mode-008",
+      "naturalFrequencyHz": 358.3689908981323,
+      "ordinal": 8,
+      "radiationEfficiency": 0.39320892095565796,
+      "signReference": "actuator-positive",
+      "surfaceKinematics": {
+        "accelerationPhaseOffsetRad": 3.141592653589793,
+        "accelerationScalePerUnitModalAmplitudePerSecondSquared": 5070147.387566877,
+        "signedDisplacementTextureLayer": 7,
+        "velocityPhaseOffsetRad": 1.5707963267948966,
+        "velocityScalePerUnitModalAmplitudePerSecond": 2251.69877815992
+      },
+      "textureLayer": 7
+    },
+    {
+      "actuatorCoupling": 0.33052822202444077,
+      "adjacentFrequencySpacingHz": {
+        "nearest": 1.422745704650879,
+        "next": 141.2641830444336,
+        "previous": 1.422745704650879
+      },
+      "angularFrequencyRadPerSecond": 2260.638153067235,
+      "dampingRatio": 0.004384000000000001,
+      "dominantBasis": {
+        "angularOrder": 4,
+        "radialDof": "slope",
+        "radialNodeIndex": 5,
+        "symmetry": "sine"
+      },
+      "microphoneCoupling": -0.01556234061717987,
+      "modeId": "mode-009",
+      "naturalFrequencyHz": 359.7917366027832,
+      "ordinal": 9,
+      "radiationEfficiency": 0.3491748347878456,
+      "signReference": "actuator-positive",
+      "surfaceKinematics": {
+        "accelerationPhaseOffsetRad": 3.141592653589793,
+        "accelerationScalePerUnitModalAmplitudePerSecondSquared": 5110484.85910324,
+        "signedDisplacementTextureLayer": 8,
+        "velocityPhaseOffsetRad": 1.5707963267948966,
+        "velocityScalePerUnitModalAmplitudePerSecond": 2260.638153067235
+      },
+      "textureLayer": 8
+    },
+    {
+      "actuatorCoupling": 0.14033661037683487,
+      "adjacentFrequencySpacingHz": {
+        "nearest": 16.978541374206543,
+        "next": 16.978541374206543,
+        "previous": 141.2641830444336
+      },
+      "angularFrequencyRadPerSecond": 3148.2271924027477,
+      "dampingRatio": 0.004432,
+      "dominantBasis": {
+        "angularOrder": 0,
+        "radialDof": "slope",
+        "radialNodeIndex": 5,
+        "symmetry": "axisymmetric"
+      },
+      "microphoneCoupling": 0.8715415522456169,
+      "modeId": "mode-010",
+      "naturalFrequencyHz": 501.0559196472168,
+      "ordinal": 10,
+      "radiationEfficiency": 1.0,
+      "signReference": "actuator-positive",
+      "surfaceKinematics": {
+        "accelerationPhaseOffsetRad": 3.141592653589793,
+        "accelerationScalePerUnitModalAmplitudePerSecondSquared": 9911334.454984087,
+        "signedDisplacementTextureLayer": 9,
+        "velocityPhaseOffsetRad": 1.5707963267948966,
+        "velocityScalePerUnitModalAmplitudePerSecond": 3148.2271924027477
+      },
+      "textureLayer": 9
+    },
+    {
+      "actuatorCoupling": 0.17269626259803772,
+      "adjacentFrequencySpacingHz": {
+        "nearest": 1.042104721069336,
+        "next": 1.042104721069336,
+        "previous": 16.978541374206543
+      },
+      "angularFrequencyRadPerSecond": 3254.906514102503,
+      "dampingRatio": 0.0044800000000000005,
+      "dominantBasis": {
+        "angularOrder": 5,
+        "radialDof": "slope",
+        "radialNodeIndex": 5,
+        "symmetry": "sine"
+      },
+      "microphoneCoupling": 0.19152173399925232,
+      "modeId": "mode-011",
+      "naturalFrequencyHz": 518.0344610214233,
+      "ordinal": 11,
+      "radiationEfficiency": 0.3563869670033455,
+      "signReference": "actuator-positive",
+      "surfaceKinematics": {
+        "accelerationPhaseOffsetRad": 3.141592653589793,
+        "accelerationScalePerUnitModalAmplitudePerSecondSquared": 10594416.415546907,
+        "signedDisplacementTextureLayer": 10,
+        "velocityPhaseOffsetRad": 1.5707963267948966,
+        "velocityScalePerUnitModalAmplitudePerSecond": 3254.906514102503
+      },
+      "textureLayer": 10
+    },
+    {
+      "actuatorCoupling": 0.12283673882484436,
+      "adjacentFrequencySpacingHz": {
+        "nearest": 1.042104721069336,
+        "next": 23.84120273590088,
+        "previous": 1.042104721069336
+      },
+      "angularFrequencyRadPerSecond": 3261.4542511744685,
+      "dampingRatio": 0.004528000000000001,
+      "dominantBasis": {
+        "angularOrder": 5,
+        "radialDof": "slope",
+        "radialNodeIndex": 5,
+        "symmetry": "cosine"
+      },
+      "microphoneCoupling": -0.4458518400788307,
+      "modeId": "mode-012",
+      "naturalFrequencyHz": 519.0765657424927,
+      "ordinal": 12,
+      "radiationEfficiency": 0.5400395318865776,
+      "signReference": "actuator-positive",
+      "surfaceKinematics": {
+        "accelerationPhaseOffsetRad": 3.141592653589793,
+        "accelerationScalePerUnitModalAmplitudePerSecondSquared": 10637083.832504014,
+        "signedDisplacementTextureLayer": 11,
+        "velocityPhaseOffsetRad": 1.5707963267948966,
+        "velocityScalePerUnitModalAmplitudePerSecond": 3261.4542511744685
+      },
+      "textureLayer": 11
+    },
+    {
+      "actuatorCoupling": 0.25134431570768356,
+      "adjacentFrequencySpacingHz": {
+        "nearest": 23.84120273590088,
+        "next": 67.75736999511719,
+        "previous": 23.84120273590088
+      },
+      "angularFrequencyRadPerSecond": 3411.2529459101706,
+      "dampingRatio": 0.004576,
+      "dominantBasis": {
+        "angularOrder": 1,
+        "radialDof": "slope",
+        "radialNodeIndex": 5,
+        "symmetry": "sine"
+      },
+      "microphoneCoupling": -0.8175039440393448,
+      "modeId": "mode-013",
+      "naturalFrequencyHz": 542.9177684783936,
+      "ordinal": 13,
+      "radiationEfficiency": 0.4843271002173424,
+      "signReference": "actuator-positive",
+      "surfaceKinematics": {
+        "accelerationPhaseOffsetRad": 3.141592653589793,
+        "accelerationScalePerUnitModalAmplitudePerSecondSquared": 11636646.660980817,
+        "signedDisplacementTextureLayer": 12,
+        "velocityPhaseOffsetRad": 1.5707963267948966,
+        "velocityScalePerUnitModalAmplitudePerSecond": 3411.2529459101706
+      },
+      "textureLayer": 12
+    },
+    {
+      "actuatorCoupling": 0.6184207126498222,
+      "adjacentFrequencySpacingHz": {
+        "nearest": 67.75736999511719,
+        "next": 78.53776359558105,
+        "previous": 67.75736999511719
+      },
+      "angularFrequencyRadPerSecond": 3836.985057516622,
+      "dampingRatio": 0.004624,
+      "dominantBasis": {
+        "angularOrder": 1,
+        "radialDof": "slope",
+        "radialNodeIndex": 5,
+        "symmetry": "cosine"
+      },
+      "microphoneCoupling": -0.1754496917128563,
+      "modeId": "mode-014",
+      "naturalFrequencyHz": 610.6751384735107,
+      "ordinal": 14,
+      "radiationEfficiency": 0.7461337298154831,
+      "signReference": "actuator-positive",
+      "surfaceKinematics": {
+        "accelerationPhaseOffsetRad": 3.141592653589793,
+        "accelerationScalePerUnitModalAmplitudePerSecondSquared": 14722454.331605835,
+        "signedDisplacementTextureLayer": 13,
+        "velocityPhaseOffsetRad": 1.5707963267948966,
+        "velocityScalePerUnitModalAmplitudePerSecond": 3836.985057516622
+      },
+      "textureLayer": 13
+    },
+    {
+      "actuatorCoupling": 0.6405937373638153,
+      "adjacentFrequencySpacingHz": {
+        "nearest": 8.962292671203613,
+        "next": 8.962292671203613,
+        "previous": 78.53776359558105
+      },
+      "angularFrequencyRadPerSecond": 4330.4523797991205,
+      "dampingRatio": 0.004672,
+      "dominantBasis": {
+        "angularOrder": 2,
+        "radialDof": "slope",
+        "radialNodeIndex": 5,
+        "symmetry": "sine"
+      },
+      "microphoneCoupling": 0.8853437080979347,
+      "modeId": "mode-015",
+      "naturalFrequencyHz": 689.2129020690918,
+      "ordinal": 15,
+      "radiationEfficiency": 0.48368699848651886,
+      "signReference": "actuator-positive",
+      "surfaceKinematics": {
+        "accelerationPhaseOffsetRad": 3.141592653589793,
+        "accelerationScalePerUnitModalAmplitudePerSecondSquared": 18752817.813707866,
+        "signedDisplacementTextureLayer": 14,
+        "velocityPhaseOffsetRad": 1.5707963267948966,
+        "velocityScalePerUnitModalAmplitudePerSecond": 4330.4523797991205
+      },
+      "textureLayer": 14
+    },
+    {
+      "actuatorCoupling": 0.4820701405405998,
+      "adjacentFrequencySpacingHz": {
+        "nearest": 3.828610420227051,
+        "next": 3.828610420227051,
+        "previous": 8.962292671203613
+      },
+      "angularFrequencyRadPerSecond": 4386.76412542947,
+      "dampingRatio": 0.00472,
+      "dominantBasis": {
+        "angularOrder": 6,
+        "radialDof": "slope",
+        "radialNodeIndex": 5,
+        "symmetry": "cosine"
+      },
+      "microphoneCoupling": -0.029884114861488342,
+      "modeId": "mode-016",
+      "naturalFrequencyHz": 698.1751947402954,
+      "ordinal": 16,
+      "radiationEfficiency": 0.39022818952798843,
+      "signReference": "actuator-positive",
+      "surfaceKinematics": {
+        "accelerationPhaseOffsetRad": 3.141592653589793,
+        "accelerationScalePerUnitModalAmplitudePerSecondSquared": 19243699.492154986,
+        "signedDisplacementTextureLayer": 15,
+        "velocityPhaseOffsetRad": 1.5707963267948966,
+        "velocityScalePerUnitModalAmplitudePerSecond": 4386.76412542947
+      },
+      "textureLayer": 15
+    },
+    {
+      "actuatorCoupling": 0.18585726618766785,
+      "adjacentFrequencySpacingHz": {
+        "nearest": 3.828610420227051,
+        "next": 17.170026779174805,
+        "previous": 3.828610420227051
+      },
+      "angularFrequencyRadPerSecond": 4410.819994168755,
+      "dampingRatio": 0.004768,
+      "dominantBasis": {
+        "angularOrder": 6,
+        "radialDof": "slope",
+        "radialNodeIndex": 5,
+        "symmetry": "sine"
+      },
+      "microphoneCoupling": -0.007010631263256073,
+      "modeId": "mode-017",
+      "naturalFrequencyHz": 702.0038051605225,
+      "ordinal": 17,
+      "radiationEfficiency": 0.3305000141263008,
+      "signReference": "actuator-positive",
+      "surfaceKinematics": {
+        "accelerationPhaseOffsetRad": 3.141592653589793,
+        "accelerationScalePerUnitModalAmplitudePerSecondSquared": 19455333.02095886,
+        "signedDisplacementTextureLayer": 16,
+        "velocityPhaseOffsetRad": 1.5707963267948966,
+        "velocityScalePerUnitModalAmplitudePerSecond": 4410.819994168755
+      },
+      "textureLayer": 16
+    },
+    {
+      "actuatorCoupling": 0.9005680307745934,
+      "adjacentFrequencySpacingHz": {
+        "nearest": 17.170026779174805,
+        "next": 179.34728145599365,
+        "previous": 17.170026779174805
+      },
+      "angularFrequencyRadPerSecond": 4518.702454151547,
+      "dampingRatio": 0.004816,
+      "dominantBasis": {
+        "angularOrder": 2,
+        "radialDof": "slope",
+        "radialNodeIndex": 5,
+        "symmetry": "cosine"
+      },
+      "microphoneCoupling": -0.11731722950935364,
+      "modeId": "mode-018",
+      "naturalFrequencyHz": 719.1738319396973,
+      "ordinal": 18,
+      "radiationEfficiency": 0.49493059515953064,
+      "signReference": "actuator-positive",
+      "surfaceKinematics": {
+        "accelerationPhaseOffsetRad": 3.141592653589793,
+        "accelerationScalePerUnitModalAmplitudePerSecondSquared": 20418671.86915521,
+        "signedDisplacementTextureLayer": 17,
+        "velocityPhaseOffsetRad": 1.5707963267948966,
+        "velocityScalePerUnitModalAmplitudePerSecond": 4518.702454151547
+      },
+      "textureLayer": 17
+    },
+    {
+      "actuatorCoupling": 0.2879098877310753,
+      "adjacentFrequencySpacingHz": {
+        "nearest": 13.4202299118042,
+        "next": 13.4202299118042,
+        "previous": 179.34728145599365
+      },
+      "angularFrequencyRadPerSecond": 5645.574657878448,
+      "dampingRatio": 0.004864,
+      "dominantBasis": {
+        "angularOrder": 3,
+        "radialDof": "slope",
+        "radialNodeIndex": 5,
+        "symmetry": "cosine"
+      },
+      "microphoneCoupling": 0.49551332741975784,
+      "modeId": "mode-019",
+      "naturalFrequencyHz": 898.5211133956909,
+      "ordinal": 19,
+      "radiationEfficiency": 0.49901989102363586,
+      "signReference": "actuator-positive",
+      "surfaceKinematics": {
+        "accelerationPhaseOffsetRad": 3.141592653589793,
+        "accelerationScalePerUnitModalAmplitudePerSecondSquared": 31872513.21767936,
+        "signedDisplacementTextureLayer": 18,
+        "velocityPhaseOffsetRad": 1.5707963267948966,
+        "velocityScalePerUnitModalAmplitudePerSecond": 5645.574657878448
+      },
+      "textureLayer": 18
+    },
+    {
+      "actuatorCoupling": 0.1540812999010086,
+      "adjacentFrequencySpacingHz": {
+        "nearest": 3.931791305541992,
+        "next": 3.931791305541992,
+        "previous": 13.4202299118042
+      },
+      "angularFrequencyRadPerSecond": 5729.896449279268,
+      "dampingRatio": 0.004912,
+      "dominantBasis": {
+        "angularOrder": 7,
+        "radialDof": "slope",
+        "radialNodeIndex": 5,
+        "symmetry": "sine"
+      },
+      "microphoneCoupling": -0.06856843084096909,
+      "modeId": "mode-020",
+      "naturalFrequencyHz": 911.9413433074951,
+      "ordinal": 20,
+      "radiationEfficiency": 0.32481706142425537,
+      "signReference": "actuator-positive",
+      "surfaceKinematics": {
+        "accelerationPhaseOffsetRad": 3.141592653589793,
+        "accelerationScalePerUnitModalAmplitudePerSecondSquared": 32831713.319463167,
+        "signedDisplacementTextureLayer": 19,
+        "velocityPhaseOffsetRad": 1.5707963267948966,
+        "velocityScalePerUnitModalAmplitudePerSecond": 5729.896449279268
+      },
+      "textureLayer": 19
+    },
+    {
+      "actuatorCoupling": 0.1492013931274414,
+      "adjacentFrequencySpacingHz": {
+        "nearest": 3.931791305541992,
+        "next": 8.480734825134277,
+        "previous": 3.931791305541992
+      },
+      "angularFrequencyRadPerSecond": 5754.600622641146,
+      "dampingRatio": 0.00496,
+      "dominantBasis": {
+        "angularOrder": 7,
+        "radialDof": "slope",
+        "radialNodeIndex": 5,
+        "symmetry": "cosine"
+      },
+      "microphoneCoupling": 0.1602928787469864,
+      "modeId": "mode-021",
+      "naturalFrequencyHz": 915.8731346130371,
+      "ordinal": 21,
+      "radiationEfficiency": 0.3843235448002815,
+      "signReference": "actuator-positive",
+      "surfaceKinematics": {
+        "accelerationPhaseOffsetRad": 3.141592653589793,
+        "accelerationScalePerUnitModalAmplitudePerSecondSquared": 33115428.32610187,
+        "signedDisplacementTextureLayer": 20,
+        "velocityPhaseOffsetRad": 1.5707963267948966,
+        "velocityScalePerUnitModalAmplitudePerSecond": 5754.600622641146
+      },
+      "textureLayer": 20
+    },
+    {
+      "actuatorCoupling": 0.8248379752039909,
+      "adjacentFrequencySpacingHz": {
+        "nearest": 8.480734825134277,
+        "next": 228.2156639099121,
+        "previous": 8.480734825134277
+      },
+      "angularFrequencyRadPerSecond": 5807.886651088516,
+      "dampingRatio": 0.005008,
+      "dominantBasis": {
+        "angularOrder": 3,
+        "radialDof": "slope",
+        "radialNodeIndex": 5,
+        "symmetry": "sine"
+      },
+      "microphoneCoupling": -0.654654249548912,
+      "modeId": "mode-022",
+      "naturalFrequencyHz": 924.3538694381714,
+      "ordinal": 22,
+      "radiationEfficiency": 0.46260418742895126,
+      "signReference": "actuator-positive",
+      "surfaceKinematics": {
+        "accelerationPhaseOffsetRad": 3.141592653589793,
+        "accelerationScalePerUnitModalAmplitudePerSecondSquared": 33731547.35189218,
+        "signedDisplacementTextureLayer": 21,
+        "velocityPhaseOffsetRad": 1.5707963267948966,
+        "velocityScalePerUnitModalAmplitudePerSecond": 5807.886651088516
+      },
+      "textureLayer": 21
+    },
+    {
+      "actuatorCoupling": 0.032984659075737,
+      "adjacentFrequencySpacingHz": {
+        "nearest": 0.7030820846557617,
+        "next": 0.7030820846557617,
+        "previous": 228.2156639099121
+      },
+      "angularFrequencyRadPerSecond": 7241.807957435511,
+      "dampingRatio": 0.005056,
+      "dominantBasis": {
+        "angularOrder": 8,
+        "radialDof": "slope",
+        "radialNodeIndex": 5,
+        "symmetry": "cosine"
+      },
+      "microphoneCoupling": 0.022842921316623688,
+      "modeId": "mode-023",
+      "naturalFrequencyHz": 1152.5695333480835,
+      "ordinal": 23,
+      "radiationEfficiency": 0.32388897985219955,
+      "signReference": "actuator-positive",
+      "surfaceKinematics": {
+        "accelerationPhaseOffsetRad": 3.141592653589793,
+        "accelerationScalePerUnitModalAmplitudePerSecondSquared": 52443782.49237628,
+        "signedDisplacementTextureLayer": 22,
+        "velocityPhaseOffsetRad": 1.5707963267948966,
+        "velocityScalePerUnitModalAmplitudePerSecond": 7241.807957435511
+      },
+      "textureLayer": 22
+    },
+    {
+      "actuatorCoupling": 0.02599930763244629,
+      "adjacentFrequencySpacingHz": {
+        "nearest": 0.7030820846557617,
+        "next": 44.43429660797119,
+        "previous": 0.7030820846557617
+      },
+      "angularFrequencyRadPerSecond": 7246.22555245956,
+      "dampingRatio": 0.005104,
+      "dominantBasis": {
+        "angularOrder": 8,
+        "radialDof": "slope",
+        "radialNodeIndex": 5,
+        "symmetry": "sine"
+      },
+      "microphoneCoupling": 0.017216429114341736,
+      "modeId": "mode-024",
+      "naturalFrequencyHz": 1153.2726154327393,
+      "ordinal": 24,
+      "radiationEfficiency": 0.31236450374126434,
+      "signReference": "actuator-positive",
+      "surfaceKinematics": {
+        "accelerationPhaseOffsetRad": 3.141592653589793,
+        "accelerationScalePerUnitModalAmplitudePerSecondSquared": 52507784.75711786,
+        "signedDisplacementTextureLayer": 23,
+        "velocityPhaseOffsetRad": 1.5707963267948966,
+        "velocityScalePerUnitModalAmplitudePerSecond": 7246.22555245956
+      },
+      "textureLayer": 23
+    },
+    {
+      "actuatorCoupling": 0.14506689459085464,
+      "adjacentFrequencySpacingHz": {
+        "nearest": 15.183012008666992,
+        "next": 15.183012008666992,
+        "previous": 44.43429660797119
+      },
+      "angularFrequencyRadPerSecond": 7525.414472041625,
+      "dampingRatio": 0.005152,
+      "dominantBasis": {
+        "angularOrder": 4,
+        "radialDof": "slope",
+        "radialNodeIndex": 5,
+        "symmetry": "cosine"
+      },
+      "microphoneCoupling": 0.7201045081019402,
+      "modeId": "mode-025",
+      "naturalFrequencyHz": 1197.7069120407104,
+      "ordinal": 25,
+      "radiationEfficiency": 0.44501853734254837,
+      "signReference": "actuator-positive",
+      "surfaceKinematics": {
+        "accelerationPhaseOffsetRad": 3.141592653589793,
+        "accelerationScalePerUnitModalAmplitudePerSecondSquared": 56631862.976013534,
+        "signedDisplacementTextureLayer": 24,
+        "velocityPhaseOffsetRad": 1.5707963267948966,
+        "velocityScalePerUnitModalAmplitudePerSecond": 7525.414472041625
+      },
+      "textureLayer": 24
+    },
+    {
+      "actuatorCoupling": 0.8181982561945915,
+      "adjacentFrequencySpacingHz": {
+        "nearest": 15.183012008666992,
+        "next": 113.36012077331543,
+        "previous": 15.183012008666992
+      },
+      "angularFrequencyRadPerSecond": 7620.812150013213,
+      "dampingRatio": 0.005200000000000001,
+      "dominantBasis": {
+        "angularOrder": 4,
+        "radialDof": "slope",
+        "radialNodeIndex": 5,
+        "symmetry": "sine"
+      },
+      "microphoneCoupling": 0.09938213974237442,
+      "modeId": "mode-026",
+      "naturalFrequencyHz": 1212.8899240493774,
+      "ordinal": 26,
+      "radiationEfficiency": 0.4518470764160156,
+      "signReference": "actuator-positive",
+      "surfaceKinematics": {
+        "accelerationPhaseOffsetRad": 3.141592653589793,
+        "accelerationScalePerUnitModalAmplitudePerSecondSquared": 58076777.82578901,
+        "signedDisplacementTextureLayer": 25,
+        "velocityPhaseOffsetRad": 1.5707963267948966,
+        "velocityScalePerUnitModalAmplitudePerSecond": 7620.812150013213
+      },
+      "textureLayer": 25
+    },
+    {
+      "actuatorCoupling": 0.06794567406177521,
+      "adjacentFrequencySpacingHz": {
+        "nearest": 49.84210205078125,
+        "next": 49.84210205078125,
+        "previous": 113.36012077331543
+      },
+      "angularFrequencyRadPerSecond": 8333.074795276212,
+      "dampingRatio": 0.005248,
+      "dominantBasis": {
+        "angularOrder": 0,
+        "radialDof": "slope",
+        "radialNodeIndex": 5,
+        "symmetry": "axisymmetric"
+      },
+      "microphoneCoupling": 0.7091355696320534,
+      "modeId": "mode-027",
+      "naturalFrequencyHz": 1326.2500448226929,
+      "ordinal": 27,
+      "radiationEfficiency": 0.8124770596623421,
+      "signReference": "actuator-positive",
+      "surfaceKinematics": {
+        "accelerationPhaseOffsetRad": 3.141592653589793,
+        "accelerationScalePerUnitModalAmplitudePerSecondSquared": 69440135.54366769,
+        "signedDisplacementTextureLayer": 26,
+        "velocityPhaseOffsetRad": 1.5707963267948966,
+        "velocityScalePerUnitModalAmplitudePerSecond": 8333.074795276212
+      },
+      "textureLayer": 26
+    },
+    {
+      "actuatorCoupling": 0.010371066629886627,
+      "adjacentFrequencySpacingHz": {
+        "nearest": 49.84210205078125,
+        "next": 56.976409912109375,
+        "previous": 49.84210205078125
+      },
+      "angularFrequencyRadPerSecond": 8646.241958560626,
+      "dampingRatio": 0.005296,
+      "dominantBasis": {
+        "angularOrder": 1,
+        "radialDof": "slope",
+        "radialNodeIndex": 5,
+        "symmetry": "sine"
+      },
+      "microphoneCoupling": -0.712084449827671,
+      "modeId": "mode-028",
+      "naturalFrequencyHz": 1376.0921468734741,
+      "ordinal": 28,
+      "radiationEfficiency": 0.5096989572048187,
+      "signReference": "actuator-positive",
+      "surfaceKinematics": {
+        "accelerationPhaseOffsetRad": 3.141592653589793,
+        "accelerationScalePerUnitModalAmplitudePerSecondSquared": 74757500.0059743,
+        "signedDisplacementTextureLayer": 27,
+        "velocityPhaseOffsetRad": 1.5707963267948966,
+        "velocityScalePerUnitModalAmplitudePerSecond": 8646.241958560626
+      },
+      "textureLayer": 27
+    },
+    {
+      "actuatorCoupling": 0.04448515921831131,
+      "adjacentFrequencySpacingHz": {
+        "nearest": 1.0308809280395508,
+        "next": 1.0308809280395508,
+        "previous": 56.976409912109375
+      },
+      "angularFrequencyRadPerSecond": 9004.235300176233,
+      "dampingRatio": 0.005344000000000001,
+      "dominantBasis": {
+        "angularOrder": 9,
+        "radialDof": "slope",
+        "radialNodeIndex": 5,
+        "symmetry": "cosine"
+      },
+      "microphoneCoupling": -0.021951571106910706,
+      "modeId": "mode-029",
+      "naturalFrequencyHz": 1433.0685567855835,
+      "ordinal": 29,
+      "radiationEfficiency": 0.30745840072631836,
+      "signReference": "actuator-positive",
+      "surfaceKinematics": {
+        "accelerationPhaseOffsetRad": 3.141592653589793,
+        "accelerationScalePerUnitModalAmplitudePerSecondSquared": 81076253.34093978,
+        "signedDisplacementTextureLayer": 28,
+        "velocityPhaseOffsetRad": 1.5707963267948966,
+        "velocityScalePerUnitModalAmplitudePerSecond": 9004.235300176233
+      },
+      "textureLayer": 28
+    },
+    {
+      "actuatorCoupling": 0.022856883704662323,
+      "adjacentFrequencySpacingHz": {
+        "nearest": 1.0308809280395508,
+        "next": 72.40176105499268,
+        "previous": 1.0308809280395508
+      },
+      "angularFrequencyRadPerSecond": 9010.712516076743,
+      "dampingRatio": 0.005392,
+      "dominantBasis": {
+        "angularOrder": 9,
+        "radialDof": "slope",
+        "radialNodeIndex": 5,
+        "symmetry": "sine"
+      },
+      "microphoneCoupling": -0.047279730439186096,
+      "modeId": "mode-030",
+      "naturalFrequencyHz": 1434.099437713623,
+      "ordinal": 30,
+      "radiationEfficiency": 0.2842455133795738,
+      "signReference": "actuator-positive",
+      "surfaceKinematics": {
+        "accelerationPhaseOffsetRad": 3.141592653589793,
+        "accelerationScalePerUnitModalAmplitudePerSecondSquared": 81192940.04738206,
+        "signedDisplacementTextureLayer": 29,
+        "velocityPhaseOffsetRad": 1.5707963267948966,
+        "velocityScalePerUnitModalAmplitudePerSecond": 9010.712516076743
+      },
+      "textureLayer": 29
+    },
+    {
+      "actuatorCoupling": 0.2732457220554352,
+      "adjacentFrequencySpacingHz": {
+        "nearest": 38.91432571411133,
+        "next": 38.91432571411133,
+        "previous": 72.40176105499268
+      },
+      "angularFrequencyRadPerSecond": 9465.6261973514,
+      "dampingRatio": 0.0054399999999999995,
+      "dominantBasis": {
+        "angularOrder": 2,
+        "radialDof": "slope",
+        "radialNodeIndex": 5,
+        "symmetry": "cosine"
+      },
+      "microphoneCoupling": -0.2666562497615814,
+      "modeId": "mode-031",
+      "naturalFrequencyHz": 1506.5011987686157,
+      "ordinal": 31,
+      "radiationEfficiency": 0.6972696557641029,
+      "signReference": "actuator-positive",
+      "surfaceKinematics": {
+        "accelerationPhaseOffsetRad": 3.141592653589793,
+        "accelerationScalePerUnitModalAmplitudePerSecondSquared": 89598079.30798511,
+        "signedDisplacementTextureLayer": 30,
+        "velocityPhaseOffsetRad": 1.5707963267948966,
+        "velocityScalePerUnitModalAmplitudePerSecond": 9465.6261973514
+      },
+      "textureLayer": 30
+    },
+    {
+      "actuatorCoupling": 0.5268100127577782,
+      "adjacentFrequencySpacingHz": {
+        "nearest": 7.234407424926758,
+        "next": 7.234407424926758,
+        "previous": 38.91432571411133
+      },
+      "angularFrequencyRadPerSecond": 9710.132116917104,
+      "dampingRatio": 0.005488,
+      "dominantBasis": {
+        "angularOrder": 5,
+        "radialDof": "slope",
+        "radialNodeIndex": 5,
+        "symmetry": "sine"
+      },
+      "microphoneCoupling": 0.21974218636751175,
+      "modeId": "mode-032",
+      "naturalFrequencyHz": 1545.415524482727,
+      "ordinal": 32,
+      "radiationEfficiency": 0.44242096692323685,
+      "signReference": "actuator-positive",
+      "surfaceKinematics": {
+        "accelerationPhaseOffsetRad": 3.141592653589793,
+        "accelerationScalePerUnitModalAmplitudePerSecondSquared": 94286665.72798504,
+        "signedDisplacementTextureLayer": 31,
+        "velocityPhaseOffsetRad": 1.5707963267948966,
+        "velocityScalePerUnitModalAmplitudePerSecond": 9710.132116917104
+      },
+      "textureLayer": 31
+    },
+    {
+      "actuatorCoupling": 0.3267069458961487,
+      "adjacentFrequencySpacingHz": {
+        "nearest": 7.234407424926758,
+        "next": 90.75852584838867,
+        "previous": 7.234407424926758
+      },
+      "angularFrequencyRadPerSecond": 9755.587239355555,
+      "dampingRatio": 0.005536,
+      "dominantBasis": {
+        "angularOrder": 5,
+        "radialDof": "slope",
+        "radialNodeIndex": 5,
+        "symmetry": "cosine"
+      },
+      "microphoneCoupling": -0.5321293547749519,
+      "modeId": "mode-033",
+      "naturalFrequencyHz": 1552.6499319076538,
+      "ordinal": 33,
+      "radiationEfficiency": 0.5329832062125206,
+      "signReference": "actuator-positive",
+      "surfaceKinematics": {
+        "accelerationPhaseOffsetRad": 3.141592653589793,
+        "accelerationScalePerUnitModalAmplitudePerSecondSquared": 95171482.38467693,
+        "signedDisplacementTextureLayer": 32,
+        "velocityPhaseOffsetRad": 1.5707963267948966,
+        "velocityScalePerUnitModalAmplitudePerSecond": 9755.587239355555
+      },
+      "textureLayer": 32
+    },
+    {
+      "actuatorCoupling": 0.32920727133750916,
+      "adjacentFrequencySpacingHz": {
+        "nearest": 90.75852584838867,
+        "next": 104.81131744384766,
+        "previous": 90.75852584838867
+      },
+      "angularFrequencyRadPerSecond": 10325.839875467429,
+      "dampingRatio": 0.0055839999999999996,
+      "dominantBasis": {
+        "angularOrder": 2,
+        "radialDof": "slope",
+        "radialNodeIndex": 5,
+        "symmetry": "sine"
+      },
+      "microphoneCoupling": 0.8773274794220924,
+      "modeId": "mode-034",
+      "naturalFrequencyHz": 1643.4084577560425,
+      "ordinal": 34,
+      "radiationEfficiency": 0.5180921256542206,
+      "signReference": "actuator-positive",
+      "surfaceKinematics": {
+        "accelerationPhaseOffsetRad": 3.141592653589793,
+        "accelerationScalePerUnitModalAmplitudePerSecondSquared": 106622969.1337932,
+        "signedDisplacementTextureLayer": 33,
+        "velocityPhaseOffsetRad": 1.5707963267948966,
+        "velocityScalePerUnitModalAmplitudePerSecond": 10325.839875467429
+      },
+      "textureLayer": 33
+    },
+    {
+      "actuatorCoupling": 0.7679807171225548,
+      "adjacentFrequencySpacingHz": {
+        "nearest": 104.81131744384766,
+        "next": 177.5298957824707,
+        "previous": 104.81131744384766
+      },
+      "angularFrequencyRadPerSecond": 10984.388805256749,
+      "dampingRatio": 0.005632,
+      "dominantBasis": {
+        "angularOrder": 1,
+        "radialDof": "slope",
+        "radialNodeIndex": 5,
+        "symmetry": "cosine"
+      },
+      "microphoneCoupling": -0.2988876476883888,
+      "modeId": "mode-035",
+      "naturalFrequencyHz": 1748.2197751998901,
+      "ordinal": 35,
+      "radiationEfficiency": 0.5599539875984192,
+      "signReference": "actuator-positive",
+      "surfaceKinematics": {
+        "accelerationPhaseOffsetRad": 3.141592653589793,
+        "accelerationScalePerUnitModalAmplitudePerSecondSquared": 120656797.4250498,
+        "signedDisplacementTextureLayer": 34,
+        "velocityPhaseOffsetRad": 1.5707963267948966,
+        "velocityScalePerUnitModalAmplitudePerSecond": 10984.388805256749
+      },
+      "textureLayer": 34
+    },
+    {
+      "actuatorCoupling": 0.4179718717932701,
+      "adjacentFrequencySpacingHz": {
+        "nearest": 13.921830177307129,
+        "next": 13.921830177307129,
+        "previous": 177.5298957824707
+      },
+      "angularFrequencyRadPerSecond": 12099.842038022292,
+      "dampingRatio": 0.00568,
+      "dominantBasis": {
+        "angularOrder": 6,
+        "radialDof": "slope",
+        "radialNodeIndex": 5,
+        "symmetry": "cosine"
+      },
+      "microphoneCoupling": 0.024811699986457825,
+      "modeId": "mode-036",
+      "naturalFrequencyHz": 1925.7496709823608,
+      "ordinal": 36,
+      "radiationEfficiency": 0.42158275842666626,
+      "signReference": "actuator-positive",
+      "surfaceKinematics": {
+        "accelerationPhaseOffsetRad": 3.141592653589793,
+        "accelerationScalePerUnitModalAmplitudePerSecondSquared": 146406177.34509146,
+        "signedDisplacementTextureLayer": 35,
+        "velocityPhaseOffsetRad": 1.5707963267948966,
+        "velocityScalePerUnitModalAmplitudePerSecond": 12099.842038022292
+      },
+      "textureLayer": 35
+    },
+    {
+      "actuatorCoupling": 0.40445011109113693,
+      "adjacentFrequencySpacingHz": {
+        "nearest": 13.921830177307129,
+        "next": 96.06305313110352,
+        "previous": 13.921830177307129
+      },
+      "angularFrequencyRadPerSecond": 12187.315476841397,
+      "dampingRatio": 0.005728,
+      "dominantBasis": {
+        "angularOrder": 6,
+        "radialDof": "slope",
+        "radialNodeIndex": 5,
+        "symmetry": "sine"
+      },
+      "microphoneCoupling": -0.5821970030665398,
+      "modeId": "mode-037",
+      "naturalFrequencyHz": 1939.671501159668,
+      "ordinal": 37,
+      "radiationEfficiency": 0.42672857642173767,
+      "signReference": "actuator-positive",
+      "surfaceKinematics": {
+        "accelerationPhaseOffsetRad": 3.141592653589793,
+        "accelerationScalePerUnitModalAmplitudePerSecondSquared": 148530658.53205785,
+        "signedDisplacementTextureLayer": 36,
+        "velocityPhaseOffsetRad": 1.5707963267948966,
+        "velocityScalePerUnitModalAmplitudePerSecond": 12187.315476841397
+      },
+      "textureLayer": 36
+    },
+    {
+      "actuatorCoupling": 0.637828417122364,
+      "adjacentFrequencySpacingHz": {
+        "nearest": 14.87492847442627,
+        "next": 14.87492847442627,
+        "previous": 96.06305313110352
+      },
+      "angularFrequencyRadPerSecond": 12790.89744083756,
+      "dampingRatio": 0.005776,
+      "dominantBasis": {
+        "angularOrder": 3,
+        "radialDof": "slope",
+        "radialNodeIndex": 5,
+        "symmetry": "cosine"
+      },
+      "microphoneCoupling": 0.8120273575186729,
+      "modeId": "mode-038",
+      "naturalFrequencyHz": 2035.7345542907715,
+      "ordinal": 38,
+      "radiationEfficiency": 0.5215154439210892,
+      "signReference": "actuator-positive",
+      "surfaceKinematics": {
+        "accelerationPhaseOffsetRad": 3.141592653589793,
+        "accelerationScalePerUnitModalAmplitudePerSecondSquared": 163607057.34202483,
+        "signedDisplacementTextureLayer": 37,
+        "velocityPhaseOffsetRad": 1.5707963267948966,
+        "velocityScalePerUnitModalAmplitudePerSecond": 12790.89744083756
+      },
+      "textureLayer": 37
+    },
+    {
+      "actuatorCoupling": 0.6137666255235672,
+      "adjacentFrequencySpacingHz": {
+        "nearest": 14.87492847442627,
+        "next": 310.17924880981445,
+        "previous": 14.87492847442627
+      },
+      "angularFrequencyRadPerSecond": 12884.359372873421,
+      "dampingRatio": 0.005824,
+      "dominantBasis": {
+        "angularOrder": 3,
+        "radialDof": "slope",
+        "radialNodeIndex": 5,
+        "symmetry": "sine"
+      },
+      "microphoneCoupling": -0.43738703429698944,
+      "modeId": "mode-039",
+      "naturalFrequencyHz": 2050.6094827651978,
+      "ordinal": 39,
+      "radiationEfficiency": 0.5061158016324043,
+      "signReference": "actuator-positive",
+      "surfaceKinematics": {
+        "accelerationPhaseOffsetRad": 3.141592653589793,
+        "accelerationScalePerUnitModalAmplitudePerSecondSquared": 166006716.4493512,
+        "signedDisplacementTextureLayer": 38,
+        "velocityPhaseOffsetRad": 1.5707963267948966,
+        "velocityScalePerUnitModalAmplitudePerSecond": 12884.359372873421
+      },
+      "textureLayer": 38
+    },
+    {
+      "actuatorCoupling": 0.36086104810237885,
+      "adjacentFrequencySpacingHz": {
+        "nearest": 2.7457971572875977,
+        "next": 2.7457971572875977,
+        "previous": 310.17924880981445
+      },
+      "angularFrequencyRadPerSecond": 14833.27307158725,
+      "dampingRatio": 0.005872,
+      "dominantBasis": {
+        "angularOrder": 7,
+        "radialDof": "slope",
+        "radialNodeIndex": 5,
+        "symmetry": "cosine"
+      },
+      "microphoneCoupling": 0.48757828027009964,
+      "modeId": "mode-040",
+      "naturalFrequencyHz": 2360.788731575012,
+      "ordinal": 40,
+      "radiationEfficiency": 0.4228455647826195,
+      "signReference": "actuator-positive",
+      "surfaceKinematics": {
+        "accelerationPhaseOffsetRad": 3.141592653589793,
+        "accelerationScalePerUnitModalAmplitudePerSecondSquared": 220025990.01627544,
+        "signedDisplacementTextureLayer": 39,
+        "velocityPhaseOffsetRad": 1.5707963267948966,
+        "velocityScalePerUnitModalAmplitudePerSecond": 14833.27307158725
+      },
+      "textureLayer": 39
+    },
+    {
+      "actuatorCoupling": 0.15615976601839066,
+      "adjacentFrequencySpacingHz": {
+        "nearest": 2.7457971572875977,
+        "next": 139.66869258880615,
+        "previous": 2.7457971572875977
+      },
+      "angularFrequencyRadPerSecond": 14850.525423942414,
+      "dampingRatio": 0.00592,
+      "dominantBasis": {
+        "angularOrder": 7,
+        "radialDof": "slope",
+        "radialNodeIndex": 5,
+        "symmetry": "sine"
+      },
+      "microphoneCoupling": 0.3038352355360985,
+      "modeId": "mode-041",
+      "naturalFrequencyHz": 2363.5345287323,
+      "ordinal": 41,
+      "radiationEfficiency": 0.42700932174921036,
+      "signReference": "actuator-positive",
+      "surfaceKinematics": {
+        "accelerationPhaseOffsetRad": 3.141592653589793,
+        "accelerationScalePerUnitModalAmplitudePerSecondSquared": 220538105.36716002,
+        "signedDisplacementTextureLayer": 40,
+        "velocityPhaseOffsetRad": 1.5707963267948966,
+        "velocityScalePerUnitModalAmplitudePerSecond": 14850.525423942414
+      },
+      "textureLayer": 40
+    },
+    {
+      "actuatorCoupling": 1.0,
+      "adjacentFrequencySpacingHz": {
+        "nearest": 4.304682731628418,
+        "next": 4.304682731628418,
+        "previous": 139.66869258880615
+      },
+      "angularFrequencyRadPerSecond": 15728.089701089382,
+      "dampingRatio": 0.005968,
+      "dominantBasis": {
+        "angularOrder": 4,
+        "radialDof": "slope",
+        "radialNodeIndex": 5,
+        "symmetry": "sine"
+      },
+      "microphoneCoupling": -0.32155878096818924,
+      "modeId": "mode-042",
+      "naturalFrequencyHz": 2503.203221321106,
+      "ordinal": 42,
+      "radiationEfficiency": 0.5170000270009041,
+      "signReference": "actuator-positive",
+      "surfaceKinematics": {
+        "accelerationPhaseOffsetRad": 3.141592653589793,
+        "accelerationScalePerUnitModalAmplitudePerSecondSquared": 247372805.6455139,
+        "signedDisplacementTextureLayer": 41,
+        "velocityPhaseOffsetRad": 1.5707963267948966,
+        "velocityScalePerUnitModalAmplitudePerSecond": 15728.089701089382
+      },
+      "textureLayer": 41
+    },
+    {
+      "actuatorCoupling": 0.20743916928768158,
+      "adjacentFrequencySpacingHz": {
+        "nearest": 4.304682731628418,
+        "next": 81.61944580078125,
+        "previous": 4.304682731628418
+      },
+      "angularFrequencyRadPerSecond": 15755.13682038082,
+      "dampingRatio": 0.0060160000000000005,
+      "dominantBasis": {
+        "angularOrder": 4,
+        "radialDof": "slope",
+        "radialNodeIndex": 5,
+        "symmetry": "cosine"
+      },
+      "microphoneCoupling": -1.0,
+      "modeId": "mode-043",
+      "naturalFrequencyHz": 2507.5079040527344,
+      "ordinal": 43,
+      "radiationEfficiency": 0.5725744664669037,
+      "signReference": "actuator-positive",
+      "surfaceKinematics": {
+        "accelerationPhaseOffsetRad": 3.141592653589793,
+        "accelerationScalePerUnitModalAmplitudePerSecondSquared": 248224336.22891945,
+        "signedDisplacementTextureLayer": 42,
+        "velocityPhaseOffsetRad": 1.5707963267948966,
+        "velocityScalePerUnitModalAmplitudePerSecond": 15755.13682038082
+      },
+      "textureLayer": 42
+    },
+    {
+      "actuatorCoupling": 0.04891204088926315,
+      "adjacentFrequencySpacingHz": {
+        "nearest": 39.43266201019287,
+        "next": 39.43266201019287,
+        "previous": 81.61944580078125
+      },
+      "angularFrequencyRadPerSecond": 16267.966923016429,
+      "dampingRatio": 0.006064,
+      "dominantBasis": {
+        "angularOrder": 0,
+        "radialDof": "slope",
+        "radialNodeIndex": 5,
+        "symmetry": "axisymmetric"
+      },
+      "microphoneCoupling": -0.7896586954593658,
+      "modeId": "mode-044",
+      "naturalFrequencyHz": 2589.1273498535156,
+      "ordinal": 44,
+      "radiationEfficiency": 0.7641103491187096,
+      "signReference": "actuator-positive",
+      "surfaceKinematics": {
+        "accelerationPhaseOffsetRad": 3.141592653589793,
+        "accelerationScalePerUnitModalAmplitudePerSecondSquared": 264646747.8083566,
+        "signedDisplacementTextureLayer": 43,
+        "velocityPhaseOffsetRad": 1.5707963267948966,
+        "velocityScalePerUnitModalAmplitudePerSecond": 16267.966923016429
+      },
+      "textureLayer": 43
+    },
+    {
+      "actuatorCoupling": 0.12078193575143814,
+      "adjacentFrequencySpacingHz": {
+        "nearest": 39.43266201019287,
+        "next": 203.71047115325928,
+        "previous": 39.43266201019287
+      },
+      "angularFrequencyRadPerSecond": 16515.72964558185,
+      "dampingRatio": 0.006112,
+      "dominantBasis": {
+        "angularOrder": 1,
+        "radialDof": "slope",
+        "radialNodeIndex": 5,
+        "symmetry": "sine"
+      },
+      "microphoneCoupling": 0.5738220363855362,
+      "modeId": "mode-045",
+      "naturalFrequencyHz": 2628.5600118637085,
+      "ordinal": 45,
+      "radiationEfficiency": 0.510411947965622,
+      "signReference": "actuator-positive",
+      "surfaceKinematics": {
+        "accelerationPhaseOffsetRad": 3.141592653589793,
+        "accelerationScalePerUnitModalAmplitudePerSecondSquared": 272769325.7259512,
+        "signedDisplacementTextureLayer": 44,
+        "velocityPhaseOffsetRad": 1.5707963267948966,
+        "velocityScalePerUnitModalAmplitudePerSecond": 16515.72964558185
+      },
+      "textureLayer": 44
+    },
+    {
+      "actuatorCoupling": 0.2823994681239128,
+      "adjacentFrequencySpacingHz": {
+        "nearest": 3.8257570266723633,
+        "next": 3.8257570266723633,
+        "previous": 203.71047115325928
+      },
+      "angularFrequencyRadPerSecond": 17795.68028485064,
+      "dampingRatio": 0.0061600000000000005,
+      "dominantBasis": {
+        "angularOrder": 2,
+        "radialDof": "slope",
+        "radialNodeIndex": 5,
+        "symmetry": "cosine"
+      },
+      "microphoneCoupling": -0.43077699840068817,
+      "modeId": "mode-046",
+      "naturalFrequencyHz": 2832.270483016968,
+      "ordinal": 46,
+      "radiationEfficiency": 0.5147862955927849,
+      "signReference": "actuator-positive",
+      "surfaceKinematics": {
+        "accelerationPhaseOffsetRad": 3.141592653589793,
+        "accelerationScalePerUnitModalAmplitudePerSecondSquared": 316686236.8006218,
+        "signedDisplacementTextureLayer": 45,
+        "velocityPhaseOffsetRad": 1.5707963267948966,
+        "velocityScalePerUnitModalAmplitudePerSecond": 17795.68028485064
+      },
+      "textureLayer": 45
+    },
+    {
+      "actuatorCoupling": 0.024970434606075287,
+      "adjacentFrequencySpacingHz": {
+        "nearest": 3.8257570266723633,
+        "next": 52.180434226989746,
+        "previous": 3.8257570266723633
+      },
+      "angularFrequencyRadPerSecond": 17819.71822518947,
+      "dampingRatio": 0.006208,
+      "dominantBasis": {
+        "angularOrder": 8,
+        "radialDof": "slope",
+        "radialNodeIndex": 5,
+        "symmetry": "sine"
+      },
+      "microphoneCoupling": -0.09008193761110306,
+      "modeId": "mode-047",
+      "naturalFrequencyHz": 2836.09624004364,
+      "ordinal": 47,
+      "radiationEfficiency": 0.4056950658559799,
+      "signReference": "actuator-positive",
+      "surfaceKinematics": {
+        "accelerationPhaseOffsetRad": 3.141592653589793,
+        "accelerationScalePerUnitModalAmplitudePerSecondSquared": 317542357.6251498,
+        "signedDisplacementTextureLayer": 46,
+        "velocityPhaseOffsetRad": 1.5707963267948966,
+        "velocityScalePerUnitModalAmplitudePerSecond": 17819.71822518947
+      },
+      "textureLayer": 46
+    },
+    {
+      "actuatorCoupling": 0.2854844033718109,
+      "adjacentFrequencySpacingHz": {
+        "nearest": 52.180434226989746,
+        "next": null,
+        "previous": 52.180434226989746
+      },
+      "angularFrequencyRadPerSecond": 18147.57756284674,
+      "dampingRatio": 0.006256,
+      "dominantBasis": {
+        "angularOrder": 2,
+        "radialDof": "slope",
+        "radialNodeIndex": 5,
+        "symmetry": "cosine"
+      },
+      "microphoneCoupling": -0.16631651669740677,
+      "modeId": "mode-048",
+      "naturalFrequencyHz": 2888.27667427063,
+      "ordinal": 48,
+      "radiationEfficiency": 0.5988581329584122,
+      "signReference": "actuator-positive",
+      "surfaceKinematics": {
+        "accelerationPhaseOffsetRad": 3.141592653589793,
+        "accelerationScalePerUnitModalAmplitudePerSecondSquared": 329334571.3995385,
+        "signedDisplacementTextureLayer": 47,
+        "velocityPhaseOffsetRad": 1.5707963267948966,
+        "velocityScalePerUnitModalAmplitudePerSecond": 18147.57756284674
+      },
+      "textureLayer": 47
+    }
+  ],
+  "renderingCoordinateTransform": {
+    "hubRadiusM": 0.018,
+    "plateXFromU": "x=(2*u-1)*radiusM",
+    "plateYFromV": "y=(2*v-1)*radiusM",
+    "radiusM": 0.18,
+    "sourceFrame": "plate-local",
+    "uAxis": "positive-x",
+    "uvOrigin": "negative-x-negative-y",
+    "vAxis": "positive-y",
+    "validSurfaceDomain": "hubRadiusM<hypot(x,y)<=radiusM"
+  },
+  "response": {
+    "definition": "sum(g_i*m_i*r_i*omega_i^2/(omega_i^2-omega^2+j*2*zeta_i*omega_i*omega))",
+    "maximumFrequencyHz": 6000.0,
+    "minimumFrequencyHz": 45.0,
+    "normalizationDivisor": 29.21250998055777,
+    "sampleCount": 512,
+    "spacing": "logarithmic"
+  },
+  "schemaVersion": "mandelhowl.provenance.v1",
+  "scientificScope": {
+    "claimPolicy": "The Mandelbrot iteration defines a finite material field; it does not directly generate sound or guarantee Mandelbrot-shaped sand.",
+    "established": [
+      "finite-resolution Mandelbrot field mapped into thickness",
+      "variable-thickness Kirchhoff-Love bending energy",
+      "generalized eigenproblem with unit-modal-mass normalization",
+      "nodal/low-velocity sand-density postprocessing"
+    ],
+    "limitations": [
+      "the finite-strip discretization is semi-analytical rather than a triangle shell mesh",
+      "the clamped hub is represented as an annular essential boundary",
+      "air loading, nonlinear material response, and grain dynamics are omitted",
+      "the independent finite-difference check is a reduced cross-check, not certification",
+      "runtime textures are a quantized LOD of float64 solver fields",
+      "runtime modal scalars are quantized only at the serialization boundary for cross-implementation identity"
+    ]
+  },
+  "solver": {
+    "canonicalRequest": {
+      "elementFamily": "kirchhoff-love-thin-plate",
+      "requestedModeCount": 48
+    },
+    "containerDigestMeaning": "OCI image content digest supplied by the executing container runner; it identifies the image used for this bake.",
+    "containerImageDigest": "sha256:0a04693369dff090d3ea015209290e0c697d98c0dabdb040d1dccfa6e56847e2",
+    "containerRunnerAttestation": "trusted-runner-attested",
+    "containerized": true,
+    "executedMethod": "c1-cubic-hermite-annular-finite-strip",
+    "executionKind": "oci-container",
+    "methodRequestMismatchRecorded": false,
+    "name": "mandelhowl-kirchhoff-love-finite-strip",
+    "normalization": "unit-modal-mass",
+    "options": {
+      "algorithmContractSha256": "4fac7c12618d1e561dab27214ce47e2b94cbc91e734ce9a100f32a143dc222ca",
+      "algorithmRevision": "kirchhoff-love-c1-finite-strip-r2",
+      "basisCount": 190,
+      "fastMath": false,
+      "finiteElementAssembly": {
+        "angularInterpolation": "normalized-real-fourier",
+        "innerBoundary": "value-and-radial-slope-dofs-eliminated",
+        "outerBoundary": "natural-free-edge",
+        "radialInterpolation": "cubic-hermite-c1"
+      },
+      "floatPrecision": "binary64",
+      "method": "variable-thickness-kirchhoff-love-c1-finite-strip-fem",
+      "quadrature": {
+        "angularSamples": 96,
+        "boundaryConditions": "inner-value-and-slope-eliminated;outer-natural-free",
+        "dofCount": 190,
+        "maximumFourierOrder": 9,
+        "minimumMappingJacobianM": 0.0162,
+        "pointCount": 2400,
+        "radialElementCount": 5,
+        "radialGaussOrder": 5
+      },
+      "randomSource": "forbidden",
+      "runtimeModalOutputQuantization": {
+        "couplingQuantum": 7.450580596923828e-09,
+        "frequencyQuantumHz": 9.5367431640625e-07,
+        "negativeZero": "canonicalize-to-positive-zero",
+        "rounding": "ties-to-even"
+      }
+    },
+    "optionsSha256": "76f8153c13c8cabc84a420f4b33165e2afb7ad7a3cd18f1f9912d07dc333909e",
+    "signRule": "positive-at-actuator-or-first-nonzero-node",
+    "strictLiteralSection10_3Conformance": true,
+    "version": "1.0.0"
+  },
+  "textures": {
+    "emittedRuntimeLod": {
+      "nodal-mask-00-03": {
+        "channels": 1,
+        "firstLayer": 0,
+        "heightPx": 128,
+        "kind": "nodal-mask",
+        "lastLayer": 3,
+        "layers": 4,
+        "orientation": "ru",
+        "quantization": "linear UNORM",
+        "supercompression": "KTX2_ZLIB",
+        "supercompressionScheme": 3,
+        "uvOrigin": "negative-x-negative-y",
+        "vkFormat": "VK_FORMAT_R8_UNORM",
+        "widthPx": 128
+      },
+      "nodal-mask-04-07": {
+        "channels": 1,
+        "firstLayer": 4,
+        "heightPx": 128,
+        "kind": "nodal-mask",
+        "lastLayer": 7,
+        "layers": 4,
+        "orientation": "ru",
+        "quantization": "linear UNORM",
+        "supercompression": "KTX2_ZLIB",
+        "supercompressionScheme": 3,
+        "uvOrigin": "negative-x-negative-y",
+        "vkFormat": "VK_FORMAT_R8_UNORM",
+        "widthPx": 128
+      },
+      "nodal-mask-08-11": {
+        "channels": 1,
+        "firstLayer": 8,
+        "heightPx": 128,
+        "kind": "nodal-mask",
+        "lastLayer": 11,
+        "layers": 4,
+        "orientation": "ru",
+        "quantization": "linear UNORM",
+        "supercompression": "KTX2_ZLIB",
+        "supercompressionScheme": 3,
+        "uvOrigin": "negative-x-negative-y",
+        "vkFormat": "VK_FORMAT_R8_UNORM",
+        "widthPx": 128
+      },
+      "nodal-mask-12-15": {
+        "channels": 1,
+        "firstLayer": 12,
+        "heightPx": 128,
+        "kind": "nodal-mask",
+        "lastLayer": 15,
+        "layers": 4,
+        "orientation": "ru",
+        "quantization": "linear UNORM",
+        "supercompression": "KTX2_ZLIB",
+        "supercompressionScheme": 3,
+        "uvOrigin": "negative-x-negative-y",
+        "vkFormat": "VK_FORMAT_R8_UNORM",
+        "widthPx": 128
+      },
+      "nodal-mask-16-19": {
+        "channels": 1,
+        "firstLayer": 16,
+        "heightPx": 128,
+        "kind": "nodal-mask",
+        "lastLayer": 19,
+        "layers": 4,
+        "orientation": "ru",
+        "quantization": "linear UNORM",
+        "supercompression": "KTX2_ZLIB",
+        "supercompressionScheme": 3,
+        "uvOrigin": "negative-x-negative-y",
+        "vkFormat": "VK_FORMAT_R8_UNORM",
+        "widthPx": 128
+      },
+      "nodal-mask-20-23": {
+        "channels": 1,
+        "firstLayer": 20,
+        "heightPx": 128,
+        "kind": "nodal-mask",
+        "lastLayer": 23,
+        "layers": 4,
+        "orientation": "ru",
+        "quantization": "linear UNORM",
+        "supercompression": "KTX2_ZLIB",
+        "supercompressionScheme": 3,
+        "uvOrigin": "negative-x-negative-y",
+        "vkFormat": "VK_FORMAT_R8_UNORM",
+        "widthPx": 128
+      },
+      "nodal-mask-24-27": {
+        "channels": 1,
+        "firstLayer": 24,
+        "heightPx": 128,
+        "kind": "nodal-mask",
+        "lastLayer": 27,
+        "layers": 4,
+        "orientation": "ru",
+        "quantization": "linear UNORM",
+        "supercompression": "KTX2_ZLIB",
+        "supercompressionScheme": 3,
+        "uvOrigin": "negative-x-negative-y",
+        "vkFormat": "VK_FORMAT_R8_UNORM",
+        "widthPx": 128
+      },
+      "nodal-mask-28-31": {
+        "channels": 1,
+        "firstLayer": 28,
+        "heightPx": 128,
+        "kind": "nodal-mask",
+        "lastLayer": 31,
+        "layers": 4,
+        "orientation": "ru",
+        "quantization": "linear UNORM",
+        "supercompression": "KTX2_ZLIB",
+        "supercompressionScheme": 3,
+        "uvOrigin": "negative-x-negative-y",
+        "vkFormat": "VK_FORMAT_R8_UNORM",
+        "widthPx": 128
+      },
+      "nodal-mask-32-35": {
+        "channels": 1,
+        "firstLayer": 32,
+        "heightPx": 128,
+        "kind": "nodal-mask",
+        "lastLayer": 35,
+        "layers": 4,
+        "orientation": "ru",
+        "quantization": "linear UNORM",
+        "supercompression": "KTX2_ZLIB",
+        "supercompressionScheme": 3,
+        "uvOrigin": "negative-x-negative-y",
+        "vkFormat": "VK_FORMAT_R8_UNORM",
+        "widthPx": 128
+      },
+      "nodal-mask-36-39": {
+        "channels": 1,
+        "firstLayer": 36,
+        "heightPx": 128,
+        "kind": "nodal-mask",
+        "lastLayer": 39,
+        "layers": 4,
+        "orientation": "ru",
+        "quantization": "linear UNORM",
+        "supercompression": "KTX2_ZLIB",
+        "supercompressionScheme": 3,
+        "uvOrigin": "negative-x-negative-y",
+        "vkFormat": "VK_FORMAT_R8_UNORM",
+        "widthPx": 128
+      },
+      "nodal-mask-40-43": {
+        "channels": 1,
+        "firstLayer": 40,
+        "heightPx": 128,
+        "kind": "nodal-mask",
+        "lastLayer": 43,
+        "layers": 4,
+        "orientation": "ru",
+        "quantization": "linear UNORM",
+        "supercompression": "KTX2_ZLIB",
+        "supercompressionScheme": 3,
+        "uvOrigin": "negative-x-negative-y",
+        "vkFormat": "VK_FORMAT_R8_UNORM",
+        "widthPx": 128
+      },
+      "nodal-mask-44-47": {
+        "channels": 1,
+        "firstLayer": 44,
+        "heightPx": 128,
+        "kind": "nodal-mask",
+        "lastLayer": 47,
+        "layers": 4,
+        "orientation": "ru",
+        "quantization": "linear UNORM",
+        "supercompression": "KTX2_ZLIB",
+        "supercompressionScheme": 3,
+        "uvOrigin": "negative-x-negative-y",
+        "vkFormat": "VK_FORMAT_R8_UNORM",
+        "widthPx": 128
+      },
+      "normal-00-03": {
+        "channels": 2,
+        "firstLayer": 0,
+        "heightPx": 128,
+        "kind": "normal",
+        "lastLayer": 3,
+        "layers": 4,
+        "orientation": "ru",
+        "quantization": "linear UNORM",
+        "supercompression": "KTX2_ZLIB",
+        "supercompressionScheme": 3,
+        "uvOrigin": "negative-x-negative-y",
+        "vkFormat": "VK_FORMAT_R8G8_UNORM",
+        "widthPx": 128
+      },
+      "normal-04-07": {
+        "channels": 2,
+        "firstLayer": 4,
+        "heightPx": 128,
+        "kind": "normal",
+        "lastLayer": 7,
+        "layers": 4,
+        "orientation": "ru",
+        "quantization": "linear UNORM",
+        "supercompression": "KTX2_ZLIB",
+        "supercompressionScheme": 3,
+        "uvOrigin": "negative-x-negative-y",
+        "vkFormat": "VK_FORMAT_R8G8_UNORM",
+        "widthPx": 128
+      },
+      "normal-08-11": {
+        "channels": 2,
+        "firstLayer": 8,
+        "heightPx": 128,
+        "kind": "normal",
+        "lastLayer": 11,
+        "layers": 4,
+        "orientation": "ru",
+        "quantization": "linear UNORM",
+        "supercompression": "KTX2_ZLIB",
+        "supercompressionScheme": 3,
+        "uvOrigin": "negative-x-negative-y",
+        "vkFormat": "VK_FORMAT_R8G8_UNORM",
+        "widthPx": 128
+      },
+      "normal-12-15": {
+        "channels": 2,
+        "firstLayer": 12,
+        "heightPx": 128,
+        "kind": "normal",
+        "lastLayer": 15,
+        "layers": 4,
+        "orientation": "ru",
+        "quantization": "linear UNORM",
+        "supercompression": "KTX2_ZLIB",
+        "supercompressionScheme": 3,
+        "uvOrigin": "negative-x-negative-y",
+        "vkFormat": "VK_FORMAT_R8G8_UNORM",
+        "widthPx": 128
+      },
+      "normal-16-19": {
+        "channels": 2,
+        "firstLayer": 16,
+        "heightPx": 128,
+        "kind": "normal",
+        "lastLayer": 19,
+        "layers": 4,
+        "orientation": "ru",
+        "quantization": "linear UNORM",
+        "supercompression": "KTX2_ZLIB",
+        "supercompressionScheme": 3,
+        "uvOrigin": "negative-x-negative-y",
+        "vkFormat": "VK_FORMAT_R8G8_UNORM",
+        "widthPx": 128
+      },
+      "normal-20-23": {
+        "channels": 2,
+        "firstLayer": 20,
+        "heightPx": 128,
+        "kind": "normal",
+        "lastLayer": 23,
+        "layers": 4,
+        "orientation": "ru",
+        "quantization": "linear UNORM",
+        "supercompression": "KTX2_ZLIB",
+        "supercompressionScheme": 3,
+        "uvOrigin": "negative-x-negative-y",
+        "vkFormat": "VK_FORMAT_R8G8_UNORM",
+        "widthPx": 128
+      },
+      "normal-24-27": {
+        "channels": 2,
+        "firstLayer": 24,
+        "heightPx": 128,
+        "kind": "normal",
+        "lastLayer": 27,
+        "layers": 4,
+        "orientation": "ru",
+        "quantization": "linear UNORM",
+        "supercompression": "KTX2_ZLIB",
+        "supercompressionScheme": 3,
+        "uvOrigin": "negative-x-negative-y",
+        "vkFormat": "VK_FORMAT_R8G8_UNORM",
+        "widthPx": 128
+      },
+      "normal-28-31": {
+        "channels": 2,
+        "firstLayer": 28,
+        "heightPx": 128,
+        "kind": "normal",
+        "lastLayer": 31,
+        "layers": 4,
+        "orientation": "ru",
+        "quantization": "linear UNORM",
+        "supercompression": "KTX2_ZLIB",
+        "supercompressionScheme": 3,
+        "uvOrigin": "negative-x-negative-y",
+        "vkFormat": "VK_FORMAT_R8G8_UNORM",
+        "widthPx": 128
+      },
+      "normal-32-35": {
+        "channels": 2,
+        "firstLayer": 32,
+        "heightPx": 128,
+        "kind": "normal",
+        "lastLayer": 35,
+        "layers": 4,
+        "orientation": "ru",
+        "quantization": "linear UNORM",
+        "supercompression": "KTX2_ZLIB",
+        "supercompressionScheme": 3,
+        "uvOrigin": "negative-x-negative-y",
+        "vkFormat": "VK_FORMAT_R8G8_UNORM",
+        "widthPx": 128
+      },
+      "normal-36-39": {
+        "channels": 2,
+        "firstLayer": 36,
+        "heightPx": 128,
+        "kind": "normal",
+        "lastLayer": 39,
+        "layers": 4,
+        "orientation": "ru",
+        "quantization": "linear UNORM",
+        "supercompression": "KTX2_ZLIB",
+        "supercompressionScheme": 3,
+        "uvOrigin": "negative-x-negative-y",
+        "vkFormat": "VK_FORMAT_R8G8_UNORM",
+        "widthPx": 128
+      },
+      "normal-40-43": {
+        "channels": 2,
+        "firstLayer": 40,
+        "heightPx": 128,
+        "kind": "normal",
+        "lastLayer": 43,
+        "layers": 4,
+        "orientation": "ru",
+        "quantization": "linear UNORM",
+        "supercompression": "KTX2_ZLIB",
+        "supercompressionScheme": 3,
+        "uvOrigin": "negative-x-negative-y",
+        "vkFormat": "VK_FORMAT_R8G8_UNORM",
+        "widthPx": 128
+      },
+      "normal-44-47": {
+        "channels": 2,
+        "firstLayer": 44,
+        "heightPx": 128,
+        "kind": "normal",
+        "lastLayer": 47,
+        "layers": 4,
+        "orientation": "ru",
+        "quantization": "linear UNORM",
+        "supercompression": "KTX2_ZLIB",
+        "supercompressionScheme": 3,
+        "uvOrigin": "negative-x-negative-y",
+        "vkFormat": "VK_FORMAT_R8G8_UNORM",
+        "widthPx": 128
+      },
+      "sand-density-00-03": {
+        "channels": 1,
+        "firstLayer": 0,
+        "heightPx": 128,
+        "kind": "sand-density",
+        "lastLayer": 3,
+        "layers": 4,
+        "orientation": "ru",
+        "quantization": "linear UNORM",
+        "supercompression": "KTX2_ZLIB",
+        "supercompressionScheme": 3,
+        "uvOrigin": "negative-x-negative-y",
+        "vkFormat": "VK_FORMAT_R8_UNORM",
+        "widthPx": 128
+      },
+      "sand-density-04-07": {
+        "channels": 1,
+        "firstLayer": 4,
+        "heightPx": 128,
+        "kind": "sand-density",
+        "lastLayer": 7,
+        "layers": 4,
+        "orientation": "ru",
+        "quantization": "linear UNORM",
+        "supercompression": "KTX2_ZLIB",
+        "supercompressionScheme": 3,
+        "uvOrigin": "negative-x-negative-y",
+        "vkFormat": "VK_FORMAT_R8_UNORM",
+        "widthPx": 128
+      },
+      "sand-density-08-11": {
+        "channels": 1,
+        "firstLayer": 8,
+        "heightPx": 128,
+        "kind": "sand-density",
+        "lastLayer": 11,
+        "layers": 4,
+        "orientation": "ru",
+        "quantization": "linear UNORM",
+        "supercompression": "KTX2_ZLIB",
+        "supercompressionScheme": 3,
+        "uvOrigin": "negative-x-negative-y",
+        "vkFormat": "VK_FORMAT_R8_UNORM",
+        "widthPx": 128
+      },
+      "sand-density-12-15": {
+        "channels": 1,
+        "firstLayer": 12,
+        "heightPx": 128,
+        "kind": "sand-density",
+        "lastLayer": 15,
+        "layers": 4,
+        "orientation": "ru",
+        "quantization": "linear UNORM",
+        "supercompression": "KTX2_ZLIB",
+        "supercompressionScheme": 3,
+        "uvOrigin": "negative-x-negative-y",
+        "vkFormat": "VK_FORMAT_R8_UNORM",
+        "widthPx": 128
+      },
+      "sand-density-16-19": {
+        "channels": 1,
+        "firstLayer": 16,
+        "heightPx": 128,
+        "kind": "sand-density",
+        "lastLayer": 19,
+        "layers": 4,
+        "orientation": "ru",
+        "quantization": "linear UNORM",
+        "supercompression": "KTX2_ZLIB",
+        "supercompressionScheme": 3,
+        "uvOrigin": "negative-x-negative-y",
+        "vkFormat": "VK_FORMAT_R8_UNORM",
+        "widthPx": 128
+      },
+      "sand-density-20-23": {
+        "channels": 1,
+        "firstLayer": 20,
+        "heightPx": 128,
+        "kind": "sand-density",
+        "lastLayer": 23,
+        "layers": 4,
+        "orientation": "ru",
+        "quantization": "linear UNORM",
+        "supercompression": "KTX2_ZLIB",
+        "supercompressionScheme": 3,
+        "uvOrigin": "negative-x-negative-y",
+        "vkFormat": "VK_FORMAT_R8_UNORM",
+        "widthPx": 128
+      },
+      "sand-density-24-27": {
+        "channels": 1,
+        "firstLayer": 24,
+        "heightPx": 128,
+        "kind": "sand-density",
+        "lastLayer": 27,
+        "layers": 4,
+        "orientation": "ru",
+        "quantization": "linear UNORM",
+        "supercompression": "KTX2_ZLIB",
+        "supercompressionScheme": 3,
+        "uvOrigin": "negative-x-negative-y",
+        "vkFormat": "VK_FORMAT_R8_UNORM",
+        "widthPx": 128
+      },
+      "sand-density-28-31": {
+        "channels": 1,
+        "firstLayer": 28,
+        "heightPx": 128,
+        "kind": "sand-density",
+        "lastLayer": 31,
+        "layers": 4,
+        "orientation": "ru",
+        "quantization": "linear UNORM",
+        "supercompression": "KTX2_ZLIB",
+        "supercompressionScheme": 3,
+        "uvOrigin": "negative-x-negative-y",
+        "vkFormat": "VK_FORMAT_R8_UNORM",
+        "widthPx": 128
+      },
+      "sand-density-32-35": {
+        "channels": 1,
+        "firstLayer": 32,
+        "heightPx": 128,
+        "kind": "sand-density",
+        "lastLayer": 35,
+        "layers": 4,
+        "orientation": "ru",
+        "quantization": "linear UNORM",
+        "supercompression": "KTX2_ZLIB",
+        "supercompressionScheme": 3,
+        "uvOrigin": "negative-x-negative-y",
+        "vkFormat": "VK_FORMAT_R8_UNORM",
+        "widthPx": 128
+      },
+      "sand-density-36-39": {
+        "channels": 1,
+        "firstLayer": 36,
+        "heightPx": 128,
+        "kind": "sand-density",
+        "lastLayer": 39,
+        "layers": 4,
+        "orientation": "ru",
+        "quantization": "linear UNORM",
+        "supercompression": "KTX2_ZLIB",
+        "supercompressionScheme": 3,
+        "uvOrigin": "negative-x-negative-y",
+        "vkFormat": "VK_FORMAT_R8_UNORM",
+        "widthPx": 128
+      },
+      "sand-density-40-43": {
+        "channels": 1,
+        "firstLayer": 40,
+        "heightPx": 128,
+        "kind": "sand-density",
+        "lastLayer": 43,
+        "layers": 4,
+        "orientation": "ru",
+        "quantization": "linear UNORM",
+        "supercompression": "KTX2_ZLIB",
+        "supercompressionScheme": 3,
+        "uvOrigin": "negative-x-negative-y",
+        "vkFormat": "VK_FORMAT_R8_UNORM",
+        "widthPx": 128
+      },
+      "sand-density-44-47": {
+        "channels": 1,
+        "firstLayer": 44,
+        "heightPx": 128,
+        "kind": "sand-density",
+        "lastLayer": 47,
+        "layers": 4,
+        "orientation": "ru",
+        "quantization": "linear UNORM",
+        "supercompression": "KTX2_ZLIB",
+        "supercompressionScheme": 3,
+        "uvOrigin": "negative-x-negative-y",
+        "vkFormat": "VK_FORMAT_R8_UNORM",
+        "widthPx": 128
+      },
+      "signed-displacement-00-03": {
+        "channels": 1,
+        "firstLayer": 0,
+        "heightPx": 128,
+        "kind": "signed-displacement",
+        "lastLayer": 3,
+        "layers": 4,
+        "orientation": "ru",
+        "quantization": "signed [-1,1] mapped to [0,255]",
+        "supercompression": "KTX2_ZLIB",
+        "supercompressionScheme": 3,
+        "uvOrigin": "negative-x-negative-y",
+        "vkFormat": "VK_FORMAT_R8_UNORM",
+        "widthPx": 128
+      },
+      "signed-displacement-04-07": {
+        "channels": 1,
+        "firstLayer": 4,
+        "heightPx": 128,
+        "kind": "signed-displacement",
+        "lastLayer": 7,
+        "layers": 4,
+        "orientation": "ru",
+        "quantization": "signed [-1,1] mapped to [0,255]",
+        "supercompression": "KTX2_ZLIB",
+        "supercompressionScheme": 3,
+        "uvOrigin": "negative-x-negative-y",
+        "vkFormat": "VK_FORMAT_R8_UNORM",
+        "widthPx": 128
+      },
+      "signed-displacement-08-11": {
+        "channels": 1,
+        "firstLayer": 8,
+        "heightPx": 128,
+        "kind": "signed-displacement",
+        "lastLayer": 11,
+        "layers": 4,
+        "orientation": "ru",
+        "quantization": "signed [-1,1] mapped to [0,255]",
+        "supercompression": "KTX2_ZLIB",
+        "supercompressionScheme": 3,
+        "uvOrigin": "negative-x-negative-y",
+        "vkFormat": "VK_FORMAT_R8_UNORM",
+        "widthPx": 128
+      },
+      "signed-displacement-12-15": {
+        "channels": 1,
+        "firstLayer": 12,
+        "heightPx": 128,
+        "kind": "signed-displacement",
+        "lastLayer": 15,
+        "layers": 4,
+        "orientation": "ru",
+        "quantization": "signed [-1,1] mapped to [0,255]",
+        "supercompression": "KTX2_ZLIB",
+        "supercompressionScheme": 3,
+        "uvOrigin": "negative-x-negative-y",
+        "vkFormat": "VK_FORMAT_R8_UNORM",
+        "widthPx": 128
+      },
+      "signed-displacement-16-19": {
+        "channels": 1,
+        "firstLayer": 16,
+        "heightPx": 128,
+        "kind": "signed-displacement",
+        "lastLayer": 19,
+        "layers": 4,
+        "orientation": "ru",
+        "quantization": "signed [-1,1] mapped to [0,255]",
+        "supercompression": "KTX2_ZLIB",
+        "supercompressionScheme": 3,
+        "uvOrigin": "negative-x-negative-y",
+        "vkFormat": "VK_FORMAT_R8_UNORM",
+        "widthPx": 128
+      },
+      "signed-displacement-20-23": {
+        "channels": 1,
+        "firstLayer": 20,
+        "heightPx": 128,
+        "kind": "signed-displacement",
+        "lastLayer": 23,
+        "layers": 4,
+        "orientation": "ru",
+        "quantization": "signed [-1,1] mapped to [0,255]",
+        "supercompression": "KTX2_ZLIB",
+        "supercompressionScheme": 3,
+        "uvOrigin": "negative-x-negative-y",
+        "vkFormat": "VK_FORMAT_R8_UNORM",
+        "widthPx": 128
+      },
+      "signed-displacement-24-27": {
+        "channels": 1,
+        "firstLayer": 24,
+        "heightPx": 128,
+        "kind": "signed-displacement",
+        "lastLayer": 27,
+        "layers": 4,
+        "orientation": "ru",
+        "quantization": "signed [-1,1] mapped to [0,255]",
+        "supercompression": "KTX2_ZLIB",
+        "supercompressionScheme": 3,
+        "uvOrigin": "negative-x-negative-y",
+        "vkFormat": "VK_FORMAT_R8_UNORM",
+        "widthPx": 128
+      },
+      "signed-displacement-28-31": {
+        "channels": 1,
+        "firstLayer": 28,
+        "heightPx": 128,
+        "kind": "signed-displacement",
+        "lastLayer": 31,
+        "layers": 4,
+        "orientation": "ru",
+        "quantization": "signed [-1,1] mapped to [0,255]",
+        "supercompression": "KTX2_ZLIB",
+        "supercompressionScheme": 3,
+        "uvOrigin": "negative-x-negative-y",
+        "vkFormat": "VK_FORMAT_R8_UNORM",
+        "widthPx": 128
+      },
+      "signed-displacement-32-35": {
+        "channels": 1,
+        "firstLayer": 32,
+        "heightPx": 128,
+        "kind": "signed-displacement",
+        "lastLayer": 35,
+        "layers": 4,
+        "orientation": "ru",
+        "quantization": "signed [-1,1] mapped to [0,255]",
+        "supercompression": "KTX2_ZLIB",
+        "supercompressionScheme": 3,
+        "uvOrigin": "negative-x-negative-y",
+        "vkFormat": "VK_FORMAT_R8_UNORM",
+        "widthPx": 128
+      },
+      "signed-displacement-36-39": {
+        "channels": 1,
+        "firstLayer": 36,
+        "heightPx": 128,
+        "kind": "signed-displacement",
+        "lastLayer": 39,
+        "layers": 4,
+        "orientation": "ru",
+        "quantization": "signed [-1,1] mapped to [0,255]",
+        "supercompression": "KTX2_ZLIB",
+        "supercompressionScheme": 3,
+        "uvOrigin": "negative-x-negative-y",
+        "vkFormat": "VK_FORMAT_R8_UNORM",
+        "widthPx": 128
+      },
+      "signed-displacement-40-43": {
+        "channels": 1,
+        "firstLayer": 40,
+        "heightPx": 128,
+        "kind": "signed-displacement",
+        "lastLayer": 43,
+        "layers": 4,
+        "orientation": "ru",
+        "quantization": "signed [-1,1] mapped to [0,255]",
+        "supercompression": "KTX2_ZLIB",
+        "supercompressionScheme": 3,
+        "uvOrigin": "negative-x-negative-y",
+        "vkFormat": "VK_FORMAT_R8_UNORM",
+        "widthPx": 128
+      },
+      "signed-displacement-44-47": {
+        "channels": 1,
+        "firstLayer": 44,
+        "heightPx": 128,
+        "kind": "signed-displacement",
+        "lastLayer": 47,
+        "layers": 4,
+        "orientation": "ru",
+        "quantization": "signed [-1,1] mapped to [0,255]",
+        "supercompression": "KTX2_ZLIB",
+        "supercompressionScheme": 3,
+        "uvOrigin": "negative-x-negative-y",
+        "vkFormat": "VK_FORMAT_R8_UNORM",
+        "widthPx": 128
+      }
+    },
+    "precisionStatement": "The emitted ZLIB-supercompressed R8/RG8 KTX2 arrays match the canonical runtime request and are derived from float64 solver modes. The browser inflates the standard scheme-3 payload before portable upload; no Basis/UASTC block compression is claimed.",
+    "requested": {
+      "channels": [
+        "signed-displacement-r8",
+        "normal-rg8",
+        "nodal-mask-r8",
+        "sand-density-r8"
+      ],
+      "container": "KTX2",
+      "heightPx": 128,
+      "uvOrigin": "negative-x-negative-y",
+      "uvXAxis": "positive-x",
+      "uvYAxis": "positive-y",
+      "widthPx": 128
+    }
+  }
+}

@@ -61,6 +61,6 @@ resonanceResistance:
   maximumVisualJitterRad: 0.012
 
 determinism:
-  timestampUnit: s
+  timestampUnit: ms
   tieBreak: input-sequence
   randomSource: forbidden

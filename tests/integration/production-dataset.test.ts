@@ -5,6 +5,7 @@ import {
   loadResonanceDataset,
   type ResonanceDatasetLoadResult,
 } from "../../packages/asset-runtime/src";
+import { VERSIONED_TEXTURE_LAYERS_PER_SHARD } from "../../packages/contracts/src";
 import {
   advanceMandelHowlRuntime,
   createMandelHowlRuntime,
@@ -18,7 +19,9 @@ interface DatasetLock {
   readonly datasetDirectory: string;
 }
 
-async function loadPinnedDataset(): Promise<ResonanceDatasetLoadResult> {
+async function loadPinnedDataset(
+  requestedPaths?: string[],
+): Promise<ResonanceDatasetLoadResult> {
   const repository = process.cwd();
   const lock = JSON.parse(
     await readFile(
@@ -39,6 +42,7 @@ async function loadPinnedDataset(): Promise<ResonanceDatasetLoadResult> {
       url.pathname === "/runtime/manifest.json"
         ? "manifest.json"
         : url.pathname.replace(/^\/runtime\//, "");
+    requestedPaths?.push(relativePath);
     const absolutePath = path.resolve(datasetRoot, relativePath);
     const relative = path.relative(datasetRoot, absolutePath);
     if (
@@ -66,12 +70,12 @@ async function loadPinnedDataset(): Promise<ResonanceDatasetLoadResult> {
 describe("production dataset integration", () => {
   it("loads every pinned asset and drives the canonical runtime", async () => {
     const result = await loadPinnedDataset();
-    expect(result.status).toBe("ready");
     if (result.status !== "ready") {
       throw new Error(
-        result.diagnostics.map((diagnostic) => diagnostic.code).join(", "),
+        JSON.stringify(result.diagnostics, null, 2),
       );
     }
+    expect(result.status).toBe("ready");
 
     expect(result.dataset.modes).toHaveLength(48);
     const runtime = createMandelHowlRuntime({
@@ -101,29 +105,91 @@ describe("production dataset integration", () => {
     expect(coverage.staticDistribution.passed).toBe(true);
   });
 
-  it("decodes all four production KTX2 arrays with aligned mode layers", async () => {
-    const result = await loadPinnedDataset();
+  it("keeps production shards lazy, ordered, and hash/KTX verified on request", async () => {
+    const requestedPaths: string[] = [];
+    const result = await loadPinnedDataset(requestedPaths);
+    if (result.status !== "ready") {
+      throw new Error(JSON.stringify(result.diagnostics, null, 2));
+    }
     expect(result.status).toBe("ready");
-    if (result.status !== "ready") return;
 
+    expect(result.manifest.algorithmRevision).toBe(
+      "kirchhoff-love-c1-finite-strip-r2",
+    );
     const channelsByKind = {
       "signed-displacement": 1,
       normal: 2,
       "nodal-mask": 1,
       "sand-density": 1,
     } as const;
+    const expectedModeIds = result.dataset.modes.map(
+      (mode) => mode.modeId,
+    );
+    const texturePaths = new Set(
+      result.manifest.files.textures.map((texture) => texture.path),
+    );
+    expect(
+      requestedPaths.filter((requested) => texturePaths.has(requested)),
+    ).toEqual([]);
     for (const texture of result.manifest.files.textures) {
-      const source = result.assets.get(texture.path);
-      expect(source, texture.path).toBeDefined();
-      if (!source) continue;
-      const arrayBuffer = Uint8Array.from(source).buffer;
-      const decoded = decodePortableKtx2(arrayBuffer);
-      expect(decoded.width).toBe(texture.widthPx);
-      expect(decoded.height).toBe(texture.heightPx);
-      expect(decoded.layers).toBe(texture.layers);
-      expect(decoded.channels).toBe(channelsByKind[texture.kind]);
-      expect(texture.modeIds).toHaveLength(result.manifest.modeCount);
+      expect(result.assets.has(texture.path), texture.path).toBe(false);
     }
+
+    for (const kind of Object.keys(channelsByKind) as Array<
+      keyof typeof channelsByKind
+    >) {
+      const descriptors = result.manifest.files.textures.filter(
+        (texture) => texture.kind === kind,
+      );
+      const verifiedShards = result.textureAssets[kind];
+      expect(descriptors).toHaveLength(
+        result.manifest.modeCount /
+          VERSIONED_TEXTURE_LAYERS_PER_SHARD,
+      );
+      expect(verifiedShards).toHaveLength(descriptors.length);
+      expect(descriptors.flatMap((texture) => texture.modeIds)).toEqual(
+        expectedModeIds,
+      );
+
+      for (
+        let shardIndex = 0;
+        shardIndex < descriptors.length;
+        shardIndex += 1
+      ) {
+        const texture = descriptors[shardIndex]!;
+        const verified = verifiedShards[shardIndex]!;
+        const firstLayer =
+          shardIndex * VERSIONED_TEXTURE_LAYERS_PER_SHARD;
+        const lastLayer =
+          firstLayer + VERSIONED_TEXTURE_LAYERS_PER_SHARD - 1;
+        expect(texture.path).toBe(
+          `textures/${kind}-${String(firstLayer).padStart(2, "0")}-${String(lastLayer).padStart(2, "0")}.ktx2`,
+        );
+        expect(texture.layers).toBe(
+          VERSIONED_TEXTURE_LAYERS_PER_SHARD,
+        );
+        expect(texture.modeIds).toEqual(
+          expectedModeIds.slice(firstLayer, lastLayer + 1),
+        );
+        expect(texture.supercompressionScheme).toBe(3);
+        expect(verified.path).toBe(texture.path);
+
+        const source = await verified.loadBytes();
+        expect(new DataView(source.buffer, source.byteOffset).getUint32(44, true)).toBe(
+          3,
+        );
+        const decoded = decodePortableKtx2(
+          Uint8Array.from(source).buffer,
+        );
+        expect(decoded.width).toBe(texture.widthPx);
+        expect(decoded.height).toBe(texture.heightPx);
+        expect(decoded.layers).toBe(texture.layers);
+        expect(decoded.channels).toBe(channelsByKind[kind]);
+      }
+    }
+    expect(
+      requestedPaths.filter((requested) => texturePaths.has(requested)),
+    ).toEqual(result.manifest.files.textures.map(({ path }) => path));
   });
 
   it(
@@ -131,8 +197,10 @@ describe("production dataset integration", () => {
     { timeout: 60_000 },
     async () => {
       const result = await loadPinnedDataset();
+      if (result.status !== "ready") {
+        throw new Error(JSON.stringify(result.diagnostics, null, 2));
+      }
       expect(result.status).toBe("ready");
-      if (result.status !== "ready") return;
 
       let runtime = createMandelHowlRuntime({
         dataset: result.dataset,
@@ -143,6 +211,19 @@ describe("production dataset integration", () => {
       const buffers = {
         modeEnergy: resonance.modeEnergy,
         modePhaseRadians: resonance.modePhaseRadians,
+        modeResponseScratch: resonance.modeResponseScratch,
+        modeDriveScoreScratch: resonance.modeDriveScoreScratch,
+        modeLoopScoreScratch: resonance.modeLoopScoreScratch,
+        frequencySortedModeIndices:
+          resonance.frequencySortedModeIndices,
+        modeUpdateIndices: resonance.modeUpdateIndices,
+        modeUpdateMarks: resonance.modeUpdateMarks,
+        nonzeroModeIndices: resonance.nonzeroModeIndices,
+        nextNonzeroModeIndices:
+          resonance.nextNonzeroModeIndices,
+        activeModeIndices: resonance.activeModeIndices,
+        activeModePriorityScratch:
+          resonance.activeModePriorityScratch,
         delayBuffer: resonance.delayBuffer,
         recentMicrophoneSamples: resonance.recentMicrophoneSamples,
         rmsWindow: resonance.rmsWindow,

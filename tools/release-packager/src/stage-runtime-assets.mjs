@@ -1,7 +1,9 @@
 import { createHash } from "node:crypto";
-import { cp, mkdir, readFile, rm, stat } from "node:fs/promises";
+import { cp, lstat, mkdir, readFile, rm } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
+
+import { inspectDatasetPackage } from "../../baker-supervisor/src/package-integrity.mjs";
 
 const projectRoot = path.resolve(process.cwd());
 let sourceArgument = process.argv[2];
@@ -60,6 +62,13 @@ if (
 ) {
   throw new Error("Dataset lock does not match the selected manifest.");
 }
+const packageIdentity = inspectDatasetPackage(sourceDirectory);
+if (
+  packageIdentity.datasetId !== manifest.datasetId ||
+  packageIdentity.manifestSha256 !== manifestSha256
+) {
+  throw new Error("Dataset package identity does not match its manifest.");
+}
 
 const destination = path.join(projectRoot, "public", "runtime");
 const publicRoot = path.join(projectRoot, "public");
@@ -81,8 +90,8 @@ await cp(sourceDirectory, destination, {
 });
 
 const stagedManifest = path.join(destination, "manifest.json");
-const stagedStat = await stat(stagedManifest);
-if (!stagedStat.isFile()) {
+const stagedStat = await lstat(stagedManifest);
+if (!stagedStat.isFile() || stagedStat.isSymbolicLink()) {
   throw new Error("Staged runtime manifest is missing.");
 }
 

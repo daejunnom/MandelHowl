@@ -407,6 +407,130 @@ describe("UiNVersionSupervisor", () => {
     );
   });
 
+  it("rejects internal dial-engine commands at the framework lease boundary", async () => {
+    const { port } = runtimePort();
+    const diagnostics: DiagnosticRecord[] = [];
+    let primaryContext: UiViewMountContext | null = null;
+    const primary = definition(
+      "svelte5",
+      implementation("svelte5", (context) => {
+        primaryContext = context;
+        context.reportReady();
+        return { detachView: vi.fn() };
+      }),
+    ) as UiNVersionDefinition & { id: "svelte5" };
+    const standby = definition(
+      "react",
+      implementation("react", () => ({ detachView: vi.fn() })),
+    ) as UiNVersionDefinition & { id: "react" };
+    const host = supervisor(port, primary, standby, diagnostics);
+    await host.start({} as HTMLElement);
+
+    const context = primaryContext as unknown as UiViewMountContext;
+    expect(
+      context.runtime.dispatchDial(
+        { type: "nudge", deltaRadians: 1, timestampMs: 1 },
+        "nudge:1",
+      ),
+    ).toBe(false);
+    expect(
+      context.runtime.dispatchDial(
+        { type: "set-frequency", frequencyHz: 440, timestampMs: 2 },
+        "set-frequency:2",
+      ),
+    ).toBe(false);
+    expect(
+      context.runtime.dispatchDial(
+        { type: "advance", deltaSeconds: 1 },
+        "advance:3",
+      ),
+    ).toBe(false);
+    expect(
+      context.runtime.dispatchDial(
+        { type: "reset", frequencyHz: 440 },
+        "reset:4",
+      ),
+    ).toBe(false);
+    expect(context.runtime.setDragging(true, "synthetic-drag:5")).toBe(false);
+
+    expect(port.dispatchDial).not.toHaveBeenCalled();
+    expect(port.setDragging).not.toHaveBeenCalled();
+    expect(diagnostics.map((record) => record.code)).toContain(
+      "MH-UI-FORBIDDEN-COMMAND-REJECTED",
+    );
+    expect(diagnostics.map((record) => record.code)).toContain(
+      "MH-UI-INCONSISTENT-DRAGGING-REJECTED",
+    );
+  });
+
+  it("keeps captured pointer ownership when keyboard or wheel input overlaps", async () => {
+    const { port } = runtimePort();
+    const diagnostics: DiagnosticRecord[] = [];
+    let primaryContext: UiViewMountContext | null = null;
+    const primary = definition(
+      "svelte5",
+      implementation("svelte5", (context) => {
+        primaryContext = context;
+        context.reportReady();
+        return { detachView: vi.fn() };
+      }),
+    ) as UiNVersionDefinition & { id: "svelte5" };
+    const standby = definition(
+      "react",
+      implementation("react", () => ({ detachView: vi.fn() })),
+    ) as UiNVersionDefinition & { id: "react" };
+    const host = supervisor(port, primary, standby, diagnostics);
+    await host.start({} as HTMLElement);
+
+    const context = primaryContext as unknown as UiViewMountContext;
+    expect(
+      context.runtime.dispatchDial(
+        {
+          type: "pointer-start",
+          point: { x: 10, y: 0 },
+          center: { x: 0, y: 0 },
+          timestampMs: 10,
+        },
+        "pointer-start:10",
+      ),
+    ).toBe(true);
+    expect(context.runtime.setDragging(true, "pointer-start:10")).toBe(true);
+    expect(
+      context.runtime.dispatchDial(
+        { type: "keyboard", key: "ArrowUp", timestampMs: 11 },
+        "keyboard:11",
+      ),
+    ).toBe(false);
+    expect(
+      context.runtime.dispatchDial(
+        { type: "wheel", deltaY: -10, timestampMs: 12 },
+        "wheel:12",
+      ),
+    ).toBe(false);
+    expect(
+      context.runtime.dispatchDial(
+        { type: "pointer-end", timestampMs: 13 },
+        "pointer-end:13",
+      ),
+    ).toBe(true);
+    expect(context.runtime.setDragging(false, "pointer-end:13")).toBe(true);
+
+    expect(port.dispatchDial).toHaveBeenCalledTimes(2);
+    expect(port.dispatchDial).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({ type: "pointer-start" }),
+    );
+    expect(port.dispatchDial).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ type: "pointer-end" }),
+    );
+    expect(port.setDragging).toHaveBeenNthCalledWith(1, true);
+    expect(port.setDragging).toHaveBeenNthCalledWith(2, false);
+    expect(diagnostics.map((record) => record.code)).toContain(
+      "MH-UI-CONFLICTING-INPUT-REJECTED",
+    );
+  });
+
   it("cancels a primary-owned pointer gesture exactly once before standby activation", async () => {
     const { port } = runtimePort();
     let primaryContext: UiViewMountContext | null = null;
@@ -739,6 +863,46 @@ describe("UiNVersionSupervisor", () => {
     );
     expect(diagnostics.map((record) => record.code)).toContain(
       "MH-UI-ALL-VERSIONS-FAILED",
+    );
+  });
+
+  it("does not let duplicate snapshot sequences refresh UI liveness", async () => {
+    vi.useFakeTimers();
+    const { port } = runtimePort();
+    const diagnostics: DiagnosticRecord[] = [];
+    let primaryContext: UiViewMountContext | null = null;
+    const primary = definition(
+      "svelte5",
+      implementation("svelte5", (context) => {
+        primaryContext = context;
+        context.reportReady();
+        context.reportHeartbeat(0);
+        return { detachView: vi.fn() };
+      }),
+    ) as UiNVersionDefinition & { id: "svelte5" };
+    const standby = definition(
+      "react",
+      implementation("react", (context) => {
+        context.reportReady();
+        return { detachView: vi.fn() };
+      }),
+    ) as UiNVersionDefinition & { id: "react" };
+    const host = supervisor(port, primary, standby, diagnostics, 50);
+    await host.start({} as HTMLElement);
+
+    await vi.advanceTimersByTimeAsync(40);
+    const context = primaryContext as unknown as UiViewMountContext;
+    context.reportHeartbeat(0);
+    await vi.advanceTimersByTimeAsync(11);
+    await flushTransitions();
+
+    expect(host.getSnapshot()).toMatchObject({
+      phase: "active",
+      activeImplementationId: "react",
+      failoverCount: 1,
+    });
+    expect(diagnostics.map((record) => record.code)).toContain(
+      "MH-UI-PRIMARY-HEARTBEAT-STALE",
     );
   });
 

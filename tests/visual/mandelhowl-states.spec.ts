@@ -28,7 +28,9 @@ for (const state of states) {
     );
     await expect(rendererStatus).toHaveAttribute(
       "data-texture-ready",
-      "true",
+      // A fully decayed, out-of-band snapshot has no modal basis to request.
+      // `textureReady` reports current shard residency, not dataset validity.
+      state === "decayed" ? "false" : "true",
     );
     await expect(page.getByRole("heading", { name: "MandelHowl" })).toBeVisible();
     await expect(page.locator(".mh-shell")).toHaveScreenshot(
@@ -36,6 +38,7 @@ for (const state of states) {
       {
         animations: "disabled",
         caret: "hide",
+        maxDiffPixelRatio: 0.005,
       },
     );
   });

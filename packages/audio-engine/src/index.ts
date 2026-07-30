@@ -12,11 +12,18 @@ export {
   outputGainFromEnvelope,
   rateLimitGain,
   updateExposureState,
+  updateExposureStateInPlace,
   type AudioLevelMeasurement,
   type ExposureState,
+  type MutableExposureState,
 } from "./audio-safety-math";
 export {
   renderOfflineAudioSafetySweep,
   type OfflineAudioSafetyPoint,
   type OfflineAudioSafetySweep,
 } from "./offline-audio-safety";
+export {
+  createAudibleModalVoiceBuffer,
+  writeAudibleModalVoices,
+  type AudibleModalVoiceBuffer,
+} from "./modal-voice-bank";

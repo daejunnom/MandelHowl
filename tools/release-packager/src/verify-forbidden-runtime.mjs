@@ -6,6 +6,7 @@ import {
   forbiddenRuntimeReasons,
   isRuntimeSourcePath,
 } from "./runtime-source-policy.mjs";
+import { verifyWebglShaderIntegrity } from "./webgl-shader-integrity.mjs";
 
 const projectRoot = path.resolve(process.cwd());
 const tracked = execFileSync(
@@ -42,7 +43,7 @@ for (const relativePath of tracked) {
     throw error;
   }
   verifiedFiles += 1;
-  for (const reason of forbiddenRuntimeReasons(source)) {
+  for (const reason of forbiddenRuntimeReasons(source, relativePath)) {
     failures.push(`${relativePath}: ${reason}`);
   }
 }
@@ -51,4 +52,7 @@ if (failures.length > 0) {
   throw new Error(failures.join("\n"));
 }
 
-process.stdout.write(`Verified ${verifiedFiles} runtime source files.\n`);
+const shaderIntegrity = verifyWebglShaderIntegrity(projectRoot);
+process.stdout.write(
+  `Verified ${verifiedFiles} runtime source files and embedded shader program ${shaderIntegrity.program.id}.\n`,
+);

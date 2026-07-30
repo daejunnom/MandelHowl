@@ -7,7 +7,21 @@ import type {
   Ref,
   WheelEventHandler,
 } from "react";
-import { presentOscilloscope } from "@/packages/presentation-model/src";
+import {
+  CANONICAL_SCENE_LAYOUT,
+  formatVirtualVolume,
+  measurementStatusLabel,
+  presentCausalMotion,
+  presentOscilloscope,
+} from "@/packages/presentation-model/src";
+import {
+  oscilloscopeSampleCountForQuality,
+} from "@/packages/render-engine/src";
+import {
+  GENERATED_DIAL_SPEC,
+  GENERATED_MOTION_SAFETY_SPEC,
+  GENERATED_SCENE_SPEC,
+} from "@/packages/contracts/src";
 
 export type MandelHowlRegime =
   | "decaying"
@@ -18,6 +32,7 @@ export type MandelHowlRegime =
 export interface MandelHowlSceneProps {
   /** Current drive frequency in hertz. */
   frequency: number;
+  snapshotSequence?: number;
   frequencyMin?: number;
   frequencyMax?: number;
   /** Continuous, unwrapped dial angle in radians. */
@@ -40,7 +55,14 @@ export interface MandelHowlSceneProps {
   audioEnabled: boolean;
   rendererKind?: "webgl2" | "canvas2d" | "static";
   renderQuality?: "high" | "balanced" | "reduced" | "canvas";
-  datasetStatus?: "loading" | "verified" | "prototype" | "error";
+  renderDegradationStage?: number;
+  materialSectionReady?: boolean;
+  datasetStatus?:
+    | "loading"
+    | "streaming"
+    | "verified"
+    | "prototype"
+    | "error";
   diagnosticSeverity?: "none" | "info" | "warning" | "fatal";
   diagnosticTitle?: string | null;
   diagnosticMessage?: string | null;
@@ -64,8 +86,21 @@ type SceneStyle = CSSProperties & {
   "--envelope": number;
   "--measurement": string;
   "--volume": number;
-  "--phase-angle": string;
   "--target-volume": number;
+  "--drive-cycle": string;
+  "--return-cycle": string;
+  "--feedback-cycle": string;
+  "--status-cycle": string;
+  "--speaker-travel": number;
+  "--microphone-level": number;
+  "--feedback-level": number;
+  "--forced-border-width": string;
+  "--speaker-center-x": string;
+  "--speaker-center-y": string;
+  "--plate-center-x": string;
+  "--plate-center-y": string;
+  "--microphone-center-x": string;
+  "--microphone-center-y": string;
 };
 
 const REGIME_COPY: Record<
@@ -120,8 +155,9 @@ function logarithmicTick(
 
 export function MandelHowlScene({
   frequency,
-  frequencyMin = 45,
-  frequencyMax = 6_000,
+  snapshotSequence = 0,
+  frequencyMin = GENERATED_DIAL_SPEC.mapping.minimumFrequencyHz,
+  frequencyMax = GENERATED_DIAL_SPEC.mapping.maximumFrequencyHz,
   angle,
   volume,
   regime,
@@ -136,6 +172,8 @@ export function MandelHowlScene({
   audioEnabled,
   rendererKind = "canvas2d",
   renderQuality = "canvas",
+  renderDegradationStage = 0,
+  materialSectionReady = false,
   datasetStatus = "prototype",
   diagnosticSeverity = "none",
   diagnosticTitle = null,
@@ -155,7 +193,7 @@ export function MandelHowlScene({
 }: MandelHowlSceneProps) {
   const progress = clampUnit(measurementProgress);
   const visualEnvelope = clampUnit(envelope);
-  const displayedVolume = Math.round(volume).toString().padStart(3, "0");
+  const displayedVolume = formatVirtualVolume(volume);
   const displayedFrequency = formatFrequency(frequency);
   const frequencyTicks = [
     frequencyMin,
@@ -168,19 +206,65 @@ export function MandelHowlScene({
       ? "NO MODE"
       : `MODE ${String(activeMode + 1).padStart(2, "0")}`;
   const regimeCopy = REGIME_COPY[regime];
+  const causalMotion = presentCausalMotion({
+    driveFrequencyHz: frequency,
+    minimumFrequencyHz: frequencyMin,
+    maximumFrequencyHz: frequencyMax,
+    feedbackEnvelopeNormalized: visualEnvelope,
+    microphoneRmsNormalized: microphoneRms,
+  });
   const sceneStyle: SceneStyle = {
     "--dial-angle": `${angle}rad`,
     "--envelope": visualEnvelope,
     "--measurement": `${Math.round(progress * 100)}%`,
     "--volume": volume,
-    "--phase-angle": `${activeModePhase}rad`,
     "--target-volume": challengeTarget ?? 0,
+    "--drive-cycle": `${causalMotion.driveCycleSeconds}s`,
+    "--return-cycle": `${causalMotion.returnCycleSeconds}s`,
+    "--feedback-cycle": `${causalMotion.feedbackCycleSeconds}s`,
+    "--status-cycle": `${causalMotion.statusCycleSeconds}s`,
+    "--speaker-travel": causalMotion.speakerTravelNormalized,
+    "--microphone-level": causalMotion.microphoneLevelNormalized,
+    "--feedback-level": causalMotion.feedbackLevelNormalized,
+    "--forced-border-width": `${GENERATED_MOTION_SAFETY_SPEC.forcedColors.minimumBorderWidthPx}px`,
+    "--speaker-center-x": `${CANONICAL_SCENE_LAYOUT.speakerCenterXPercent}%`,
+    "--speaker-center-y": `${CANONICAL_SCENE_LAYOUT.speakerCenterYPercent}%`,
+    "--plate-center-x": `${CANONICAL_SCENE_LAYOUT.plateCenterXPercent}%`,
+    "--plate-center-y": `${CANONICAL_SCENE_LAYOUT.plateCenterYPercent}%`,
+    "--microphone-center-x": `${CANONICAL_SCENE_LAYOUT.microphoneCenterXPercent}%`,
+    "--microphone-center-y": `${CANONICAL_SCENE_LAYOUT.microphoneCenterYPercent}%`,
   };
   const isVerifiedDataset = datasetStatus === "verified";
+  const isStreamingDataset = datasetStatus === "streaming";
+  const datasetHeaderLabel = isVerifiedDataset
+    ? "VERIFIED THIN-PLATE BAKE"
+    : isStreamingDataset
+      ? "VERIFIED BAKE / TEXTURES STREAMING"
+      : datasetStatus === "loading"
+        ? "DATASET VERIFICATION PENDING"
+        : datasetStatus === "error"
+          ? "DATASET UNAVAILABLE"
+          : "PROTOTYPE / CENTER CLAMP";
+  const plateProvenanceDescription = isVerifiedDataset
+    ? "verified Mandelbrot-encoded thin-plate bake"
+    : isStreamingDataset
+      ? "verified thin-plate metadata with texture shards streaming and an analytical fallback"
+      : "explicitly labelled analytical prototype plate";
+  const materialSectionDescription = materialSectionReady
+    ? "precomputed Mandelbrot material thickness cutaway visible at the lower plate edge"
+    : isVerifiedDataset
+      ? "verified modal dataset without an available material thickness cutaway"
+      : isStreamingDataset
+        ? "verified modal metadata with texture shards streaming through an analytical fallback"
+      : "analytical prototype without a verified material cutaway";
   const oscilloscope = presentOscilloscope({
     recentSamples: microphoneSamples,
     rmsNormalized: microphoneRms,
     peakNormalized: microphonePeak,
+    sampleCount: oscilloscopeSampleCountForQuality(
+      renderQuality,
+      renderDegradationStage,
+    ),
   });
   const stableAnnouncement =
     measurementStatus === "settled"
@@ -194,6 +278,14 @@ export function MandelHowlScene({
       } mh-measurement-${measurementStatus}`}
       data-regime={regime}
       data-ui-implementation="react19"
+      data-render-degradation={renderDegradationStage}
+      data-snapshot-sequence={snapshotSequence}
+      data-scene-read-order={GENERATED_SCENE_SPEC.readOrder.join(">")}
+      data-conceptual-input-count={GENERATED_SCENE_SPEC.inputCount}
+      data-conceptual-output-count={GENERATED_SCENE_SPEC.outputCount}
+      data-camera-projection={GENERATED_SCENE_SPEC.camera.projection}
+      data-camera-fov={GENERATED_SCENE_SPEC.camera.fieldOfViewDegrees}
+      data-camera-clip={`${GENERATED_SCENE_SPEC.camera.near},${GENERATED_SCENE_SPEC.camera.far}`}
       style={sceneStyle}
     >
       <header className="mh-header">
@@ -210,9 +302,7 @@ export function MandelHowlScene({
         <div className="mh-header-readouts" aria-label="System status">
           <p>
             <span>DATASET</span>
-            {isVerifiedDataset
-              ? "VERIFIED THIN-PLATE BAKE"
-              : "PROTOTYPE / CENTER CLAMP"}
+            {datasetHeaderLabel}
           </p>
           <p
             className={audioEnabled ? "mh-audio-on" : "mh-audio-off"}
@@ -303,12 +393,18 @@ export function MandelHowlScene({
 
           <div
             className="mh-apparatus"
-            aria-label={`Signal path: speaker drives the ${
-              isVerifiedDataset
-                ? "verified Mandelbrot-encoded thin-plate bake"
-                : "explicitly labelled analytical prototype plate"
-            }, microphone returns the response through the feedback loop. ${regimeCopy.label}, ${regimeCopy.description}.`}
+            data-renderer-kind={rendererKind}
+            aria-label={`Signal path: speaker drives the ${plateProvenanceDescription}, microphone returns the response through the feedback loop. ${regimeCopy.label}, ${regimeCopy.description}.`}
           >
+            <canvas
+              ref={canvasRef}
+              className="mh-apparatus-canvas mh-plate-canvas"
+              role="img"
+              aria-label={`Animated virtual speaker, Chladni plate and sand, virtual microphone, and feedback cable at ${displayedFrequency}; ${modeLabel.toLowerCase()}; ${materialSectionDescription}`}
+            >
+              Closed-loop Chladni apparatus visualization at{" "}
+              {displayedFrequency}.
+            </canvas>
             <div className="mh-signal-key mh-signal-key-drive" aria-hidden="true">
               <span>DRIVE</span>
               <i />
@@ -321,7 +417,11 @@ export function MandelHowlScene({
               <i />
             </div>
 
-            <div className="mh-speaker" aria-hidden="true">
+            <div
+              className="mh-speaker"
+              aria-hidden="true"
+              data-apparatus-position={GENERATED_SCENE_SPEC.apparatus.speaker.position.join(",")}
+            >
               <span className="mh-speaker-frame">
                 <span className="mh-speaker-cone">
                   <i />
@@ -337,11 +437,16 @@ export function MandelHowlScene({
               <span />
             </div>
 
-            <figure className="mh-plate-assembly">
+            <figure
+              className="mh-plate-assembly"
+              data-apparatus-position={GENERATED_SCENE_SPEC.apparatus.plate.position.join(",")}
+            >
               <div className="mh-plate-title">
                 <span>
                   {isVerifiedDataset
                     ? "MANDELBROT-ENCODED / THIN PLATE"
+                    : isStreamingDataset
+                      ? "VERIFIED BASIS / STREAMING TEXTURES"
                     : "ANALYTICAL PROTOTYPE"}
                 </span>
                 <strong>METAL PLATE + SAND</strong>
@@ -354,14 +459,6 @@ export function MandelHowlScene({
               </div>
               <div className="mh-plate-hardware">
                 <div className="mh-plate-surface">
-                  <canvas
-                    ref={canvasRef}
-                    className="mh-plate-canvas"
-                    role="img"
-                    aria-label={`Animated Chladni sand pattern at ${displayedFrequency}; ${modeLabel.toLowerCase()}`}
-                  >
-                    Chladni sand pattern visualization at {displayedFrequency}.
-                  </canvas>
                   <span className="mh-plate-sheen" aria-hidden="true" />
                   <span className="mh-center-clamp" aria-hidden="true">
                     <i />
@@ -370,7 +467,11 @@ export function MandelHowlScene({
               </div>
               <figcaption>
                 <span>
-                  {isVerifiedDataset ? "VERIFIED MODAL DATA" : "DETERMINISTIC PREVIEW"}
+                  {isVerifiedDataset
+                    ? "VERIFIED MODAL DATA"
+                    : isStreamingDataset
+                      ? "VERIFIED SHARDS PENDING"
+                      : "DETERMINISTIC PREVIEW"}
                 </span>
                 <span>
                   {rendererKind.toUpperCase()} / {renderQuality.toUpperCase()}
@@ -384,7 +485,11 @@ export function MandelHowlScene({
               <span />
             </div>
 
-            <div className="mh-microphone" aria-hidden="true">
+            <div
+              className="mh-microphone"
+              aria-hidden="true"
+              data-apparatus-position={GENERATED_SCENE_SPEC.apparatus.microphone.position.join(",")}
+            >
               <span className="mh-mic-capsule">
                 <i />
                 <i />
@@ -397,7 +502,11 @@ export function MandelHowlScene({
               <small>VIRTUAL RETURN</small>
             </div>
 
-            <div className="mh-feedback-cable" aria-hidden="true">
+            <div
+              className="mh-feedback-cable"
+              aria-hidden="true"
+              data-signal-direction={GENERATED_SCENE_SPEC.apparatus.cable.direction}
+            >
               <span className="mh-feedback-flow mh-flow-one" />
               <span className="mh-feedback-flow mh-flow-two" />
               <span className="mh-feedback-label">FEEDBACK LOOP</span>
@@ -419,6 +528,7 @@ export function MandelHowlScene({
                 aria-hidden="true"
                 data-auto-gain={oscilloscope.autoGainLinear.toFixed(3)}
                 data-display-peak={oscilloscope.displayPeakNormalized.toFixed(3)}
+                data-sample-count={oscilloscope.samples.length}
               >
                 <i className="mh-scope-zero" />
                 {oscilloscope.samples.map((sample, index) => {
@@ -452,33 +562,19 @@ export function MandelHowlScene({
                 <span>
                   PEAK {oscilloscope.peakPercent.toString().padStart(3, "0")}
                 </span>
+                {regime === "critical" ? (
+                  <span className="mh-scope-phase-emphasis">
+                    PHASE {activeModePhase.toFixed(2)} RAD
+                  </span>
+                ) : null}
               </p>
-            </div>
-
-            <div className="mh-phase-meter">
-              <div className="mh-instrument-label">
-                <span>LOOP ALIGNMENT</span>
-                <strong>MODE PHASE</strong>
-              </div>
-              <div
-                className="mh-phase-face"
-                role="img"
-                aria-label={`Active mode phase ${activeModePhase.toFixed(2)} radians`}
-              >
-                <i aria-hidden="true" />
-                <span aria-hidden="true">0</span>
-                <span aria-hidden="true">π</span>
-              </div>
-              <p>{activeModePhase.toFixed(2)} RAD</p>
             </div>
           </div>
 
           <div className="mh-measurement" aria-label="Measurement status">
             <div>
               <span>
-                {measurementStatus === "measuring"
-                  ? "MEASURING"
-                  : "SETTLED"}
+                {measurementStatusLabel(measurementStatus)}
               </span>
               <strong>
                 {Math.round(progress * 100).toString().padStart(3, "0")}%
@@ -507,12 +603,12 @@ export function MandelHowlScene({
             <strong>{displayedVolume}</strong>
             <span className="mh-output-range">/ 100</span>
             <span className="mh-output-state">
-              {measurementStatus === "measuring" ? "MEASURING" : "SETTLED"}
+              {measurementStatusLabel(measurementStatus)}
             </span>
             {challengeTarget !== null ? (
               <span className="mh-challenge-readonly">
                 READ-ONLY TARGET{" "}
-                {challengeTarget.toString().padStart(3, "0")}
+                {formatVirtualVolume(challengeTarget)}
               </span>
             ) : null}
           </div>
@@ -531,7 +627,7 @@ export function MandelHowlScene({
               <span className="mh-meter-grid" />
               {challengeTarget !== null ? (
                 <span className="mh-target-line">
-                  <i>TARGET {challengeTarget.toString().padStart(3, "0")}</i>
+                  <i>TARGET {formatVirtualVolume(challengeTarget)}</i>
                 </span>
               ) : null}
               <i className="mh-meter-mark mh-meter-mark-100">100</i>
@@ -590,6 +686,8 @@ export function MandelHowlScene({
         <p className="mh-prototype-status">
           {isVerifiedDataset
             ? "CONTENT-ADDRESSED / VERIFIED THIN-PLATE BAKE"
+            : isStreamingDataset
+              ? "CONTENT-ADDRESSED / VERIFIED TEXTURES STREAMING"
             : "ANALYTICAL PROTOTYPE / PRODUCTION BAKE PENDING"}
         </p>
       </footer>

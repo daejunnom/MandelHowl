@@ -7,6 +7,10 @@ try:
     from .common import datasets
 except ImportError:
     from common import datasets
+from mandelhowl_baker.algorithm import (
+    ALGORITHM_REVISION,
+    TEXTURE_LAYERS_PER_SHARD,
+)
 from mandelhowl_baker.validation import validate_dataset
 
 
@@ -15,10 +19,24 @@ class DatasetIntegrityTests(unittest.TestCase):
         found = datasets()
         self.assertTrue(found, "no generated physics dataset found")
         for dataset in found:
-            result = validate_dataset(dataset)
-            self.assertTrue(result["valid"])
-            self.assertEqual(result["modeCount"], 48)
-            self.assertEqual(result["textureCount"], 4)
+            manifest = json.loads(
+                (dataset / "manifest.json").read_text(encoding="utf-8")
+            )
+            if manifest.get("algorithmRevision") == ALGORITHM_REVISION:
+                result = validate_dataset(dataset)
+                self.assertTrue(result["valid"])
+                self.assertEqual(result["modeCount"], 48)
+                self.assertEqual(
+                    result["textureCount"],
+                    4 * 48 // TEXTURE_LAYERS_PER_SHARD,
+                )
+            else:
+                # Pre-contract v1 archives remain readable compatibility
+                # fixtures, but current r2 convergence policy cannot
+                # retroactively attest their older numerical evidence.
+                self.assertNotIn("algorithmRevision", manifest)
+                self.assertEqual(manifest["modeCount"], 48)
+                self.assertEqual(len(manifest["files"]["textures"]), 4)
 
     def test_manifest_frequency_and_solver_are_canonical(self) -> None:
         for dataset in datasets():
@@ -26,9 +44,14 @@ class DatasetIntegrityTests(unittest.TestCase):
                 (dataset / "manifest.json").read_text(encoding="utf-8")
             )
             self.assertEqual(manifest["frequencyRange"], {"minimumHz": 45.0, "maximumHz": 6000.0})
+            expected_solver = (
+                "mandelhowl-kirchhoff-love-finite-strip"
+                if manifest.get("algorithmRevision") == ALGORITHM_REVISION
+                else "mandelhowl-kirchhoff-love-rayleigh-ritz"
+            )
             self.assertEqual(
                 manifest["solverProvenance"]["solverName"],
-                "mandelhowl-kirchhoff-love-rayleigh-ritz",
+                expected_solver,
             )
             self.assertEqual(
                 manifest["plate"]["specSha256"],

@@ -1,3 +1,5 @@
+use crate::mesh::zlib_compress;
+
 const IDENTIFIER: [u8; 12] = [
     0xab, 0x4b, 0x54, 0x58, 0x20, 0x32, 0x30, 0xbb, 0x0d, 0x0a, 0x1a, 0x0a,
 ];
@@ -25,6 +27,14 @@ pub fn write_ktx2_array(
             image_data.len()
         ));
     }
+    let encoded_image_data = zlib_compress(image_data);
+    if encoded_image_data.len() >= image_data.len() {
+        return Err(format!(
+            "KTX2 ZLIB supercompression did not reduce the level: {} encoded bytes for {} raw bytes",
+            encoded_image_data.len(),
+            image_data.len()
+        ));
+    }
     let width = u32::try_from(width).map_err(|_| "KTX2 width exceeds u32".to_owned())?;
     let height = u32::try_from(height).map_err(|_| "KTX2 height exceeds u32".to_owned())?;
     let layers = u32::try_from(layers).map_err(|_| "KTX2 layers exceed u32".to_owned())?;
@@ -48,7 +58,7 @@ pub fn write_ktx2_array(
     let alignment = 4_usize;
     let data_offset = unaligned_data_offset.div_ceil(alignment) * alignment;
 
-    let mut output = Vec::with_capacity(data_offset + image_data.len());
+    let mut output = Vec::with_capacity(data_offset + encoded_image_data.len());
     output.extend_from_slice(&IDENTIFIER);
     for value in [
         vk_format,
@@ -59,7 +69,7 @@ pub fn write_ktx2_array(
         layers,
         1,
         1,
-        0,
+        3,
         u32::try_from(dfd_offset).map_err(|_| "KTX2 DFD offset exceeds u32".to_owned())?,
         u32::try_from(dfd.len()).map_err(|_| "KTX2 DFD length exceeds u32".to_owned())?,
         u32::try_from(kvd_offset).map_err(|_| "KTX2 KVD offset exceeds u32".to_owned())?,
@@ -70,12 +80,12 @@ pub fn write_ktx2_array(
     output.extend_from_slice(&0_u64.to_le_bytes());
     output.extend_from_slice(&0_u64.to_le_bytes());
     output.extend_from_slice(&(data_offset as u64).to_le_bytes());
-    output.extend_from_slice(&(image_data.len() as u64).to_le_bytes());
+    output.extend_from_slice(&(encoded_image_data.len() as u64).to_le_bytes());
     output.extend_from_slice(&(image_data.len() as u64).to_le_bytes());
     output.extend_from_slice(&dfd);
     output.extend_from_slice(&kvd);
     output.resize(data_offset, 0);
-    output.extend_from_slice(image_data);
+    output.extend_from_slice(&encoded_image_data);
     Ok(output)
 }
 
@@ -123,4 +133,36 @@ fn key_value_entry(key: &str, value: &[u8]) -> Result<Vec<u8>, String> {
     output.extend_from_slice(value);
     output.resize(output.len().div_ceil(4) * 4, 0);
     Ok(output)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::mesh::zlib_decompress;
+
+    fn u32_at(bytes: &[u8], offset: usize) -> u32 {
+        u32::from_le_bytes(bytes[offset..offset + 4].try_into().unwrap())
+    }
+
+    fn u64_at(bytes: &[u8], offset: usize) -> u64 {
+        u64::from_le_bytes(bytes[offset..offset + 8].try_into().unwrap())
+    }
+
+    #[test]
+    fn writes_portable_zlib_supercompressed_array() {
+        let pixels = (0..(32 * 32 * 4))
+            .map(|index| ((index / 16) % 251) as u8)
+            .collect::<Vec<_>>();
+        let encoded = write_ktx2_array(32, 32, 4, 1, &pixels).unwrap();
+        assert_eq!(u32_at(&encoded, 44), 3);
+        let level_offset = u64_at(&encoded, 80) as usize;
+        let level_length = u64_at(&encoded, 88) as usize;
+        let raw_length = u64_at(&encoded, 96) as usize;
+        assert!(level_length < raw_length);
+        assert_eq!(raw_length, pixels.len());
+        assert_eq!(
+            zlib_decompress(&encoded[level_offset..level_offset + level_length]).unwrap(),
+            pixels
+        );
+    }
 }

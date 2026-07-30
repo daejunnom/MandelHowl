@@ -1,0 +1,4687 @@
+{
+  "coverageContract": {
+    "schemaSha256": "255df55224022354daaafe42b318f692a550ff94cd861df686e348101a6f33ba",
+    "schemaVersion": "mandelhowl.coverage-report.v1"
+  },
+  "coveredValues": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20,
+    21,
+    22,
+    23,
+    24,
+    25,
+    26,
+    27,
+    28,
+    29,
+    30,
+    31,
+    32,
+    33,
+    34,
+    35,
+    36,
+    37,
+    38,
+    39,
+    40,
+    41,
+    42,
+    43,
+    44,
+    45,
+    46,
+    47,
+    48,
+    49,
+    50,
+    51,
+    52,
+    53,
+    54,
+    55,
+    56,
+    57,
+    58,
+    59,
+    60,
+    61,
+    62,
+    63,
+    64,
+    65,
+    66,
+    67,
+    68,
+    69,
+    70,
+    71,
+    72,
+    73,
+    74,
+    75,
+    76,
+    77,
+    78,
+    79,
+    80,
+    81,
+    82,
+    83,
+    84,
+    85,
+    86,
+    87,
+    88,
+    89,
+    90,
+    91,
+    92,
+    93,
+    94,
+    95,
+    96,
+    97,
+    98,
+    99,
+    100
+  ],
+  "generatedBy": {
+    "algorithm": "deterministic-global-trajectory-search-v1",
+    "feedbackAlgorithmRevision": "fixed-step-modal-feedback-v3",
+    "perValueRuntimeLookup": "forbidden",
+    "randomSource": "forbidden"
+  },
+  "missingValues": [],
+  "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+  "outputs": [
+    {
+      "target": 0,
+      "trace": {
+        "durationSeconds": 12.4,
+        "expectedSettledVolume": 0,
+        "initialFrequencyHz": 45,
+        "keyframes": [
+          {
+            "atSeconds": 0,
+            "frequencyHz": 45,
+            "sequence": 0
+          },
+          {
+            "atSeconds": 0.4,
+            "frequencyHz": 45,
+            "sequence": 1
+          }
+        ],
+        "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+        "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+        "traceId": "reach-v000"
+      },
+      "verification": "runtime-replay-verified",
+      "verified": true
+    },
+    {
+      "target": 1,
+      "trace": {
+        "durationSeconds": 12.4,
+        "expectedSettledVolume": 1,
+        "initialFrequencyHz": 45,
+        "keyframes": [
+          {
+            "atSeconds": 0,
+            "frequencyHz": 45,
+            "sequence": 0
+          },
+          {
+            "atSeconds": 0.4,
+            "frequencyHz": 683.1919784165848,
+            "sequence": 1
+          }
+        ],
+        "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+        "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+        "traceId": "reach-v001"
+      },
+      "verification": "runtime-replay-verified",
+      "verified": true
+    },
+    {
+      "target": 2,
+      "trace": {
+        "durationSeconds": 12.4,
+        "expectedSettledVolume": 2,
+        "initialFrequencyHz": 45,
+        "keyframes": [
+          {
+            "atSeconds": 0,
+            "frequencyHz": 45,
+            "sequence": 0
+          },
+          {
+            "atSeconds": 0.4,
+            "frequencyHz": 683.2016270774764,
+            "sequence": 1
+          }
+        ],
+        "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+        "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+        "traceId": "reach-v002"
+      },
+      "verification": "runtime-replay-verified",
+      "verified": true
+    },
+    {
+      "target": 3,
+      "trace": {
+        "durationSeconds": 12.4,
+        "expectedSettledVolume": 3,
+        "initialFrequencyHz": 45,
+        "keyframes": [
+          {
+            "atSeconds": 0,
+            "frequencyHz": 45,
+            "sequence": 0
+          },
+          {
+            "atSeconds": 0.4,
+            "frequencyHz": 683.2080714085478,
+            "sequence": 1
+          }
+        ],
+        "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+        "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+        "traceId": "reach-v003"
+      },
+      "verification": "runtime-replay-verified",
+      "verified": true
+    },
+    {
+      "target": 4,
+      "trace": {
+        "durationSeconds": 12.4,
+        "expectedSettledVolume": 4,
+        "initialFrequencyHz": 45,
+        "keyframes": [
+          {
+            "atSeconds": 0,
+            "frequencyHz": 45,
+            "sequence": 0
+          },
+          {
+            "atSeconds": 0.4,
+            "frequencyHz": 683.2145253212266,
+            "sequence": 1
+          }
+        ],
+        "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+        "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+        "traceId": "reach-v004"
+      },
+      "verification": "runtime-replay-verified",
+      "verified": true
+    },
+    {
+      "target": 5,
+      "trace": {
+        "durationSeconds": 12.4,
+        "expectedSettledVolume": 5,
+        "initialFrequencyHz": 45,
+        "keyframes": [
+          {
+            "atSeconds": 0,
+            "frequencyHz": 45,
+            "sequence": 0
+          },
+          {
+            "atSeconds": 0.4,
+            "frequencyHz": 683.2274621318791,
+            "sequence": 1
+          }
+        ],
+        "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+        "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+        "traceId": "reach-v005"
+      },
+      "verification": "runtime-replay-verified",
+      "verified": true
+    },
+    {
+      "target": 6,
+      "trace": {
+        "durationSeconds": 12.4,
+        "expectedSettledVolume": 6,
+        "initialFrequencyHz": 45,
+        "keyframes": [
+          {
+            "atSeconds": 0,
+            "frequencyHz": 45,
+            "sequence": 0
+          },
+          {
+            "atSeconds": 0.4,
+            "frequencyHz": 683.2339451515343,
+            "sequence": 1
+          }
+        ],
+        "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+        "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+        "traceId": "reach-v006"
+      },
+      "verification": "runtime-replay-verified",
+      "verified": true
+    },
+    {
+      "target": 7,
+      "trace": {
+        "durationSeconds": 12.4,
+        "expectedSettledVolume": 7,
+        "initialFrequencyHz": 45,
+        "keyframes": [
+          {
+            "atSeconds": 0,
+            "frequencyHz": 45,
+            "sequence": 0
+          },
+          {
+            "atSeconds": 0.4,
+            "frequencyHz": 683.2404379961763,
+            "sequence": 1
+          }
+        ],
+        "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+        "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+        "traceId": "reach-v007"
+      },
+      "verification": "runtime-replay-verified",
+      "verified": true
+    },
+    {
+      "target": 8,
+      "trace": {
+        "durationSeconds": 12.4,
+        "expectedSettledVolume": 8,
+        "initialFrequencyHz": 45,
+        "keyframes": [
+          {
+            "atSeconds": 0,
+            "frequencyHz": 45,
+            "sequence": 0
+          },
+          {
+            "atSeconds": 0.4,
+            "frequencyHz": 683.2534534103158,
+            "sequence": 1
+          }
+        ],
+        "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+        "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+        "traceId": "reach-v008"
+      },
+      "verification": "runtime-replay-verified",
+      "verified": true
+    },
+    {
+      "target": 9,
+      "trace": {
+        "durationSeconds": 12.4,
+        "expectedSettledVolume": 9,
+        "initialFrequencyHz": 45,
+        "keyframes": [
+          {
+            "atSeconds": 0,
+            "frequencyHz": 45,
+            "sequence": 0
+          },
+          {
+            "atSeconds": 0.4,
+            "frequencyHz": 683.2599761062875,
+            "sequence": 1
+          }
+        ],
+        "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+        "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+        "traceId": "reach-v009"
+      },
+      "verification": "runtime-replay-verified",
+      "verified": true
+    },
+    {
+      "target": 10,
+      "trace": {
+        "durationSeconds": 12.4,
+        "expectedSettledVolume": 10,
+        "initialFrequencyHz": 45,
+        "keyframes": [
+          {
+            "atSeconds": 0,
+            "frequencyHz": 45,
+            "sequence": 0
+          },
+          {
+            "atSeconds": 0.4,
+            "frequencyHz": 683.2665088802103,
+            "sequence": 1
+          }
+        ],
+        "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+        "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+        "traceId": "reach-v010"
+      },
+      "verification": "runtime-replay-verified",
+      "verified": true
+    },
+    {
+      "target": 11,
+      "trace": {
+        "durationSeconds": 12.4,
+        "expectedSettledVolume": 11,
+        "initialFrequencyHz": 45,
+        "keyframes": [
+          {
+            "atSeconds": 0,
+            "frequencyHz": 45,
+            "sequence": 0
+          },
+          {
+            "atSeconds": 0.4,
+            "frequencyHz": 683.2730517968853,
+            "sequence": 1
+          }
+        ],
+        "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+        "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+        "traceId": "reach-v011"
+      },
+      "verification": "runtime-replay-verified",
+      "verified": true
+    },
+    {
+      "target": 12,
+      "trace": {
+        "durationSeconds": 12.4,
+        "expectedSettledVolume": 12,
+        "initialFrequencyHz": 45,
+        "keyframes": [
+          {
+            "atSeconds": 0,
+            "frequencyHz": 45,
+            "sequence": 0
+          },
+          {
+            "atSeconds": 0.4,
+            "frequencyHz": 683.2796049217552,
+            "sequence": 1
+          }
+        ],
+        "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+        "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+        "traceId": "reach-v012"
+      },
+      "verification": "runtime-replay-verified",
+      "verified": true
+    },
+    {
+      "target": 13,
+      "trace": {
+        "durationSeconds": 12.4,
+        "expectedSettledVolume": 13,
+        "initialFrequencyHz": 45,
+        "keyframes": [
+          {
+            "atSeconds": 0,
+            "frequencyHz": 45,
+            "sequence": 0
+          },
+          {
+            "atSeconds": 0.4,
+            "frequencyHz": 683.2927420611088,
+            "sequence": 1
+          }
+        ],
+        "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+        "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+        "traceId": "reach-v013"
+      },
+      "verification": "runtime-replay-verified",
+      "verified": true
+    },
+    {
+      "target": 14,
+      "trace": {
+        "durationSeconds": 12.4,
+        "expectedSettledVolume": 14,
+        "initialFrequencyHz": 45,
+        "keyframes": [
+          {
+            "atSeconds": 0,
+            "frequencyHz": 45,
+            "sequence": 0
+          },
+          {
+            "atSeconds": 0.4,
+            "frequencyHz": 683.2993262097652,
+            "sequence": 1
+          }
+        ],
+        "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+        "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+        "traceId": "reach-v014"
+      },
+      "verification": "runtime-replay-verified",
+      "verified": true
+    },
+    {
+      "target": 15,
+      "trace": {
+        "durationSeconds": 12.4,
+        "expectedSettledVolume": 15,
+        "initialFrequencyHz": 45,
+        "keyframes": [
+          {
+            "atSeconds": 0,
+            "frequencyHz": 45,
+            "sequence": 0
+          },
+          {
+            "atSeconds": 0.4,
+            "frequencyHz": 683.3059208349803,
+            "sequence": 1
+          }
+        ],
+        "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+        "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+        "traceId": "reach-v015"
+      },
+      "verification": "runtime-replay-verified",
+      "verified": true
+    },
+    {
+      "target": 16,
+      "trace": {
+        "durationSeconds": 12.4,
+        "expectedSettledVolume": 16,
+        "initialFrequencyHz": 45,
+        "keyframes": [
+          {
+            "atSeconds": 0,
+            "frequencyHz": 45,
+            "sequence": 0
+          },
+          {
+            "atSeconds": 0.4,
+            "frequencyHz": 683.3191417909288,
+            "sequence": 1
+          }
+        ],
+        "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+        "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+        "traceId": "reach-v016"
+      },
+      "verification": "runtime-replay-verified",
+      "verified": true
+    },
+    {
+      "target": 17,
+      "trace": {
+        "durationSeconds": 12.4,
+        "expectedSettledVolume": 17,
+        "initialFrequencyHz": 45,
+        "keyframes": [
+          {
+            "atSeconds": 0,
+            "frequencyHz": 45,
+            "sequence": 0
+          },
+          {
+            "atSeconds": 0.4,
+            "frequencyHz": 683.3257682613369,
+            "sequence": 1
+          }
+        ],
+        "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+        "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+        "traceId": "reach-v017"
+      },
+      "verification": "runtime-replay-verified",
+      "verified": true
+    },
+    {
+      "target": 18,
+      "trace": {
+        "durationSeconds": 12.4,
+        "expectedSettledVolume": 18,
+        "initialFrequencyHz": 45,
+        "keyframes": [
+          {
+            "atSeconds": 0,
+            "frequencyHz": 45,
+            "sequence": 0
+          },
+          {
+            "atSeconds": 0.4,
+            "frequencyHz": 683.3324054876734,
+            "sequence": 1
+          }
+        ],
+        "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+        "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+        "traceId": "reach-v018"
+      },
+      "verification": "runtime-replay-verified",
+      "verified": true
+    },
+    {
+      "target": 19,
+      "trace": {
+        "durationSeconds": 12.4,
+        "expectedSettledVolume": 19,
+        "initialFrequencyHz": 45,
+        "keyframes": [
+          {
+            "atSeconds": 0,
+            "frequencyHz": 45,
+            "sequence": 0
+          },
+          {
+            "atSeconds": 0.4,
+            "frequencyHz": 683.3457124954152,
+            "sequence": 1
+          }
+        ],
+        "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+        "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+        "traceId": "reach-v019"
+      },
+      "verification": "runtime-replay-verified",
+      "verified": true
+    },
+    {
+      "target": 20,
+      "trace": {
+        "durationSeconds": 12.4,
+        "expectedSettledVolume": 20,
+        "initialFrequencyHz": 45,
+        "keyframes": [
+          {
+            "atSeconds": 0,
+            "frequencyHz": 45,
+            "sequence": 0
+          },
+          {
+            "atSeconds": 0.4,
+            "frequencyHz": 683.3523824223194,
+            "sequence": 1
+          }
+        ],
+        "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+        "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+        "traceId": "reach-v020"
+      },
+      "verification": "runtime-replay-verified",
+      "verified": true
+    },
+    {
+      "target": 21,
+      "trace": {
+        "durationSeconds": 12.4,
+        "expectedSettledVolume": 21,
+        "initialFrequencyHz": 45,
+        "keyframes": [
+          {
+            "atSeconds": 0,
+            "frequencyHz": 45,
+            "sequence": 0
+          },
+          {
+            "atSeconds": 0.4,
+            "frequencyHz": 683.3590633961705,
+            "sequence": 1
+          }
+        ],
+        "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+        "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+        "traceId": "reach-v021"
+      },
+      "verification": "runtime-replay-verified",
+      "verified": true
+    },
+    {
+      "target": 22,
+      "trace": {
+        "durationSeconds": 12.4,
+        "expectedSettledVolume": 22,
+        "initialFrequencyHz": 45,
+        "keyframes": [
+          {
+            "atSeconds": 0,
+            "frequencyHz": 45,
+            "sequence": 0
+          },
+          {
+            "atSeconds": 0.4,
+            "frequencyHz": 683.3724587841173,
+            "sequence": 1
+          }
+        ],
+        "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+        "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+        "traceId": "reach-v022"
+      },
+      "verification": "runtime-replay-verified",
+      "verified": true
+    },
+    {
+      "target": 23,
+      "trace": {
+        "durationSeconds": 12.4,
+        "expectedSettledVolume": 23,
+        "initialFrequencyHz": 45,
+        "keyframes": [
+          {
+            "atSeconds": 0,
+            "frequencyHz": 45,
+            "sequence": 0
+          },
+          {
+            "atSeconds": 0.4,
+            "frequencyHz": 683.3791733498815,
+            "sequence": 1
+          }
+        ],
+        "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+        "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+        "traceId": "reach-v023"
+      },
+      "verification": "runtime-replay-verified",
+      "verified": true
+    },
+    {
+      "target": 24,
+      "trace": {
+        "durationSeconds": 12.4,
+        "expectedSettledVolume": 24,
+        "initialFrequencyHz": 45,
+        "keyframes": [
+          {
+            "atSeconds": 0,
+            "frequencyHz": 45,
+            "sequence": 0
+          },
+          {
+            "atSeconds": 0.4,
+            "frequencyHz": 683.3858992659536,
+            "sequence": 1
+          }
+        ],
+        "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+        "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+        "traceId": "reach-v024"
+      },
+      "verification": "runtime-replay-verified",
+      "verified": true
+    },
+    {
+      "target": 25,
+      "trace": {
+        "durationSeconds": 12.4,
+        "expectedSettledVolume": 25,
+        "initialFrequencyHz": 45,
+        "keyframes": [
+          {
+            "atSeconds": 0,
+            "frequencyHz": 45,
+            "sequence": 0
+          },
+          {
+            "atSeconds": 0.4,
+            "frequencyHz": 683.3993854612718,
+            "sequence": 1
+          }
+        ],
+        "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+        "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+        "traceId": "reach-v025"
+      },
+      "verification": "runtime-replay-verified",
+      "verified": true
+    },
+    {
+      "target": 26,
+      "trace": {
+        "durationSeconds": 12.4,
+        "expectedSettledVolume": 26,
+        "initialFrequencyHz": 45,
+        "keyframes": [
+          {
+            "atSeconds": 0,
+            "frequencyHz": 45,
+            "sequence": 0
+          },
+          {
+            "atSeconds": 0.4,
+            "frequencyHz": 683.4061458987294,
+            "sequence": 1
+          }
+        ],
+        "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+        "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+        "traceId": "reach-v026"
+      },
+      "verification": "runtime-replay-verified",
+      "verified": true
+    },
+    {
+      "target": 27,
+      "trace": {
+        "durationSeconds": 12.4,
+        "expectedSettledVolume": 27,
+        "initialFrequencyHz": 45,
+        "keyframes": [
+          {
+            "atSeconds": 0,
+            "frequencyHz": 45,
+            "sequence": 0
+          },
+          {
+            "atSeconds": 0.4,
+            "frequencyHz": 683.4129180029445,
+            "sequence": 1
+          }
+        ],
+        "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+        "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+        "traceId": "reach-v027"
+      },
+      "verification": "runtime-replay-verified",
+      "verified": true
+    },
+    {
+      "target": 28,
+      "trace": {
+        "durationSeconds": 12.4,
+        "expectedSettledVolume": 28,
+        "initialFrequencyHz": 45,
+        "keyframes": [
+          {
+            "atSeconds": 0,
+            "frequencyHz": 45,
+            "sequence": 0
+          },
+          {
+            "atSeconds": 0.4,
+            "frequencyHz": 683.4264975375283,
+            "sequence": 1
+          }
+        ],
+        "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+        "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+        "traceId": "reach-v028"
+      },
+      "verification": "runtime-replay-verified",
+      "verified": true
+    },
+    {
+      "target": 29,
+      "trace": {
+        "durationSeconds": 12.4,
+        "expectedSettledVolume": 29,
+        "initialFrequencyHz": 45,
+        "keyframes": [
+          {
+            "atSeconds": 0,
+            "frequencyHz": 45,
+            "sequence": 0
+          },
+          {
+            "atSeconds": 0.4,
+            "frequencyHz": 683.433305133055,
+            "sequence": 1
+          }
+        ],
+        "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+        "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+        "traceId": "reach-v029"
+      },
+      "verification": "runtime-replay-verified",
+      "verified": true
+    },
+    {
+      "target": 30,
+      "trace": {
+        "durationSeconds": 12.4,
+        "expectedSettledVolume": 30,
+        "initialFrequencyHz": 45,
+        "keyframes": [
+          {
+            "atSeconds": 0,
+            "frequencyHz": 45,
+            "sequence": 0
+          },
+          {
+            "atSeconds": 0.4,
+            "frequencyHz": 683.4401247256815,
+            "sequence": 1
+          }
+        ],
+        "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+        "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+        "traceId": "reach-v030"
+      },
+      "verification": "runtime-replay-verified",
+      "verified": true
+    },
+    {
+      "target": 31,
+      "trace": {
+        "durationSeconds": 12.4,
+        "expectedSettledVolume": 31,
+        "initialFrequencyHz": 45,
+        "keyframes": [
+          {
+            "atSeconds": 0,
+            "frequencyHz": 45,
+            "sequence": 0
+          },
+          {
+            "atSeconds": 0.4,
+            "frequencyHz": 683.4538002425979,
+            "sequence": 1
+          }
+        ],
+        "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+        "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+        "traceId": "reach-v031"
+      },
+      "verification": "runtime-replay-verified",
+      "verified": true
+    },
+    {
+      "target": 32,
+      "trace": {
+        "durationSeconds": 12.4,
+        "expectedSettledVolume": 32,
+        "initialFrequencyHz": 45,
+        "keyframes": [
+          {
+            "atSeconds": 0,
+            "frequencyHz": 45,
+            "sequence": 0
+          },
+          {
+            "atSeconds": 0.4,
+            "frequencyHz": 683.4606563394264,
+            "sequence": 1
+          }
+        ],
+        "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+        "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+        "traceId": "reach-v032"
+      },
+      "verification": "runtime-replay-verified",
+      "verified": true
+    },
+    {
+      "target": 33,
+      "trace": {
+        "durationSeconds": 12.4,
+        "expectedSettledVolume": 33,
+        "initialFrequencyHz": 45,
+        "keyframes": [
+          {
+            "atSeconds": 0,
+            "frequencyHz": 45,
+            "sequence": 0
+          },
+          {
+            "atSeconds": 0.4,
+            "frequencyHz": 683.4675247784605,
+            "sequence": 1
+          }
+        ],
+        "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+        "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+        "traceId": "reach-v033"
+      },
+      "verification": "runtime-replay-verified",
+      "verified": true
+    },
+    {
+      "target": 34,
+      "trace": {
+        "durationSeconds": 12.4,
+        "expectedSettledVolume": 34,
+        "initialFrequencyHz": 45,
+        "keyframes": [
+          {
+            "atSeconds": 0,
+            "frequencyHz": 45,
+            "sequence": 0
+          },
+          {
+            "atSeconds": 0.4,
+            "frequencyHz": 683.4812990389107,
+            "sequence": 1
+          }
+        ],
+        "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+        "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+        "traceId": "reach-v034"
+      },
+      "verification": "runtime-replay-verified",
+      "verified": true
+    },
+    {
+      "target": 35,
+      "trace": {
+        "durationSeconds": 12.4,
+        "expectedSettledVolume": 35,
+        "initialFrequencyHz": 45,
+        "keyframes": [
+          {
+            "atSeconds": 0,
+            "frequencyHz": 45,
+            "sequence": 0
+          },
+          {
+            "atSeconds": 0.4,
+            "frequencyHz": 683.4882050407159,
+            "sequence": 1
+          }
+        ],
+        "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+        "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+        "traceId": "reach-v035"
+      },
+      "verification": "runtime-replay-verified",
+      "verified": true
+    },
+    {
+      "target": 36,
+      "trace": {
+        "durationSeconds": 12.4,
+        "expectedSettledVolume": 36,
+        "initialFrequencyHz": 45,
+        "keyframes": [
+          {
+            "atSeconds": 0,
+            "frequencyHz": 45,
+            "sequence": 0
+          },
+          {
+            "atSeconds": 0.4,
+            "frequencyHz": 683.495123745538,
+            "sequence": 1
+          }
+        ],
+        "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+        "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+        "traceId": "reach-v036"
+      },
+      "verification": "runtime-replay-verified",
+      "verified": true
+    },
+    {
+      "target": 37,
+      "trace": {
+        "durationSeconds": 12.4,
+        "expectedSettledVolume": 37,
+        "initialFrequencyHz": 45,
+        "keyframes": [
+          {
+            "atSeconds": 0,
+            "frequencyHz": 45,
+            "sequence": 0
+          },
+          {
+            "atSeconds": 0.4,
+            "frequencyHz": 683.5020552461503,
+            "sequence": 1
+          }
+        ],
+        "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+        "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+        "traceId": "reach-v037"
+      },
+      "verification": "runtime-replay-verified",
+      "verified": true
+    },
+    {
+      "target": 38,
+      "trace": {
+        "durationSeconds": 12.4,
+        "expectedSettledVolume": 38,
+        "initialFrequencyHz": 45,
+        "keyframes": [
+          {
+            "atSeconds": 0,
+            "frequencyHz": 45,
+            "sequence": 0
+          },
+          {
+            "atSeconds": 0.4,
+            "frequencyHz": 683.5089996363893,
+            "sequence": 1
+          }
+        ],
+        "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+        "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+        "traceId": "reach-v038"
+      },
+      "verification": "runtime-replay-verified",
+      "verified": true
+    },
+    {
+      "target": 39,
+      "trace": {
+        "durationSeconds": 12.4,
+        "expectedSettledVolume": 39,
+        "initialFrequencyHz": 45,
+        "keyframes": [
+          {
+            "atSeconds": 0,
+            "frequencyHz": 45,
+            "sequence": 0
+          },
+          {
+            "atSeconds": 0.4,
+            "frequencyHz": 683.5229274665003,
+            "sequence": 1
+          }
+        ],
+        "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+        "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+        "traceId": "reach-v039"
+      },
+      "verification": "runtime-replay-verified",
+      "verified": true
+    },
+    {
+      "target": 40,
+      "trace": {
+        "durationSeconds": 12.4,
+        "expectedSettledVolume": 40,
+        "initialFrequencyHz": 45,
+        "keyframes": [
+          {
+            "atSeconds": 0,
+            "frequencyHz": 45,
+            "sequence": 0
+          },
+          {
+            "atSeconds": 0.4,
+            "frequencyHz": 683.5299110995074,
+            "sequence": 1
+          }
+        ],
+        "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+        "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+        "traceId": "reach-v040"
+      },
+      "verification": "runtime-replay-verified",
+      "verified": true
+    },
+    {
+      "target": 41,
+      "trace": {
+        "durationSeconds": 12.4,
+        "expectedSettledVolume": 41,
+        "initialFrequencyHz": 45,
+        "keyframes": [
+          {
+            "atSeconds": 0,
+            "frequencyHz": 45,
+            "sequence": 0
+          },
+          {
+            "atSeconds": 0.4,
+            "frequencyHz": 683.5369080084472,
+            "sequence": 1
+          }
+        ],
+        "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+        "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+        "traceId": "reach-v041"
+      },
+      "verification": "runtime-replay-verified",
+      "verified": true
+    },
+    {
+      "target": 42,
+      "trace": {
+        "durationSeconds": 12.4,
+        "expectedSettledVolume": 42,
+        "initialFrequencyHz": 45,
+        "keyframes": [
+          {
+            "atSeconds": 0,
+            "frequencyHz": 45,
+            "sequence": 0
+          },
+          {
+            "atSeconds": 0.4,
+            "frequencyHz": 683.5509420529227,
+            "sequence": 1
+          }
+        ],
+        "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+        "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+        "traceId": "reach-v042"
+      },
+      "verification": "runtime-replay-verified",
+      "verified": true
+    },
+    {
+      "target": 43,
+      "trace": {
+        "durationSeconds": 12.4,
+        "expectedSettledVolume": 43,
+        "initialFrequencyHz": 45,
+        "keyframes": [
+          {
+            "atSeconds": 0,
+            "frequencyHz": 45,
+            "sequence": 0
+          },
+          {
+            "atSeconds": 0.4,
+            "frequencyHz": 683.5579793908016,
+            "sequence": 1
+          }
+        ],
+        "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+        "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+        "traceId": "reach-v043"
+      },
+      "verification": "runtime-replay-verified",
+      "verified": true
+    },
+    {
+      "target": 44,
+      "trace": {
+        "durationSeconds": 12.4,
+        "expectedSettledVolume": 44,
+        "initialFrequencyHz": 45,
+        "keyframes": [
+          {
+            "atSeconds": 0,
+            "frequencyHz": 45,
+            "sequence": 0
+          },
+          {
+            "atSeconds": 0.4,
+            "frequencyHz": 683.5650304093379,
+            "sequence": 1
+          }
+        ],
+        "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+        "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+        "traceId": "reach-v044"
+      },
+      "verification": "runtime-replay-verified",
+      "verified": true
+    },
+    {
+      "target": 45,
+      "trace": {
+        "durationSeconds": 12.4,
+        "expectedSettledVolume": 45,
+        "initialFrequencyHz": 45,
+        "keyframes": [
+          {
+            "atSeconds": 0,
+            "frequencyHz": 45,
+            "sequence": 0
+          },
+          {
+            "atSeconds": 0.4,
+            "frequencyHz": 683.5791739064466,
+            "sequence": 1
+          }
+        ],
+        "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+        "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+        "traceId": "reach-v045"
+      },
+      "verification": "runtime-replay-verified",
+      "verified": true
+    },
+    {
+      "target": 46,
+      "trace": {
+        "durationSeconds": 12.4,
+        "expectedSettledVolume": 46,
+        "initialFrequencyHz": 45,
+        "keyframes": [
+          {
+            "atSeconds": 0,
+            "frequencyHz": 45,
+            "sequence": 0
+          },
+          {
+            "atSeconds": 0.4,
+            "frequencyHz": 683.5862665971963,
+            "sequence": 1
+          }
+        ],
+        "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+        "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+        "traceId": "reach-v046"
+      },
+      "verification": "runtime-replay-verified",
+      "verified": true
+    },
+    {
+      "target": 47,
+      "trace": {
+        "durationSeconds": 12.4,
+        "expectedSettledVolume": 47,
+        "initialFrequencyHz": 45,
+        "keyframes": [
+          {
+            "atSeconds": 0,
+            "frequencyHz": 45,
+            "sequence": 0
+          },
+          {
+            "atSeconds": 0.4,
+            "frequencyHz": 683.5933733930005,
+            "sequence": 1
+          }
+        ],
+        "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+        "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+        "traceId": "reach-v047"
+      },
+      "verification": "runtime-replay-verified",
+      "verified": true
+    },
+    {
+      "target": 48,
+      "trace": {
+        "durationSeconds": 12.4,
+        "expectedSettledVolume": 48,
+        "initialFrequencyHz": 45,
+        "keyframes": [
+          {
+            "atSeconds": 0,
+            "frequencyHz": 45,
+            "sequence": 0
+          },
+          {
+            "atSeconds": 0.4,
+            "frequencyHz": 683.6076297384307,
+            "sequence": 1
+          }
+        ],
+        "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+        "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+        "traceId": "reach-v048"
+      },
+      "verification": "runtime-replay-verified",
+      "verified": true
+    },
+    {
+      "target": 49,
+      "trace": {
+        "durationSeconds": 12.4,
+        "expectedSettledVolume": 49,
+        "initialFrequencyHz": 45,
+        "keyframes": [
+          {
+            "atSeconds": 0,
+            "frequencyHz": 45,
+            "sequence": 0
+          },
+          {
+            "atSeconds": 0.4,
+            "frequencyHz": 683.6147795107506,
+            "sequence": 1
+          }
+        ],
+        "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+        "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+        "traceId": "reach-v049"
+      },
+      "verification": "runtime-replay-verified",
+      "verified": true
+    },
+    {
+      "target": 50,
+      "trace": {
+        "durationSeconds": 12.4,
+        "expectedSettledVolume": 50,
+        "initialFrequencyHz": 45,
+        "keyframes": [
+          {
+            "atSeconds": 0,
+            "frequencyHz": 45,
+            "sequence": 0
+          },
+          {
+            "atSeconds": 0.4,
+            "frequencyHz": 683.6219438335595,
+            "sequence": 1
+          }
+        ],
+        "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+        "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+        "traceId": "reach-v050"
+      },
+      "verification": "runtime-replay-verified",
+      "verified": true
+    },
+    {
+      "target": 51,
+      "trace": {
+        "durationSeconds": 12.4,
+        "expectedSettledVolume": 51,
+        "initialFrequencyHz": 45,
+        "keyframes": [
+          {
+            "atSeconds": 0,
+            "frequencyHz": 45,
+            "sequence": 0
+          },
+          {
+            "atSeconds": 0.4,
+            "frequencyHz": 683.6363165913451,
+            "sequence": 1
+          }
+        ],
+        "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+        "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+        "traceId": "reach-v051"
+      },
+      "verification": "runtime-replay-verified",
+      "verified": true
+    },
+    {
+      "target": 52,
+      "trace": {
+        "durationSeconds": 12.4,
+        "expectedSettledVolume": 52,
+        "initialFrequencyHz": 45,
+        "keyframes": [
+          {
+            "atSeconds": 0,
+            "frequencyHz": 45,
+            "sequence": 0
+          },
+          {
+            "atSeconds": 0.4,
+            "frequencyHz": 683.6435252602771,
+            "sequence": 1
+          }
+        ],
+        "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+        "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+        "traceId": "reach-v052"
+      },
+      "verification": "runtime-replay-verified",
+      "verified": true
+    },
+    {
+      "target": 53,
+      "trace": {
+        "durationSeconds": 12.4,
+        "expectedSettledVolume": 53,
+        "initialFrequencyHz": 45,
+        "keyframes": [
+          {
+            "atSeconds": 0,
+            "frequencyHz": 45,
+            "sequence": 0
+          },
+          {
+            "atSeconds": 0.4,
+            "frequencyHz": 683.6507489476592,
+            "sequence": 1
+          }
+        ],
+        "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+        "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+        "traceId": "reach-v053"
+      },
+      "verification": "runtime-replay-verified",
+      "verified": true
+    },
+    {
+      "target": 54,
+      "trace": {
+        "durationSeconds": 12.4,
+        "expectedSettledVolume": 54,
+        "initialFrequencyHz": 45,
+        "keyframes": [
+          {
+            "atSeconds": 0,
+            "frequencyHz": 45,
+            "sequence": 0
+          },
+          {
+            "atSeconds": 0.4,
+            "frequencyHz": 683.6652418620997,
+            "sequence": 1
+          }
+        ],
+        "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+        "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+        "traceId": "reach-v054"
+      },
+      "verification": "runtime-replay-verified",
+      "verified": true
+    },
+    {
+      "target": 55,
+      "trace": {
+        "durationSeconds": 12.4,
+        "expectedSettledVolume": 55,
+        "initialFrequencyHz": 45,
+        "keyframes": [
+          {
+            "atSeconds": 0,
+            "frequencyHz": 45,
+            "sequence": 0
+          },
+          {
+            "atSeconds": 0.4,
+            "frequencyHz": 683.6725113351877,
+            "sequence": 1
+          }
+        ],
+        "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+        "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+        "traceId": "reach-v055"
+      },
+      "verification": "runtime-replay-verified",
+      "verified": true
+    },
+    {
+      "target": 56,
+      "trace": {
+        "durationSeconds": 12.4,
+        "expectedSettledVolume": 56,
+        "initialFrequencyHz": 45,
+        "keyframes": [
+          {
+            "atSeconds": 0,
+            "frequencyHz": 45,
+            "sequence": 0
+          },
+          {
+            "atSeconds": 0.4,
+            "frequencyHz": 683.6797963188412,
+            "sequence": 1
+          }
+        ],
+        "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+        "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+        "traceId": "reach-v056"
+      },
+      "verification": "runtime-replay-verified",
+      "verified": true
+    },
+    {
+      "target": 57,
+      "trace": {
+        "durationSeconds": 12.4,
+        "expectedSettledVolume": 57,
+        "initialFrequencyHz": 45,
+        "keyframes": [
+          {
+            "atSeconds": 0,
+            "frequencyHz": 45,
+            "sequence": 0
+          },
+          {
+            "atSeconds": 0.4,
+            "frequencyHz": 683.6944133275254,
+            "sequence": 1
+          }
+        ],
+        "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+        "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+        "traceId": "reach-v057"
+      },
+      "verification": "runtime-replay-verified",
+      "verified": true
+    },
+    {
+      "target": 58,
+      "trace": {
+        "durationSeconds": 12.4,
+        "expectedSettledVolume": 58,
+        "initialFrequencyHz": 45,
+        "keyframes": [
+          {
+            "atSeconds": 0,
+            "frequencyHz": 45,
+            "sequence": 0
+          },
+          {
+            "atSeconds": 0.4,
+            "frequencyHz": 683.7017456115511,
+            "sequence": 1
+          }
+        ],
+        "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+        "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+        "traceId": "reach-v058"
+      },
+      "verification": "runtime-replay-verified",
+      "verified": true
+    },
+    {
+      "target": 59,
+      "trace": {
+        "durationSeconds": 12.4,
+        "expectedSettledVolume": 59,
+        "initialFrequencyHz": 45,
+        "keyframes": [
+          {
+            "atSeconds": 0,
+            "frequencyHz": 45,
+            "sequence": 0
+          },
+          {
+            "atSeconds": 0.4,
+            "frequencyHz": 683.7090939241928,
+            "sequence": 1
+          }
+        ],
+        "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+        "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+        "traceId": "reach-v059"
+      },
+      "verification": "runtime-replay-verified",
+      "verified": true
+    },
+    {
+      "target": 60,
+      "trace": {
+        "durationSeconds": 12.4,
+        "expectedSettledVolume": 60,
+        "initialFrequencyHz": 45,
+        "keyframes": [
+          {
+            "atSeconds": 0,
+            "frequencyHz": 45,
+            "sequence": 0
+          },
+          {
+            "atSeconds": 0.4,
+            "frequencyHz": 683.7164583992403,
+            "sequence": 1
+          }
+        ],
+        "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+        "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+        "traceId": "reach-v060"
+      },
+      "verification": "runtime-replay-verified",
+      "verified": true
+    },
+    {
+      "target": 61,
+      "trace": {
+        "durationSeconds": 12.4,
+        "expectedSettledVolume": 61,
+        "initialFrequencyHz": 45,
+        "keyframes": [
+          {
+            "atSeconds": 0,
+            "frequencyHz": 45,
+            "sequence": 0
+          },
+          {
+            "atSeconds": 0.4,
+            "frequencyHz": 683.7238391722583,
+            "sequence": 1
+          }
+        ],
+        "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+        "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+        "traceId": "reach-v061"
+      },
+      "verification": "runtime-replay-verified",
+      "verified": true
+    },
+    {
+      "target": 62,
+      "trace": {
+        "durationSeconds": 12.4,
+        "expectedSettledVolume": 62,
+        "initialFrequencyHz": 45,
+        "keyframes": [
+          {
+            "atSeconds": 0,
+            "frequencyHz": 45,
+            "sequence": 0
+          },
+          {
+            "atSeconds": 0.4,
+            "frequencyHz": 683.7386501635347,
+            "sequence": 1
+          }
+        ],
+        "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+        "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+        "traceId": "reach-v062"
+      },
+      "verification": "runtime-replay-verified",
+      "verified": true
+    },
+    {
+      "target": 63,
+      "trace": {
+        "durationSeconds": 12.4,
+        "expectedSettledVolume": 63,
+        "initialFrequencyHz": 45,
+        "keyframes": [
+          {
+            "atSeconds": 0,
+            "frequencyHz": 45,
+            "sequence": 0
+          },
+          {
+            "atSeconds": 0.4,
+            "frequencyHz": 683.7460806620963,
+            "sequence": 1
+          }
+        ],
+        "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+        "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+        "traceId": "reach-v063"
+      },
+      "verification": "runtime-replay-verified",
+      "verified": true
+    },
+    {
+      "target": 64,
+      "trace": {
+        "durationSeconds": 12.4,
+        "expectedSettledVolume": 64,
+        "initialFrequencyHz": 45,
+        "keyframes": [
+          {
+            "atSeconds": 0,
+            "frequencyHz": 45,
+            "sequence": 0
+          },
+          {
+            "atSeconds": 0.4,
+            "frequencyHz": 683.7535280193049,
+            "sequence": 1
+          }
+        ],
+        "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+        "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+        "traceId": "reach-v064"
+      },
+      "verification": "runtime-replay-verified",
+      "verified": true
+    },
+    {
+      "target": 65,
+      "trace": {
+        "durationSeconds": 12.4,
+        "expectedSettledVolume": 65,
+        "initialFrequencyHz": 45,
+        "keyframes": [
+          {
+            "atSeconds": 0,
+            "frequencyHz": 45,
+            "sequence": 0
+          },
+          {
+            "atSeconds": 0.4,
+            "frequencyHz": 683.768473891447,
+            "sequence": 1
+          }
+        ],
+        "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+        "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+        "traceId": "reach-v065"
+      },
+      "verification": "runtime-replay-verified",
+      "verified": true
+    },
+    {
+      "target": 66,
+      "trace": {
+        "durationSeconds": 12.4,
+        "expectedSettledVolume": 66,
+        "initialFrequencyHz": 45,
+        "keyframes": [
+          {
+            "atSeconds": 0,
+            "frequencyHz": 45,
+            "sequence": 0
+          },
+          {
+            "atSeconds": 0.4,
+            "frequencyHz": 683.7759727022749,
+            "sequence": 1
+          }
+        ],
+        "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+        "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+        "traceId": "reach-v066"
+      },
+      "verification": "runtime-replay-verified",
+      "verified": true
+    },
+    {
+      "target": 67,
+      "trace": {
+        "durationSeconds": 12.4,
+        "expectedSettledVolume": 67,
+        "initialFrequencyHz": 45,
+        "keyframes": [
+          {
+            "atSeconds": 0,
+            "frequencyHz": 45,
+            "sequence": 0
+          },
+          {
+            "atSeconds": 0.4,
+            "frequencyHz": 683.7834889636154,
+            "sequence": 1
+          }
+        ],
+        "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+        "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+        "traceId": "reach-v067"
+      },
+      "verification": "runtime-replay-verified",
+      "verified": true
+    },
+    {
+      "target": 68,
+      "trace": {
+        "durationSeconds": 12.4,
+        "expectedSettledVolume": 68,
+        "initialFrequencyHz": 45,
+        "keyframes": [
+          {
+            "atSeconds": 0,
+            "frequencyHz": 45,
+            "sequence": 0
+          },
+          {
+            "atSeconds": 0.4,
+            "frequencyHz": 683.7985744524799,
+            "sequence": 1
+          }
+        ],
+        "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+        "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+        "traceId": "reach-v068"
+      },
+      "verification": "runtime-replay-verified",
+      "verified": true
+    },
+    {
+      "target": 69,
+      "trace": {
+        "durationSeconds": 12.4,
+        "expectedSettledVolume": 69,
+        "initialFrequencyHz": 45,
+        "keyframes": [
+          {
+            "atSeconds": 0,
+            "frequencyHz": 45,
+            "sequence": 0
+          },
+          {
+            "atSeconds": 0.4,
+            "frequencyHz": 683.8061439927299,
+            "sequence": 1
+          }
+        ],
+        "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+        "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+        "traceId": "reach-v069"
+      },
+      "verification": "runtime-replay-verified",
+      "verified": true
+    },
+    {
+      "target": 70,
+      "trace": {
+        "durationSeconds": 12.4,
+        "expectedSettledVolume": 70,
+        "initialFrequencyHz": 45,
+        "keyframes": [
+          {
+            "atSeconds": 0,
+            "frequencyHz": 45,
+            "sequence": 0
+          },
+          {
+            "atSeconds": 0.4,
+            "frequencyHz": 683.8137316090299,
+            "sequence": 1
+          }
+        ],
+        "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+        "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+        "traceId": "reach-v070"
+      },
+      "verification": "runtime-replay-verified",
+      "verified": true
+    },
+    {
+      "target": 71,
+      "trace": {
+        "durationSeconds": 12.4,
+        "expectedSettledVolume": 71,
+        "initialFrequencyHz": 45,
+        "keyframes": [
+          {
+            "atSeconds": 0,
+            "frequencyHz": 45,
+            "sequence": 0
+          },
+          {
+            "atSeconds": 0.4,
+            "frequencyHz": 683.828961719943,
+            "sequence": 1
+          }
+        ],
+        "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+        "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+        "traceId": "reach-v071"
+      },
+      "verification": "runtime-replay-verified",
+      "verified": true
+    },
+    {
+      "target": 72,
+      "trace": {
+        "durationSeconds": 12.4,
+        "expectedSettledVolume": 72,
+        "initialFrequencyHz": 45,
+        "keyframes": [
+          {
+            "atSeconds": 0,
+            "frequencyHz": 45,
+            "sequence": 0
+          },
+          {
+            "atSeconds": 0.4,
+            "frequencyHz": 683.8366045454841,
+            "sequence": 1
+          }
+        ],
+        "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+        "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+        "traceId": "reach-v072"
+      },
+      "verification": "runtime-replay-verified",
+      "verified": true
+    },
+    {
+      "target": 73,
+      "trace": {
+        "durationSeconds": 12.4,
+        "expectedSettledVolume": 73,
+        "initialFrequencyHz": 45,
+        "keyframes": [
+          {
+            "atSeconds": 0,
+            "frequencyHz": 45,
+            "sequence": 0
+          },
+          {
+            "atSeconds": 0.4,
+            "frequencyHz": 683.844266109026,
+            "sequence": 1
+          }
+        ],
+        "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+        "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+        "traceId": "reach-v073"
+      },
+      "verification": "runtime-replay-verified",
+      "verified": true
+    },
+    {
+      "target": 74,
+      "trace": {
+        "durationSeconds": 12.4,
+        "expectedSettledVolume": 74,
+        "initialFrequencyHz": 45,
+        "keyframes": [
+          {
+            "atSeconds": 0,
+            "frequencyHz": 45,
+            "sequence": 0
+          },
+          {
+            "atSeconds": 0.4,
+            "frequencyHz": 683.8596461387306,
+            "sequence": 1
+          }
+        ],
+        "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+        "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+        "traceId": "reach-v074"
+      },
+      "verification": "runtime-replay-verified",
+      "verified": true
+    },
+    {
+      "target": 75,
+      "trace": {
+        "durationSeconds": 12.4,
+        "expectedSettledVolume": 75,
+        "initialFrequencyHz": 45,
+        "keyframes": [
+          {
+            "atSeconds": 0,
+            "frequencyHz": 45,
+            "sequence": 0
+          },
+          {
+            "atSeconds": 0.4,
+            "frequencyHz": 683.8673649555403,
+            "sequence": 1
+          }
+        ],
+        "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+        "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+        "traceId": "reach-v075"
+      },
+      "verification": "runtime-replay-verified",
+      "verified": true
+    },
+    {
+      "target": 76,
+      "trace": {
+        "durationSeconds": 12.4,
+        "expectedSettledVolume": 76,
+        "initialFrequencyHz": 45,
+        "keyframes": [
+          {
+            "atSeconds": 0,
+            "frequencyHz": 45,
+            "sequence": 0
+          },
+          {
+            "atSeconds": 0.4,
+            "frequencyHz": 683.8751032117505,
+            "sequence": 1
+          }
+        ],
+        "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+        "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+        "traceId": "reach-v076"
+      },
+      "verification": "runtime-replay-verified",
+      "verified": true
+    },
+    {
+      "target": 77,
+      "trace": {
+        "durationSeconds": 12.4,
+        "expectedSettledVolume": 77,
+        "initialFrequencyHz": 45,
+        "keyframes": [
+          {
+            "atSeconds": 0,
+            "frequencyHz": 45,
+            "sequence": 0
+          },
+          {
+            "atSeconds": 0.4,
+            "frequencyHz": 683.8906387727034,
+            "sequence": 1
+          }
+        ],
+        "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+        "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+        "traceId": "reach-v077"
+      },
+      "verification": "runtime-replay-verified",
+      "verified": true
+    },
+    {
+      "target": 78,
+      "trace": {
+        "durationSeconds": 12.4,
+        "expectedSettledVolume": 78,
+        "initialFrequencyHz": 45,
+        "keyframes": [
+          {
+            "atSeconds": 0,
+            "frequencyHz": 45,
+            "sequence": 0
+          },
+          {
+            "atSeconds": 0.4,
+            "frequencyHz": 683.8984364494959,
+            "sequence": 1
+          }
+        ],
+        "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+        "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+        "traceId": "reach-v078"
+      },
+      "verification": "runtime-replay-verified",
+      "verified": true
+    },
+    {
+      "target": 79,
+      "trace": {
+        "durationSeconds": 12.4,
+        "expectedSettledVolume": 79,
+        "initialFrequencyHz": 45,
+        "keyframes": [
+          {
+            "atSeconds": 0,
+            "frequencyHz": 45,
+            "sequence": 0
+          },
+          {
+            "atSeconds": 0.4,
+            "frequencyHz": 683.9062543099049,
+            "sequence": 1
+          }
+        ],
+        "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+        "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+        "traceId": "reach-v079"
+      },
+      "verification": "runtime-replay-verified",
+      "verified": true
+    },
+    {
+      "target": 80,
+      "trace": {
+        "durationSeconds": 12.4,
+        "expectedSettledVolume": 80,
+        "initialFrequencyHz": 45,
+        "keyframes": [
+          {
+            "atSeconds": 0,
+            "frequencyHz": 45,
+            "sequence": 0
+          },
+          {
+            "atSeconds": 0.4,
+            "frequencyHz": 683.9219513572391,
+            "sequence": 1
+          }
+        ],
+        "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+        "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+        "traceId": "reach-v080"
+      },
+      "verification": "runtime-replay-verified",
+      "verified": true
+    },
+    {
+      "target": 81,
+      "trace": {
+        "durationSeconds": 12.4,
+        "expectedSettledVolume": 81,
+        "initialFrequencyHz": 45,
+        "keyframes": [
+          {
+            "atSeconds": 0,
+            "frequencyHz": 45,
+            "sequence": 0
+          },
+          {
+            "atSeconds": 0.4,
+            "frequencyHz": 683.9298309394892,
+            "sequence": 1
+          }
+        ],
+        "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+        "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+        "traceId": "reach-v081"
+      },
+      "verification": "runtime-replay-verified",
+      "verified": true
+    },
+    {
+      "target": 82,
+      "trace": {
+        "durationSeconds": 12.4,
+        "expectedSettledVolume": 82,
+        "initialFrequencyHz": 45,
+        "keyframes": [
+          {
+            "atSeconds": 0,
+            "frequencyHz": 45,
+            "sequence": 0
+          },
+          {
+            "atSeconds": 0.4,
+            "frequencyHz": 683.937731496135,
+            "sequence": 1
+          }
+        ],
+        "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+        "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+        "traceId": "reach-v082"
+      },
+      "verification": "runtime-replay-verified",
+      "verified": true
+    },
+    {
+      "target": 83,
+      "trace": {
+        "durationSeconds": 12.4,
+        "expectedSettledVolume": 83,
+        "initialFrequencyHz": 45,
+        "keyframes": [
+          {
+            "atSeconds": 0,
+            "frequencyHz": 45,
+            "sequence": 0
+          },
+          {
+            "atSeconds": 0.4,
+            "frequencyHz": 683.9535963576527,
+            "sequence": 1
+          }
+        ],
+        "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+        "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+        "traceId": "reach-v083"
+      },
+      "verification": "runtime-replay-verified",
+      "verified": true
+    },
+    {
+      "target": 84,
+      "trace": {
+        "durationSeconds": 12.4,
+        "expectedSettledVolume": 84,
+        "initialFrequencyHz": 45,
+        "keyframes": [
+          {
+            "atSeconds": 0,
+            "frequencyHz": 45,
+            "sequence": 0
+          },
+          {
+            "atSeconds": 0.4,
+            "frequencyHz": 683.961561083212,
+            "sequence": 1
+          }
+        ],
+        "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+        "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+        "traceId": "reach-v084"
+      },
+      "verification": "runtime-replay-verified",
+      "verified": true
+    },
+    {
+      "target": 85,
+      "trace": {
+        "durationSeconds": 12.4,
+        "expectedSettledVolume": 85,
+        "initialFrequencyHz": 45,
+        "keyframes": [
+          {
+            "atSeconds": 0,
+            "frequencyHz": 45,
+            "sequence": 0
+          },
+          {
+            "atSeconds": 0.4,
+            "frequencyHz": 683.9695476246886,
+            "sequence": 1
+          }
+        ],
+        "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+        "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+        "traceId": "reach-v085"
+      },
+      "verification": "runtime-replay-verified",
+      "verified": true
+    },
+    {
+      "target": 86,
+      "trace": {
+        "durationSeconds": 12.4,
+        "expectedSettledVolume": 86,
+        "initialFrequencyHz": 45,
+        "keyframes": [
+          {
+            "atSeconds": 0,
+            "frequencyHz": 45,
+            "sequence": 0
+          },
+          {
+            "atSeconds": 0.4,
+            "frequencyHz": 683.9775562009272,
+            "sequence": 1
+          }
+        ],
+        "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+        "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+        "traceId": "reach-v086"
+      },
+      "verification": "runtime-replay-verified",
+      "verified": true
+    },
+    {
+      "target": 87,
+      "trace": {
+        "durationSeconds": 12.4,
+        "expectedSettledVolume": 87,
+        "initialFrequencyHz": 45,
+        "keyframes": [
+          {
+            "atSeconds": 0,
+            "frequencyHz": 45,
+            "sequence": 0
+          },
+          {
+            "atSeconds": 0.4,
+            "frequencyHz": 683.9855870343106,
+            "sequence": 1
+          }
+        ],
+        "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+        "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+        "traceId": "reach-v087"
+      },
+      "verification": "runtime-replay-verified",
+      "verified": true
+    },
+    {
+      "target": 88,
+      "trace": {
+        "durationSeconds": 12.4,
+        "expectedSettledVolume": 88,
+        "initialFrequencyHz": 45,
+        "keyframes": [
+          {
+            "atSeconds": 0,
+            "frequencyHz": 45,
+            "sequence": 0
+          },
+          {
+            "atSeconds": 0.4,
+            "frequencyHz": 683.9936403508418,
+            "sequence": 1
+          }
+        ],
+        "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+        "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+        "traceId": "reach-v088"
+      },
+      "verification": "runtime-replay-verified",
+      "verified": true
+    },
+    {
+      "target": 89,
+      "trace": {
+        "durationSeconds": 12.4,
+        "expectedSettledVolume": 89,
+        "initialFrequencyHz": 45,
+        "keyframes": [
+          {
+            "atSeconds": 0,
+            "frequencyHz": 45,
+            "sequence": 0
+          },
+          {
+            "atSeconds": 0.4,
+            "frequencyHz": 684.0017163802258,
+            "sequence": 1
+          }
+        ],
+        "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+        "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+        "traceId": "reach-v089"
+      },
+      "verification": "runtime-replay-verified",
+      "verified": true
+    },
+    {
+      "target": 90,
+      "trace": {
+        "durationSeconds": 12.4,
+        "expectedSettledVolume": 90,
+        "initialFrequencyHz": 45,
+        "keyframes": [
+          {
+            "atSeconds": 0,
+            "frequencyHz": 45,
+            "sequence": 0
+          },
+          {
+            "atSeconds": 0.4,
+            "frequencyHz": 684.0098153559554,
+            "sequence": 1
+          }
+        ],
+        "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+        "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+        "traceId": "reach-v090"
+      },
+      "verification": "runtime-replay-verified",
+      "verified": true
+    },
+    {
+      "target": 91,
+      "trace": {
+        "durationSeconds": 12.4,
+        "expectedSettledVolume": 91,
+        "initialFrequencyHz": 45,
+        "keyframes": [
+          {
+            "atSeconds": 0,
+            "frequencyHz": 45,
+            "sequence": 0
+          },
+          {
+            "atSeconds": 0.4,
+            "frequencyHz": 684.0179375153994,
+            "sequence": 1
+          }
+        ],
+        "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+        "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+        "traceId": "reach-v091"
+      },
+      "verification": "runtime-replay-verified",
+      "verified": true
+    },
+    {
+      "target": 92,
+      "trace": {
+        "durationSeconds": 12.4,
+        "expectedSettledVolume": 92,
+        "initialFrequencyHz": 45,
+        "keyframes": [
+          {
+            "atSeconds": 0,
+            "frequencyHz": 45,
+            "sequence": 0
+          },
+          {
+            "atSeconds": 0.4,
+            "frequencyHz": 684.0260830998916,
+            "sequence": 1
+          }
+        ],
+        "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+        "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+        "traceId": "reach-v092"
+      },
+      "verification": "runtime-replay-verified",
+      "verified": true
+    },
+    {
+      "target": 93,
+      "trace": {
+        "durationSeconds": 12.4,
+        "expectedSettledVolume": 93,
+        "initialFrequencyHz": 45,
+        "keyframes": [
+          {
+            "atSeconds": 0,
+            "frequencyHz": 45,
+            "sequence": 0
+          },
+          {
+            "atSeconds": 0.4,
+            "frequencyHz": 684.0342523548268,
+            "sequence": 1
+          }
+        ],
+        "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+        "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+        "traceId": "reach-v093"
+      },
+      "verification": "runtime-replay-verified",
+      "verified": true
+    },
+    {
+      "target": 94,
+      "trace": {
+        "durationSeconds": 12.4,
+        "expectedSettledVolume": 94,
+        "initialFrequencyHz": 45,
+        "keyframes": [
+          {
+            "atSeconds": 0,
+            "frequencyHz": 45,
+            "sequence": 0
+          },
+          {
+            "atSeconds": 0.4,
+            "frequencyHz": 684.0424455297539,
+            "sequence": 1
+          }
+        ],
+        "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+        "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+        "traceId": "reach-v094"
+      },
+      "verification": "runtime-replay-verified",
+      "verified": true
+    },
+    {
+      "target": 95,
+      "trace": {
+        "durationSeconds": 12.4,
+        "expectedSettledVolume": 95,
+        "initialFrequencyHz": 45,
+        "keyframes": [
+          {
+            "atSeconds": 0,
+            "frequencyHz": 45,
+            "sequence": 0
+          },
+          {
+            "atSeconds": 0.4,
+            "frequencyHz": 684.0506628784779,
+            "sequence": 1
+          }
+        ],
+        "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+        "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+        "traceId": "reach-v095"
+      },
+      "verification": "runtime-replay-verified",
+      "verified": true
+    },
+    {
+      "target": 96,
+      "trace": {
+        "durationSeconds": 12.4,
+        "expectedSettledVolume": 96,
+        "initialFrequencyHz": 45,
+        "keyframes": [
+          {
+            "atSeconds": 0,
+            "frequencyHz": 45,
+            "sequence": 0
+          },
+          {
+            "atSeconds": 0.4,
+            "frequencyHz": 684.058904659159,
+            "sequence": 1
+          }
+        ],
+        "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+        "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+        "traceId": "reach-v096"
+      },
+      "verification": "runtime-replay-verified",
+      "verified": true
+    },
+    {
+      "target": 97,
+      "trace": {
+        "durationSeconds": 12.4,
+        "expectedSettledVolume": 97,
+        "initialFrequencyHz": 45,
+        "keyframes": [
+          {
+            "atSeconds": 0,
+            "frequencyHz": 45,
+            "sequence": 0
+          },
+          {
+            "atSeconds": 0.4,
+            "frequencyHz": 684.0671711344207,
+            "sequence": 1
+          }
+        ],
+        "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+        "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+        "traceId": "reach-v097"
+      },
+      "verification": "runtime-replay-verified",
+      "verified": true
+    },
+    {
+      "target": 98,
+      "trace": {
+        "durationSeconds": 12.4,
+        "expectedSettledVolume": 98,
+        "initialFrequencyHz": 45,
+        "keyframes": [
+          {
+            "atSeconds": 0,
+            "frequencyHz": 45,
+            "sequence": 0
+          },
+          {
+            "atSeconds": 0.4,
+            "frequencyHz": 684.0754625714569,
+            "sequence": 1
+          }
+        ],
+        "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+        "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+        "traceId": "reach-v098"
+      },
+      "verification": "runtime-replay-verified",
+      "verified": true
+    },
+    {
+      "target": 99,
+      "trace": {
+        "durationSeconds": 12.4,
+        "expectedSettledVolume": 99,
+        "initialFrequencyHz": 45,
+        "keyframes": [
+          {
+            "atSeconds": 0,
+            "frequencyHz": 45,
+            "sequence": 0
+          },
+          {
+            "atSeconds": 0.4,
+            "frequencyHz": 684.08143761211,
+            "sequence": 1
+          }
+        ],
+        "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+        "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+        "traceId": "reach-v099"
+      },
+      "verification": "runtime-replay-verified",
+      "verified": true
+    },
+    {
+      "target": 100,
+      "trace": {
+        "durationSeconds": 12.4,
+        "expectedSettledVolume": 100,
+        "initialFrequencyHz": 45,
+        "keyframes": [
+          {
+            "atSeconds": 0,
+            "frequencyHz": 45,
+            "sequence": 0
+          },
+          {
+            "atSeconds": 0.4,
+            "frequencyHz": 686.3401925199369,
+            "sequence": 1
+          }
+        ],
+        "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+        "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+        "traceId": "reach-v100"
+      },
+      "verification": "runtime-replay-verified",
+      "verified": true
+    }
+  ],
+  "perValueRuntimeExceptionTable": false,
+  "replayVerified": true,
+  "runtimeAlgorithmRevision": "fixed-step-modal-feedback-v3",
+  "runtimeSpecSha256": {
+    "audioSafety": "ec7e0358f7ce0bc16c9295ffc0797be0bbd0b2c3876d7438e85144856cfc00e6",
+    "dial": "bd1fc1e618e82b513b5f0f84b315b7d10eded2c420661eca332c4865f30fc0e0",
+    "feedback": "468a57ee1c93c74dc7d23d6c1584413cc39bd0d54fd90cf26085d8eb3147557f",
+    "uiNVersion": "780e74f5a26d25731ed3b2f6baca2688e640ba40bfb75bb8b00cf3c85367d7a0",
+    "volumeMap": "7fda34e109a98993a818e488aa5e0e81566659e085aec921f1e575822539c90a"
+  },
+  "schemaVersion": "mandelhowl.coverage-report.v1",
+  "staticDistribution": {
+    "extremeFraction": 1,
+    "hundredCount": 1,
+    "intermediateCount": 0,
+    "passed": true,
+    "requiredExtremeFraction": 0.9,
+    "sampleCount": 401,
+    "zeroCount": 400
+  },
+  "traces": [
+    {
+      "durationSeconds": 12.4,
+      "expectedSettledVolume": 0,
+      "initialFrequencyHz": 45,
+      "keyframes": [
+        {
+          "atSeconds": 0,
+          "frequencyHz": 45,
+          "sequence": 0
+        },
+        {
+          "atSeconds": 0.4,
+          "frequencyHz": 45,
+          "sequence": 1
+        }
+      ],
+      "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+      "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+      "traceId": "reach-v000"
+    },
+    {
+      "durationSeconds": 12.4,
+      "expectedSettledVolume": 1,
+      "initialFrequencyHz": 45,
+      "keyframes": [
+        {
+          "atSeconds": 0,
+          "frequencyHz": 45,
+          "sequence": 0
+        },
+        {
+          "atSeconds": 0.4,
+          "frequencyHz": 683.1919784165848,
+          "sequence": 1
+        }
+      ],
+      "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+      "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+      "traceId": "reach-v001"
+    },
+    {
+      "durationSeconds": 12.4,
+      "expectedSettledVolume": 2,
+      "initialFrequencyHz": 45,
+      "keyframes": [
+        {
+          "atSeconds": 0,
+          "frequencyHz": 45,
+          "sequence": 0
+        },
+        {
+          "atSeconds": 0.4,
+          "frequencyHz": 683.2016270774764,
+          "sequence": 1
+        }
+      ],
+      "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+      "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+      "traceId": "reach-v002"
+    },
+    {
+      "durationSeconds": 12.4,
+      "expectedSettledVolume": 3,
+      "initialFrequencyHz": 45,
+      "keyframes": [
+        {
+          "atSeconds": 0,
+          "frequencyHz": 45,
+          "sequence": 0
+        },
+        {
+          "atSeconds": 0.4,
+          "frequencyHz": 683.2080714085478,
+          "sequence": 1
+        }
+      ],
+      "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+      "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+      "traceId": "reach-v003"
+    },
+    {
+      "durationSeconds": 12.4,
+      "expectedSettledVolume": 4,
+      "initialFrequencyHz": 45,
+      "keyframes": [
+        {
+          "atSeconds": 0,
+          "frequencyHz": 45,
+          "sequence": 0
+        },
+        {
+          "atSeconds": 0.4,
+          "frequencyHz": 683.2145253212266,
+          "sequence": 1
+        }
+      ],
+      "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+      "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+      "traceId": "reach-v004"
+    },
+    {
+      "durationSeconds": 12.4,
+      "expectedSettledVolume": 5,
+      "initialFrequencyHz": 45,
+      "keyframes": [
+        {
+          "atSeconds": 0,
+          "frequencyHz": 45,
+          "sequence": 0
+        },
+        {
+          "atSeconds": 0.4,
+          "frequencyHz": 683.2274621318791,
+          "sequence": 1
+        }
+      ],
+      "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+      "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+      "traceId": "reach-v005"
+    },
+    {
+      "durationSeconds": 12.4,
+      "expectedSettledVolume": 6,
+      "initialFrequencyHz": 45,
+      "keyframes": [
+        {
+          "atSeconds": 0,
+          "frequencyHz": 45,
+          "sequence": 0
+        },
+        {
+          "atSeconds": 0.4,
+          "frequencyHz": 683.2339451515343,
+          "sequence": 1
+        }
+      ],
+      "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+      "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+      "traceId": "reach-v006"
+    },
+    {
+      "durationSeconds": 12.4,
+      "expectedSettledVolume": 7,
+      "initialFrequencyHz": 45,
+      "keyframes": [
+        {
+          "atSeconds": 0,
+          "frequencyHz": 45,
+          "sequence": 0
+        },
+        {
+          "atSeconds": 0.4,
+          "frequencyHz": 683.2404379961763,
+          "sequence": 1
+        }
+      ],
+      "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+      "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+      "traceId": "reach-v007"
+    },
+    {
+      "durationSeconds": 12.4,
+      "expectedSettledVolume": 8,
+      "initialFrequencyHz": 45,
+      "keyframes": [
+        {
+          "atSeconds": 0,
+          "frequencyHz": 45,
+          "sequence": 0
+        },
+        {
+          "atSeconds": 0.4,
+          "frequencyHz": 683.2534534103158,
+          "sequence": 1
+        }
+      ],
+      "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+      "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+      "traceId": "reach-v008"
+    },
+    {
+      "durationSeconds": 12.4,
+      "expectedSettledVolume": 9,
+      "initialFrequencyHz": 45,
+      "keyframes": [
+        {
+          "atSeconds": 0,
+          "frequencyHz": 45,
+          "sequence": 0
+        },
+        {
+          "atSeconds": 0.4,
+          "frequencyHz": 683.2599761062875,
+          "sequence": 1
+        }
+      ],
+      "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+      "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+      "traceId": "reach-v009"
+    },
+    {
+      "durationSeconds": 12.4,
+      "expectedSettledVolume": 10,
+      "initialFrequencyHz": 45,
+      "keyframes": [
+        {
+          "atSeconds": 0,
+          "frequencyHz": 45,
+          "sequence": 0
+        },
+        {
+          "atSeconds": 0.4,
+          "frequencyHz": 683.2665088802103,
+          "sequence": 1
+        }
+      ],
+      "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+      "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+      "traceId": "reach-v010"
+    },
+    {
+      "durationSeconds": 12.4,
+      "expectedSettledVolume": 11,
+      "initialFrequencyHz": 45,
+      "keyframes": [
+        {
+          "atSeconds": 0,
+          "frequencyHz": 45,
+          "sequence": 0
+        },
+        {
+          "atSeconds": 0.4,
+          "frequencyHz": 683.2730517968853,
+          "sequence": 1
+        }
+      ],
+      "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+      "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+      "traceId": "reach-v011"
+    },
+    {
+      "durationSeconds": 12.4,
+      "expectedSettledVolume": 12,
+      "initialFrequencyHz": 45,
+      "keyframes": [
+        {
+          "atSeconds": 0,
+          "frequencyHz": 45,
+          "sequence": 0
+        },
+        {
+          "atSeconds": 0.4,
+          "frequencyHz": 683.2796049217552,
+          "sequence": 1
+        }
+      ],
+      "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+      "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+      "traceId": "reach-v012"
+    },
+    {
+      "durationSeconds": 12.4,
+      "expectedSettledVolume": 13,
+      "initialFrequencyHz": 45,
+      "keyframes": [
+        {
+          "atSeconds": 0,
+          "frequencyHz": 45,
+          "sequence": 0
+        },
+        {
+          "atSeconds": 0.4,
+          "frequencyHz": 683.2927420611088,
+          "sequence": 1
+        }
+      ],
+      "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+      "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+      "traceId": "reach-v013"
+    },
+    {
+      "durationSeconds": 12.4,
+      "expectedSettledVolume": 14,
+      "initialFrequencyHz": 45,
+      "keyframes": [
+        {
+          "atSeconds": 0,
+          "frequencyHz": 45,
+          "sequence": 0
+        },
+        {
+          "atSeconds": 0.4,
+          "frequencyHz": 683.2993262097652,
+          "sequence": 1
+        }
+      ],
+      "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+      "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+      "traceId": "reach-v014"
+    },
+    {
+      "durationSeconds": 12.4,
+      "expectedSettledVolume": 15,
+      "initialFrequencyHz": 45,
+      "keyframes": [
+        {
+          "atSeconds": 0,
+          "frequencyHz": 45,
+          "sequence": 0
+        },
+        {
+          "atSeconds": 0.4,
+          "frequencyHz": 683.3059208349803,
+          "sequence": 1
+        }
+      ],
+      "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+      "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+      "traceId": "reach-v015"
+    },
+    {
+      "durationSeconds": 12.4,
+      "expectedSettledVolume": 16,
+      "initialFrequencyHz": 45,
+      "keyframes": [
+        {
+          "atSeconds": 0,
+          "frequencyHz": 45,
+          "sequence": 0
+        },
+        {
+          "atSeconds": 0.4,
+          "frequencyHz": 683.3191417909288,
+          "sequence": 1
+        }
+      ],
+      "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+      "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+      "traceId": "reach-v016"
+    },
+    {
+      "durationSeconds": 12.4,
+      "expectedSettledVolume": 17,
+      "initialFrequencyHz": 45,
+      "keyframes": [
+        {
+          "atSeconds": 0,
+          "frequencyHz": 45,
+          "sequence": 0
+        },
+        {
+          "atSeconds": 0.4,
+          "frequencyHz": 683.3257682613369,
+          "sequence": 1
+        }
+      ],
+      "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+      "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+      "traceId": "reach-v017"
+    },
+    {
+      "durationSeconds": 12.4,
+      "expectedSettledVolume": 18,
+      "initialFrequencyHz": 45,
+      "keyframes": [
+        {
+          "atSeconds": 0,
+          "frequencyHz": 45,
+          "sequence": 0
+        },
+        {
+          "atSeconds": 0.4,
+          "frequencyHz": 683.3324054876734,
+          "sequence": 1
+        }
+      ],
+      "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+      "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+      "traceId": "reach-v018"
+    },
+    {
+      "durationSeconds": 12.4,
+      "expectedSettledVolume": 19,
+      "initialFrequencyHz": 45,
+      "keyframes": [
+        {
+          "atSeconds": 0,
+          "frequencyHz": 45,
+          "sequence": 0
+        },
+        {
+          "atSeconds": 0.4,
+          "frequencyHz": 683.3457124954152,
+          "sequence": 1
+        }
+      ],
+      "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+      "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+      "traceId": "reach-v019"
+    },
+    {
+      "durationSeconds": 12.4,
+      "expectedSettledVolume": 20,
+      "initialFrequencyHz": 45,
+      "keyframes": [
+        {
+          "atSeconds": 0,
+          "frequencyHz": 45,
+          "sequence": 0
+        },
+        {
+          "atSeconds": 0.4,
+          "frequencyHz": 683.3523824223194,
+          "sequence": 1
+        }
+      ],
+      "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+      "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+      "traceId": "reach-v020"
+    },
+    {
+      "durationSeconds": 12.4,
+      "expectedSettledVolume": 21,
+      "initialFrequencyHz": 45,
+      "keyframes": [
+        {
+          "atSeconds": 0,
+          "frequencyHz": 45,
+          "sequence": 0
+        },
+        {
+          "atSeconds": 0.4,
+          "frequencyHz": 683.3590633961705,
+          "sequence": 1
+        }
+      ],
+      "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+      "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+      "traceId": "reach-v021"
+    },
+    {
+      "durationSeconds": 12.4,
+      "expectedSettledVolume": 22,
+      "initialFrequencyHz": 45,
+      "keyframes": [
+        {
+          "atSeconds": 0,
+          "frequencyHz": 45,
+          "sequence": 0
+        },
+        {
+          "atSeconds": 0.4,
+          "frequencyHz": 683.3724587841173,
+          "sequence": 1
+        }
+      ],
+      "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+      "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+      "traceId": "reach-v022"
+    },
+    {
+      "durationSeconds": 12.4,
+      "expectedSettledVolume": 23,
+      "initialFrequencyHz": 45,
+      "keyframes": [
+        {
+          "atSeconds": 0,
+          "frequencyHz": 45,
+          "sequence": 0
+        },
+        {
+          "atSeconds": 0.4,
+          "frequencyHz": 683.3791733498815,
+          "sequence": 1
+        }
+      ],
+      "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+      "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+      "traceId": "reach-v023"
+    },
+    {
+      "durationSeconds": 12.4,
+      "expectedSettledVolume": 24,
+      "initialFrequencyHz": 45,
+      "keyframes": [
+        {
+          "atSeconds": 0,
+          "frequencyHz": 45,
+          "sequence": 0
+        },
+        {
+          "atSeconds": 0.4,
+          "frequencyHz": 683.3858992659536,
+          "sequence": 1
+        }
+      ],
+      "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+      "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+      "traceId": "reach-v024"
+    },
+    {
+      "durationSeconds": 12.4,
+      "expectedSettledVolume": 25,
+      "initialFrequencyHz": 45,
+      "keyframes": [
+        {
+          "atSeconds": 0,
+          "frequencyHz": 45,
+          "sequence": 0
+        },
+        {
+          "atSeconds": 0.4,
+          "frequencyHz": 683.3993854612718,
+          "sequence": 1
+        }
+      ],
+      "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+      "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+      "traceId": "reach-v025"
+    },
+    {
+      "durationSeconds": 12.4,
+      "expectedSettledVolume": 26,
+      "initialFrequencyHz": 45,
+      "keyframes": [
+        {
+          "atSeconds": 0,
+          "frequencyHz": 45,
+          "sequence": 0
+        },
+        {
+          "atSeconds": 0.4,
+          "frequencyHz": 683.4061458987294,
+          "sequence": 1
+        }
+      ],
+      "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+      "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+      "traceId": "reach-v026"
+    },
+    {
+      "durationSeconds": 12.4,
+      "expectedSettledVolume": 27,
+      "initialFrequencyHz": 45,
+      "keyframes": [
+        {
+          "atSeconds": 0,
+          "frequencyHz": 45,
+          "sequence": 0
+        },
+        {
+          "atSeconds": 0.4,
+          "frequencyHz": 683.4129180029445,
+          "sequence": 1
+        }
+      ],
+      "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+      "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+      "traceId": "reach-v027"
+    },
+    {
+      "durationSeconds": 12.4,
+      "expectedSettledVolume": 28,
+      "initialFrequencyHz": 45,
+      "keyframes": [
+        {
+          "atSeconds": 0,
+          "frequencyHz": 45,
+          "sequence": 0
+        },
+        {
+          "atSeconds": 0.4,
+          "frequencyHz": 683.4264975375283,
+          "sequence": 1
+        }
+      ],
+      "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+      "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+      "traceId": "reach-v028"
+    },
+    {
+      "durationSeconds": 12.4,
+      "expectedSettledVolume": 29,
+      "initialFrequencyHz": 45,
+      "keyframes": [
+        {
+          "atSeconds": 0,
+          "frequencyHz": 45,
+          "sequence": 0
+        },
+        {
+          "atSeconds": 0.4,
+          "frequencyHz": 683.433305133055,
+          "sequence": 1
+        }
+      ],
+      "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+      "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+      "traceId": "reach-v029"
+    },
+    {
+      "durationSeconds": 12.4,
+      "expectedSettledVolume": 30,
+      "initialFrequencyHz": 45,
+      "keyframes": [
+        {
+          "atSeconds": 0,
+          "frequencyHz": 45,
+          "sequence": 0
+        },
+        {
+          "atSeconds": 0.4,
+          "frequencyHz": 683.4401247256815,
+          "sequence": 1
+        }
+      ],
+      "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+      "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+      "traceId": "reach-v030"
+    },
+    {
+      "durationSeconds": 12.4,
+      "expectedSettledVolume": 31,
+      "initialFrequencyHz": 45,
+      "keyframes": [
+        {
+          "atSeconds": 0,
+          "frequencyHz": 45,
+          "sequence": 0
+        },
+        {
+          "atSeconds": 0.4,
+          "frequencyHz": 683.4538002425979,
+          "sequence": 1
+        }
+      ],
+      "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+      "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+      "traceId": "reach-v031"
+    },
+    {
+      "durationSeconds": 12.4,
+      "expectedSettledVolume": 32,
+      "initialFrequencyHz": 45,
+      "keyframes": [
+        {
+          "atSeconds": 0,
+          "frequencyHz": 45,
+          "sequence": 0
+        },
+        {
+          "atSeconds": 0.4,
+          "frequencyHz": 683.4606563394264,
+          "sequence": 1
+        }
+      ],
+      "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+      "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+      "traceId": "reach-v032"
+    },
+    {
+      "durationSeconds": 12.4,
+      "expectedSettledVolume": 33,
+      "initialFrequencyHz": 45,
+      "keyframes": [
+        {
+          "atSeconds": 0,
+          "frequencyHz": 45,
+          "sequence": 0
+        },
+        {
+          "atSeconds": 0.4,
+          "frequencyHz": 683.4675247784605,
+          "sequence": 1
+        }
+      ],
+      "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+      "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+      "traceId": "reach-v033"
+    },
+    {
+      "durationSeconds": 12.4,
+      "expectedSettledVolume": 34,
+      "initialFrequencyHz": 45,
+      "keyframes": [
+        {
+          "atSeconds": 0,
+          "frequencyHz": 45,
+          "sequence": 0
+        },
+        {
+          "atSeconds": 0.4,
+          "frequencyHz": 683.4812990389107,
+          "sequence": 1
+        }
+      ],
+      "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+      "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+      "traceId": "reach-v034"
+    },
+    {
+      "durationSeconds": 12.4,
+      "expectedSettledVolume": 35,
+      "initialFrequencyHz": 45,
+      "keyframes": [
+        {
+          "atSeconds": 0,
+          "frequencyHz": 45,
+          "sequence": 0
+        },
+        {
+          "atSeconds": 0.4,
+          "frequencyHz": 683.4882050407159,
+          "sequence": 1
+        }
+      ],
+      "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+      "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+      "traceId": "reach-v035"
+    },
+    {
+      "durationSeconds": 12.4,
+      "expectedSettledVolume": 36,
+      "initialFrequencyHz": 45,
+      "keyframes": [
+        {
+          "atSeconds": 0,
+          "frequencyHz": 45,
+          "sequence": 0
+        },
+        {
+          "atSeconds": 0.4,
+          "frequencyHz": 683.495123745538,
+          "sequence": 1
+        }
+      ],
+      "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+      "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+      "traceId": "reach-v036"
+    },
+    {
+      "durationSeconds": 12.4,
+      "expectedSettledVolume": 37,
+      "initialFrequencyHz": 45,
+      "keyframes": [
+        {
+          "atSeconds": 0,
+          "frequencyHz": 45,
+          "sequence": 0
+        },
+        {
+          "atSeconds": 0.4,
+          "frequencyHz": 683.5020552461503,
+          "sequence": 1
+        }
+      ],
+      "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+      "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+      "traceId": "reach-v037"
+    },
+    {
+      "durationSeconds": 12.4,
+      "expectedSettledVolume": 38,
+      "initialFrequencyHz": 45,
+      "keyframes": [
+        {
+          "atSeconds": 0,
+          "frequencyHz": 45,
+          "sequence": 0
+        },
+        {
+          "atSeconds": 0.4,
+          "frequencyHz": 683.5089996363893,
+          "sequence": 1
+        }
+      ],
+      "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+      "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+      "traceId": "reach-v038"
+    },
+    {
+      "durationSeconds": 12.4,
+      "expectedSettledVolume": 39,
+      "initialFrequencyHz": 45,
+      "keyframes": [
+        {
+          "atSeconds": 0,
+          "frequencyHz": 45,
+          "sequence": 0
+        },
+        {
+          "atSeconds": 0.4,
+          "frequencyHz": 683.5229274665003,
+          "sequence": 1
+        }
+      ],
+      "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+      "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+      "traceId": "reach-v039"
+    },
+    {
+      "durationSeconds": 12.4,
+      "expectedSettledVolume": 40,
+      "initialFrequencyHz": 45,
+      "keyframes": [
+        {
+          "atSeconds": 0,
+          "frequencyHz": 45,
+          "sequence": 0
+        },
+        {
+          "atSeconds": 0.4,
+          "frequencyHz": 683.5299110995074,
+          "sequence": 1
+        }
+      ],
+      "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+      "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+      "traceId": "reach-v040"
+    },
+    {
+      "durationSeconds": 12.4,
+      "expectedSettledVolume": 41,
+      "initialFrequencyHz": 45,
+      "keyframes": [
+        {
+          "atSeconds": 0,
+          "frequencyHz": 45,
+          "sequence": 0
+        },
+        {
+          "atSeconds": 0.4,
+          "frequencyHz": 683.5369080084472,
+          "sequence": 1
+        }
+      ],
+      "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+      "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+      "traceId": "reach-v041"
+    },
+    {
+      "durationSeconds": 12.4,
+      "expectedSettledVolume": 42,
+      "initialFrequencyHz": 45,
+      "keyframes": [
+        {
+          "atSeconds": 0,
+          "frequencyHz": 45,
+          "sequence": 0
+        },
+        {
+          "atSeconds": 0.4,
+          "frequencyHz": 683.5509420529227,
+          "sequence": 1
+        }
+      ],
+      "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+      "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+      "traceId": "reach-v042"
+    },
+    {
+      "durationSeconds": 12.4,
+      "expectedSettledVolume": 43,
+      "initialFrequencyHz": 45,
+      "keyframes": [
+        {
+          "atSeconds": 0,
+          "frequencyHz": 45,
+          "sequence": 0
+        },
+        {
+          "atSeconds": 0.4,
+          "frequencyHz": 683.5579793908016,
+          "sequence": 1
+        }
+      ],
+      "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+      "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+      "traceId": "reach-v043"
+    },
+    {
+      "durationSeconds": 12.4,
+      "expectedSettledVolume": 44,
+      "initialFrequencyHz": 45,
+      "keyframes": [
+        {
+          "atSeconds": 0,
+          "frequencyHz": 45,
+          "sequence": 0
+        },
+        {
+          "atSeconds": 0.4,
+          "frequencyHz": 683.5650304093379,
+          "sequence": 1
+        }
+      ],
+      "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+      "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+      "traceId": "reach-v044"
+    },
+    {
+      "durationSeconds": 12.4,
+      "expectedSettledVolume": 45,
+      "initialFrequencyHz": 45,
+      "keyframes": [
+        {
+          "atSeconds": 0,
+          "frequencyHz": 45,
+          "sequence": 0
+        },
+        {
+          "atSeconds": 0.4,
+          "frequencyHz": 683.5791739064466,
+          "sequence": 1
+        }
+      ],
+      "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+      "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+      "traceId": "reach-v045"
+    },
+    {
+      "durationSeconds": 12.4,
+      "expectedSettledVolume": 46,
+      "initialFrequencyHz": 45,
+      "keyframes": [
+        {
+          "atSeconds": 0,
+          "frequencyHz": 45,
+          "sequence": 0
+        },
+        {
+          "atSeconds": 0.4,
+          "frequencyHz": 683.5862665971963,
+          "sequence": 1
+        }
+      ],
+      "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+      "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+      "traceId": "reach-v046"
+    },
+    {
+      "durationSeconds": 12.4,
+      "expectedSettledVolume": 47,
+      "initialFrequencyHz": 45,
+      "keyframes": [
+        {
+          "atSeconds": 0,
+          "frequencyHz": 45,
+          "sequence": 0
+        },
+        {
+          "atSeconds": 0.4,
+          "frequencyHz": 683.5933733930005,
+          "sequence": 1
+        }
+      ],
+      "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+      "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+      "traceId": "reach-v047"
+    },
+    {
+      "durationSeconds": 12.4,
+      "expectedSettledVolume": 48,
+      "initialFrequencyHz": 45,
+      "keyframes": [
+        {
+          "atSeconds": 0,
+          "frequencyHz": 45,
+          "sequence": 0
+        },
+        {
+          "atSeconds": 0.4,
+          "frequencyHz": 683.6076297384307,
+          "sequence": 1
+        }
+      ],
+      "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+      "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+      "traceId": "reach-v048"
+    },
+    {
+      "durationSeconds": 12.4,
+      "expectedSettledVolume": 49,
+      "initialFrequencyHz": 45,
+      "keyframes": [
+        {
+          "atSeconds": 0,
+          "frequencyHz": 45,
+          "sequence": 0
+        },
+        {
+          "atSeconds": 0.4,
+          "frequencyHz": 683.6147795107506,
+          "sequence": 1
+        }
+      ],
+      "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+      "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+      "traceId": "reach-v049"
+    },
+    {
+      "durationSeconds": 12.4,
+      "expectedSettledVolume": 50,
+      "initialFrequencyHz": 45,
+      "keyframes": [
+        {
+          "atSeconds": 0,
+          "frequencyHz": 45,
+          "sequence": 0
+        },
+        {
+          "atSeconds": 0.4,
+          "frequencyHz": 683.6219438335595,
+          "sequence": 1
+        }
+      ],
+      "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+      "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+      "traceId": "reach-v050"
+    },
+    {
+      "durationSeconds": 12.4,
+      "expectedSettledVolume": 51,
+      "initialFrequencyHz": 45,
+      "keyframes": [
+        {
+          "atSeconds": 0,
+          "frequencyHz": 45,
+          "sequence": 0
+        },
+        {
+          "atSeconds": 0.4,
+          "frequencyHz": 683.6363165913451,
+          "sequence": 1
+        }
+      ],
+      "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+      "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+      "traceId": "reach-v051"
+    },
+    {
+      "durationSeconds": 12.4,
+      "expectedSettledVolume": 52,
+      "initialFrequencyHz": 45,
+      "keyframes": [
+        {
+          "atSeconds": 0,
+          "frequencyHz": 45,
+          "sequence": 0
+        },
+        {
+          "atSeconds": 0.4,
+          "frequencyHz": 683.6435252602771,
+          "sequence": 1
+        }
+      ],
+      "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+      "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+      "traceId": "reach-v052"
+    },
+    {
+      "durationSeconds": 12.4,
+      "expectedSettledVolume": 53,
+      "initialFrequencyHz": 45,
+      "keyframes": [
+        {
+          "atSeconds": 0,
+          "frequencyHz": 45,
+          "sequence": 0
+        },
+        {
+          "atSeconds": 0.4,
+          "frequencyHz": 683.6507489476592,
+          "sequence": 1
+        }
+      ],
+      "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+      "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+      "traceId": "reach-v053"
+    },
+    {
+      "durationSeconds": 12.4,
+      "expectedSettledVolume": 54,
+      "initialFrequencyHz": 45,
+      "keyframes": [
+        {
+          "atSeconds": 0,
+          "frequencyHz": 45,
+          "sequence": 0
+        },
+        {
+          "atSeconds": 0.4,
+          "frequencyHz": 683.6652418620997,
+          "sequence": 1
+        }
+      ],
+      "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+      "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+      "traceId": "reach-v054"
+    },
+    {
+      "durationSeconds": 12.4,
+      "expectedSettledVolume": 55,
+      "initialFrequencyHz": 45,
+      "keyframes": [
+        {
+          "atSeconds": 0,
+          "frequencyHz": 45,
+          "sequence": 0
+        },
+        {
+          "atSeconds": 0.4,
+          "frequencyHz": 683.6725113351877,
+          "sequence": 1
+        }
+      ],
+      "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+      "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+      "traceId": "reach-v055"
+    },
+    {
+      "durationSeconds": 12.4,
+      "expectedSettledVolume": 56,
+      "initialFrequencyHz": 45,
+      "keyframes": [
+        {
+          "atSeconds": 0,
+          "frequencyHz": 45,
+          "sequence": 0
+        },
+        {
+          "atSeconds": 0.4,
+          "frequencyHz": 683.6797963188412,
+          "sequence": 1
+        }
+      ],
+      "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+      "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+      "traceId": "reach-v056"
+    },
+    {
+      "durationSeconds": 12.4,
+      "expectedSettledVolume": 57,
+      "initialFrequencyHz": 45,
+      "keyframes": [
+        {
+          "atSeconds": 0,
+          "frequencyHz": 45,
+          "sequence": 0
+        },
+        {
+          "atSeconds": 0.4,
+          "frequencyHz": 683.6944133275254,
+          "sequence": 1
+        }
+      ],
+      "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+      "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+      "traceId": "reach-v057"
+    },
+    {
+      "durationSeconds": 12.4,
+      "expectedSettledVolume": 58,
+      "initialFrequencyHz": 45,
+      "keyframes": [
+        {
+          "atSeconds": 0,
+          "frequencyHz": 45,
+          "sequence": 0
+        },
+        {
+          "atSeconds": 0.4,
+          "frequencyHz": 683.7017456115511,
+          "sequence": 1
+        }
+      ],
+      "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+      "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+      "traceId": "reach-v058"
+    },
+    {
+      "durationSeconds": 12.4,
+      "expectedSettledVolume": 59,
+      "initialFrequencyHz": 45,
+      "keyframes": [
+        {
+          "atSeconds": 0,
+          "frequencyHz": 45,
+          "sequence": 0
+        },
+        {
+          "atSeconds": 0.4,
+          "frequencyHz": 683.7090939241928,
+          "sequence": 1
+        }
+      ],
+      "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+      "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+      "traceId": "reach-v059"
+    },
+    {
+      "durationSeconds": 12.4,
+      "expectedSettledVolume": 60,
+      "initialFrequencyHz": 45,
+      "keyframes": [
+        {
+          "atSeconds": 0,
+          "frequencyHz": 45,
+          "sequence": 0
+        },
+        {
+          "atSeconds": 0.4,
+          "frequencyHz": 683.7164583992403,
+          "sequence": 1
+        }
+      ],
+      "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+      "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+      "traceId": "reach-v060"
+    },
+    {
+      "durationSeconds": 12.4,
+      "expectedSettledVolume": 61,
+      "initialFrequencyHz": 45,
+      "keyframes": [
+        {
+          "atSeconds": 0,
+          "frequencyHz": 45,
+          "sequence": 0
+        },
+        {
+          "atSeconds": 0.4,
+          "frequencyHz": 683.7238391722583,
+          "sequence": 1
+        }
+      ],
+      "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+      "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+      "traceId": "reach-v061"
+    },
+    {
+      "durationSeconds": 12.4,
+      "expectedSettledVolume": 62,
+      "initialFrequencyHz": 45,
+      "keyframes": [
+        {
+          "atSeconds": 0,
+          "frequencyHz": 45,
+          "sequence": 0
+        },
+        {
+          "atSeconds": 0.4,
+          "frequencyHz": 683.7386501635347,
+          "sequence": 1
+        }
+      ],
+      "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+      "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+      "traceId": "reach-v062"
+    },
+    {
+      "durationSeconds": 12.4,
+      "expectedSettledVolume": 63,
+      "initialFrequencyHz": 45,
+      "keyframes": [
+        {
+          "atSeconds": 0,
+          "frequencyHz": 45,
+          "sequence": 0
+        },
+        {
+          "atSeconds": 0.4,
+          "frequencyHz": 683.7460806620963,
+          "sequence": 1
+        }
+      ],
+      "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+      "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+      "traceId": "reach-v063"
+    },
+    {
+      "durationSeconds": 12.4,
+      "expectedSettledVolume": 64,
+      "initialFrequencyHz": 45,
+      "keyframes": [
+        {
+          "atSeconds": 0,
+          "frequencyHz": 45,
+          "sequence": 0
+        },
+        {
+          "atSeconds": 0.4,
+          "frequencyHz": 683.7535280193049,
+          "sequence": 1
+        }
+      ],
+      "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+      "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+      "traceId": "reach-v064"
+    },
+    {
+      "durationSeconds": 12.4,
+      "expectedSettledVolume": 65,
+      "initialFrequencyHz": 45,
+      "keyframes": [
+        {
+          "atSeconds": 0,
+          "frequencyHz": 45,
+          "sequence": 0
+        },
+        {
+          "atSeconds": 0.4,
+          "frequencyHz": 683.768473891447,
+          "sequence": 1
+        }
+      ],
+      "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+      "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+      "traceId": "reach-v065"
+    },
+    {
+      "durationSeconds": 12.4,
+      "expectedSettledVolume": 66,
+      "initialFrequencyHz": 45,
+      "keyframes": [
+        {
+          "atSeconds": 0,
+          "frequencyHz": 45,
+          "sequence": 0
+        },
+        {
+          "atSeconds": 0.4,
+          "frequencyHz": 683.7759727022749,
+          "sequence": 1
+        }
+      ],
+      "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+      "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+      "traceId": "reach-v066"
+    },
+    {
+      "durationSeconds": 12.4,
+      "expectedSettledVolume": 67,
+      "initialFrequencyHz": 45,
+      "keyframes": [
+        {
+          "atSeconds": 0,
+          "frequencyHz": 45,
+          "sequence": 0
+        },
+        {
+          "atSeconds": 0.4,
+          "frequencyHz": 683.7834889636154,
+          "sequence": 1
+        }
+      ],
+      "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+      "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+      "traceId": "reach-v067"
+    },
+    {
+      "durationSeconds": 12.4,
+      "expectedSettledVolume": 68,
+      "initialFrequencyHz": 45,
+      "keyframes": [
+        {
+          "atSeconds": 0,
+          "frequencyHz": 45,
+          "sequence": 0
+        },
+        {
+          "atSeconds": 0.4,
+          "frequencyHz": 683.7985744524799,
+          "sequence": 1
+        }
+      ],
+      "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+      "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+      "traceId": "reach-v068"
+    },
+    {
+      "durationSeconds": 12.4,
+      "expectedSettledVolume": 69,
+      "initialFrequencyHz": 45,
+      "keyframes": [
+        {
+          "atSeconds": 0,
+          "frequencyHz": 45,
+          "sequence": 0
+        },
+        {
+          "atSeconds": 0.4,
+          "frequencyHz": 683.8061439927299,
+          "sequence": 1
+        }
+      ],
+      "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+      "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+      "traceId": "reach-v069"
+    },
+    {
+      "durationSeconds": 12.4,
+      "expectedSettledVolume": 70,
+      "initialFrequencyHz": 45,
+      "keyframes": [
+        {
+          "atSeconds": 0,
+          "frequencyHz": 45,
+          "sequence": 0
+        },
+        {
+          "atSeconds": 0.4,
+          "frequencyHz": 683.8137316090299,
+          "sequence": 1
+        }
+      ],
+      "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+      "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+      "traceId": "reach-v070"
+    },
+    {
+      "durationSeconds": 12.4,
+      "expectedSettledVolume": 71,
+      "initialFrequencyHz": 45,
+      "keyframes": [
+        {
+          "atSeconds": 0,
+          "frequencyHz": 45,
+          "sequence": 0
+        },
+        {
+          "atSeconds": 0.4,
+          "frequencyHz": 683.828961719943,
+          "sequence": 1
+        }
+      ],
+      "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+      "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+      "traceId": "reach-v071"
+    },
+    {
+      "durationSeconds": 12.4,
+      "expectedSettledVolume": 72,
+      "initialFrequencyHz": 45,
+      "keyframes": [
+        {
+          "atSeconds": 0,
+          "frequencyHz": 45,
+          "sequence": 0
+        },
+        {
+          "atSeconds": 0.4,
+          "frequencyHz": 683.8366045454841,
+          "sequence": 1
+        }
+      ],
+      "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+      "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+      "traceId": "reach-v072"
+    },
+    {
+      "durationSeconds": 12.4,
+      "expectedSettledVolume": 73,
+      "initialFrequencyHz": 45,
+      "keyframes": [
+        {
+          "atSeconds": 0,
+          "frequencyHz": 45,
+          "sequence": 0
+        },
+        {
+          "atSeconds": 0.4,
+          "frequencyHz": 683.844266109026,
+          "sequence": 1
+        }
+      ],
+      "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+      "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+      "traceId": "reach-v073"
+    },
+    {
+      "durationSeconds": 12.4,
+      "expectedSettledVolume": 74,
+      "initialFrequencyHz": 45,
+      "keyframes": [
+        {
+          "atSeconds": 0,
+          "frequencyHz": 45,
+          "sequence": 0
+        },
+        {
+          "atSeconds": 0.4,
+          "frequencyHz": 683.8596461387306,
+          "sequence": 1
+        }
+      ],
+      "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+      "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+      "traceId": "reach-v074"
+    },
+    {
+      "durationSeconds": 12.4,
+      "expectedSettledVolume": 75,
+      "initialFrequencyHz": 45,
+      "keyframes": [
+        {
+          "atSeconds": 0,
+          "frequencyHz": 45,
+          "sequence": 0
+        },
+        {
+          "atSeconds": 0.4,
+          "frequencyHz": 683.8673649555403,
+          "sequence": 1
+        }
+      ],
+      "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+      "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+      "traceId": "reach-v075"
+    },
+    {
+      "durationSeconds": 12.4,
+      "expectedSettledVolume": 76,
+      "initialFrequencyHz": 45,
+      "keyframes": [
+        {
+          "atSeconds": 0,
+          "frequencyHz": 45,
+          "sequence": 0
+        },
+        {
+          "atSeconds": 0.4,
+          "frequencyHz": 683.8751032117505,
+          "sequence": 1
+        }
+      ],
+      "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+      "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+      "traceId": "reach-v076"
+    },
+    {
+      "durationSeconds": 12.4,
+      "expectedSettledVolume": 77,
+      "initialFrequencyHz": 45,
+      "keyframes": [
+        {
+          "atSeconds": 0,
+          "frequencyHz": 45,
+          "sequence": 0
+        },
+        {
+          "atSeconds": 0.4,
+          "frequencyHz": 683.8906387727034,
+          "sequence": 1
+        }
+      ],
+      "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+      "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+      "traceId": "reach-v077"
+    },
+    {
+      "durationSeconds": 12.4,
+      "expectedSettledVolume": 78,
+      "initialFrequencyHz": 45,
+      "keyframes": [
+        {
+          "atSeconds": 0,
+          "frequencyHz": 45,
+          "sequence": 0
+        },
+        {
+          "atSeconds": 0.4,
+          "frequencyHz": 683.8984364494959,
+          "sequence": 1
+        }
+      ],
+      "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+      "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+      "traceId": "reach-v078"
+    },
+    {
+      "durationSeconds": 12.4,
+      "expectedSettledVolume": 79,
+      "initialFrequencyHz": 45,
+      "keyframes": [
+        {
+          "atSeconds": 0,
+          "frequencyHz": 45,
+          "sequence": 0
+        },
+        {
+          "atSeconds": 0.4,
+          "frequencyHz": 683.9062543099049,
+          "sequence": 1
+        }
+      ],
+      "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+      "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+      "traceId": "reach-v079"
+    },
+    {
+      "durationSeconds": 12.4,
+      "expectedSettledVolume": 80,
+      "initialFrequencyHz": 45,
+      "keyframes": [
+        {
+          "atSeconds": 0,
+          "frequencyHz": 45,
+          "sequence": 0
+        },
+        {
+          "atSeconds": 0.4,
+          "frequencyHz": 683.9219513572391,
+          "sequence": 1
+        }
+      ],
+      "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+      "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+      "traceId": "reach-v080"
+    },
+    {
+      "durationSeconds": 12.4,
+      "expectedSettledVolume": 81,
+      "initialFrequencyHz": 45,
+      "keyframes": [
+        {
+          "atSeconds": 0,
+          "frequencyHz": 45,
+          "sequence": 0
+        },
+        {
+          "atSeconds": 0.4,
+          "frequencyHz": 683.9298309394892,
+          "sequence": 1
+        }
+      ],
+      "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+      "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+      "traceId": "reach-v081"
+    },
+    {
+      "durationSeconds": 12.4,
+      "expectedSettledVolume": 82,
+      "initialFrequencyHz": 45,
+      "keyframes": [
+        {
+          "atSeconds": 0,
+          "frequencyHz": 45,
+          "sequence": 0
+        },
+        {
+          "atSeconds": 0.4,
+          "frequencyHz": 683.937731496135,
+          "sequence": 1
+        }
+      ],
+      "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+      "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+      "traceId": "reach-v082"
+    },
+    {
+      "durationSeconds": 12.4,
+      "expectedSettledVolume": 83,
+      "initialFrequencyHz": 45,
+      "keyframes": [
+        {
+          "atSeconds": 0,
+          "frequencyHz": 45,
+          "sequence": 0
+        },
+        {
+          "atSeconds": 0.4,
+          "frequencyHz": 683.9535963576527,
+          "sequence": 1
+        }
+      ],
+      "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+      "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+      "traceId": "reach-v083"
+    },
+    {
+      "durationSeconds": 12.4,
+      "expectedSettledVolume": 84,
+      "initialFrequencyHz": 45,
+      "keyframes": [
+        {
+          "atSeconds": 0,
+          "frequencyHz": 45,
+          "sequence": 0
+        },
+        {
+          "atSeconds": 0.4,
+          "frequencyHz": 683.961561083212,
+          "sequence": 1
+        }
+      ],
+      "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+      "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+      "traceId": "reach-v084"
+    },
+    {
+      "durationSeconds": 12.4,
+      "expectedSettledVolume": 85,
+      "initialFrequencyHz": 45,
+      "keyframes": [
+        {
+          "atSeconds": 0,
+          "frequencyHz": 45,
+          "sequence": 0
+        },
+        {
+          "atSeconds": 0.4,
+          "frequencyHz": 683.9695476246886,
+          "sequence": 1
+        }
+      ],
+      "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+      "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+      "traceId": "reach-v085"
+    },
+    {
+      "durationSeconds": 12.4,
+      "expectedSettledVolume": 86,
+      "initialFrequencyHz": 45,
+      "keyframes": [
+        {
+          "atSeconds": 0,
+          "frequencyHz": 45,
+          "sequence": 0
+        },
+        {
+          "atSeconds": 0.4,
+          "frequencyHz": 683.9775562009272,
+          "sequence": 1
+        }
+      ],
+      "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+      "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+      "traceId": "reach-v086"
+    },
+    {
+      "durationSeconds": 12.4,
+      "expectedSettledVolume": 87,
+      "initialFrequencyHz": 45,
+      "keyframes": [
+        {
+          "atSeconds": 0,
+          "frequencyHz": 45,
+          "sequence": 0
+        },
+        {
+          "atSeconds": 0.4,
+          "frequencyHz": 683.9855870343106,
+          "sequence": 1
+        }
+      ],
+      "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+      "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+      "traceId": "reach-v087"
+    },
+    {
+      "durationSeconds": 12.4,
+      "expectedSettledVolume": 88,
+      "initialFrequencyHz": 45,
+      "keyframes": [
+        {
+          "atSeconds": 0,
+          "frequencyHz": 45,
+          "sequence": 0
+        },
+        {
+          "atSeconds": 0.4,
+          "frequencyHz": 683.9936403508418,
+          "sequence": 1
+        }
+      ],
+      "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+      "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+      "traceId": "reach-v088"
+    },
+    {
+      "durationSeconds": 12.4,
+      "expectedSettledVolume": 89,
+      "initialFrequencyHz": 45,
+      "keyframes": [
+        {
+          "atSeconds": 0,
+          "frequencyHz": 45,
+          "sequence": 0
+        },
+        {
+          "atSeconds": 0.4,
+          "frequencyHz": 684.0017163802258,
+          "sequence": 1
+        }
+      ],
+      "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+      "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+      "traceId": "reach-v089"
+    },
+    {
+      "durationSeconds": 12.4,
+      "expectedSettledVolume": 90,
+      "initialFrequencyHz": 45,
+      "keyframes": [
+        {
+          "atSeconds": 0,
+          "frequencyHz": 45,
+          "sequence": 0
+        },
+        {
+          "atSeconds": 0.4,
+          "frequencyHz": 684.0098153559554,
+          "sequence": 1
+        }
+      ],
+      "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+      "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+      "traceId": "reach-v090"
+    },
+    {
+      "durationSeconds": 12.4,
+      "expectedSettledVolume": 91,
+      "initialFrequencyHz": 45,
+      "keyframes": [
+        {
+          "atSeconds": 0,
+          "frequencyHz": 45,
+          "sequence": 0
+        },
+        {
+          "atSeconds": 0.4,
+          "frequencyHz": 684.0179375153994,
+          "sequence": 1
+        }
+      ],
+      "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+      "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+      "traceId": "reach-v091"
+    },
+    {
+      "durationSeconds": 12.4,
+      "expectedSettledVolume": 92,
+      "initialFrequencyHz": 45,
+      "keyframes": [
+        {
+          "atSeconds": 0,
+          "frequencyHz": 45,
+          "sequence": 0
+        },
+        {
+          "atSeconds": 0.4,
+          "frequencyHz": 684.0260830998916,
+          "sequence": 1
+        }
+      ],
+      "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+      "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+      "traceId": "reach-v092"
+    },
+    {
+      "durationSeconds": 12.4,
+      "expectedSettledVolume": 93,
+      "initialFrequencyHz": 45,
+      "keyframes": [
+        {
+          "atSeconds": 0,
+          "frequencyHz": 45,
+          "sequence": 0
+        },
+        {
+          "atSeconds": 0.4,
+          "frequencyHz": 684.0342523548268,
+          "sequence": 1
+        }
+      ],
+      "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+      "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+      "traceId": "reach-v093"
+    },
+    {
+      "durationSeconds": 12.4,
+      "expectedSettledVolume": 94,
+      "initialFrequencyHz": 45,
+      "keyframes": [
+        {
+          "atSeconds": 0,
+          "frequencyHz": 45,
+          "sequence": 0
+        },
+        {
+          "atSeconds": 0.4,
+          "frequencyHz": 684.0424455297539,
+          "sequence": 1
+        }
+      ],
+      "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+      "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+      "traceId": "reach-v094"
+    },
+    {
+      "durationSeconds": 12.4,
+      "expectedSettledVolume": 95,
+      "initialFrequencyHz": 45,
+      "keyframes": [
+        {
+          "atSeconds": 0,
+          "frequencyHz": 45,
+          "sequence": 0
+        },
+        {
+          "atSeconds": 0.4,
+          "frequencyHz": 684.0506628784779,
+          "sequence": 1
+        }
+      ],
+      "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+      "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+      "traceId": "reach-v095"
+    },
+    {
+      "durationSeconds": 12.4,
+      "expectedSettledVolume": 96,
+      "initialFrequencyHz": 45,
+      "keyframes": [
+        {
+          "atSeconds": 0,
+          "frequencyHz": 45,
+          "sequence": 0
+        },
+        {
+          "atSeconds": 0.4,
+          "frequencyHz": 684.058904659159,
+          "sequence": 1
+        }
+      ],
+      "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+      "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+      "traceId": "reach-v096"
+    },
+    {
+      "durationSeconds": 12.4,
+      "expectedSettledVolume": 97,
+      "initialFrequencyHz": 45,
+      "keyframes": [
+        {
+          "atSeconds": 0,
+          "frequencyHz": 45,
+          "sequence": 0
+        },
+        {
+          "atSeconds": 0.4,
+          "frequencyHz": 684.0671711344207,
+          "sequence": 1
+        }
+      ],
+      "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+      "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+      "traceId": "reach-v097"
+    },
+    {
+      "durationSeconds": 12.4,
+      "expectedSettledVolume": 98,
+      "initialFrequencyHz": 45,
+      "keyframes": [
+        {
+          "atSeconds": 0,
+          "frequencyHz": 45,
+          "sequence": 0
+        },
+        {
+          "atSeconds": 0.4,
+          "frequencyHz": 684.0754625714569,
+          "sequence": 1
+        }
+      ],
+      "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+      "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+      "traceId": "reach-v098"
+    },
+    {
+      "durationSeconds": 12.4,
+      "expectedSettledVolume": 99,
+      "initialFrequencyHz": 45,
+      "keyframes": [
+        {
+          "atSeconds": 0,
+          "frequencyHz": 45,
+          "sequence": 0
+        },
+        {
+          "atSeconds": 0.4,
+          "frequencyHz": 684.08143761211,
+          "sequence": 1
+        }
+      ],
+      "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+      "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+      "traceId": "reach-v099"
+    },
+    {
+      "durationSeconds": 12.4,
+      "expectedSettledVolume": 100,
+      "initialFrequencyHz": 45,
+      "keyframes": [
+        {
+          "atSeconds": 0,
+          "frequencyHz": 45,
+          "sequence": 0
+        },
+        {
+          "atSeconds": 0.4,
+          "frequencyHz": 686.3401925199369,
+          "sequence": 1
+        }
+      ],
+      "modalModelId": "sha256:639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28",
+      "schemaVersion": "mandelhowl.resonance-trajectory-trace.v1",
+      "traceId": "reach-v100"
+    }
+  ],
+  "verificationStatus": "runtime-replay-verified"
+}

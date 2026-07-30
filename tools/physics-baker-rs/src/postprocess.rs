@@ -5,7 +5,7 @@ use crate::field::MaterialField;
 use crate::json;
 use crate::json::Value;
 use crate::ktx2::write_ktx2_array;
-use crate::solver::{Mode, SolveResult, evaluate_mode};
+use crate::solver::{Mode, RadialDof, SolveResult, evaluate_mode};
 use crate::spec::PlateSpec;
 
 #[derive(Debug, Clone)]
@@ -21,7 +21,8 @@ pub struct RuntimeMode {
     pub radiation_efficiency: f64,
     pub phase_reference_rad: f64,
     pub sign_reference: &'static str,
-    pub dominant_radial_order: usize,
+    pub dominant_radial_node_index: usize,
+    pub dominant_radial_dof: RadialDof,
     pub dominant_angular_order: usize,
     pub dominant_symmetry: String,
 }
@@ -44,7 +45,7 @@ pub fn postprocess(
     result: &SolveResult,
     texture_size: usize,
 ) -> Result<PostprocessedDataset, String> {
-    let modes = normalized_runtime_modes(&result.modes)?;
+    let modes = normalized_runtime_modes(&result.modes, algorithm)?;
     let modes_binary = write_modes_binary(&modes)?;
     let (response_binary, response_metadata) = write_response_binary(
         &modes,
@@ -66,7 +67,15 @@ pub fn postprocess(
     })
 }
 
-fn normalized_runtime_modes(modes: &[Mode]) -> Result<Vec<RuntimeMode>, String> {
+fn quantize_runtime_scalar(value: f64, quantum: f64) -> f64 {
+    let ticks = (value / quantum).round_ties_even();
+    if ticks == 0.0 { 0.0 } else { ticks * quantum }
+}
+
+fn normalized_runtime_modes(
+    modes: &[Mode],
+    algorithm: &Algorithm,
+) -> Result<Vec<RuntimeMode>, String> {
     if modes.is_empty() {
         return Err("postprocess requires at least one mode".to_owned());
     }
@@ -88,21 +97,35 @@ fn normalized_runtime_modes(modes: &[Mode]) -> Result<Vec<RuntimeMode>, String> 
     Ok(modes
         .iter()
         .enumerate()
-        .map(|(layer, mode)| RuntimeMode {
-            mode_id: format!("mode-{:03}", mode.ordinal),
-            ordinal: mode.ordinal,
-            texture_layer: layer,
-            natural_frequency_hz: mode.frequency_hz,
-            angular_frequency_rad_per_s: mode.angular_frequency_rad_per_s,
-            damping_ratio: mode.damping_ratio,
-            actuator_coupling: mode.actuator_coupling_raw / actuator_scale,
-            microphone_coupling: mode.microphone_coupling_raw / microphone_scale,
-            radiation_efficiency: (mode.radiation_efficiency_raw / radiation_scale).clamp(0.0, 1.0),
-            phase_reference_rad: 0.0,
-            sign_reference: mode.sign_reference,
-            dominant_radial_order: mode.dominant_radial_order,
-            dominant_angular_order: mode.dominant_angular_order,
-            dominant_symmetry: mode.dominant_symmetry.as_str().to_owned(),
+        .map(|(layer, mode)| {
+            let frequency_hz =
+                quantize_runtime_scalar(mode.frequency_hz, algorithm.runtime_frequency_quantum_hz);
+            RuntimeMode {
+                mode_id: format!("mode-{:03}", mode.ordinal),
+                ordinal: mode.ordinal,
+                texture_layer: layer,
+                natural_frequency_hz: frequency_hz,
+                angular_frequency_rad_per_s: frequency_hz * std::f64::consts::TAU,
+                damping_ratio: mode.damping_ratio,
+                actuator_coupling: quantize_runtime_scalar(
+                    mode.actuator_coupling_raw / actuator_scale,
+                    algorithm.runtime_coupling_quantum,
+                ),
+                microphone_coupling: quantize_runtime_scalar(
+                    mode.microphone_coupling_raw / microphone_scale,
+                    algorithm.runtime_coupling_quantum,
+                ),
+                radiation_efficiency: quantize_runtime_scalar(
+                    (mode.radiation_efficiency_raw / radiation_scale).clamp(0.0, 1.0),
+                    algorithm.runtime_coupling_quantum,
+                ),
+                phase_reference_rad: 0.0,
+                sign_reference: mode.sign_reference,
+                dominant_radial_node_index: mode.dominant_radial_node_index,
+                dominant_radial_dof: mode.dominant_radial_dof,
+                dominant_angular_order: mode.dominant_angular_order,
+                dominant_symmetry: mode.dominant_symmetry.as_str().to_owned(),
+            }
         })
         .collect())
 }
@@ -244,7 +267,7 @@ fn shape_grid(
             let is_valid = hub < radial && radial <= radius;
             valid.push(is_valid);
             values.push(if is_valid {
-                evaluate_mode(&mode.coefficients, &result.basis, x_m, y_m, hub, radius)
+                evaluate_mode(&mode.coefficients, &result.basis, x_m, y_m, hub, radius)?
             } else {
                 0.0
             });
@@ -425,7 +448,7 @@ fn build_textures(
                 finite_difference_frequency(spec, algorithm, field, &values, &valid, size)?;
             fd_checks.push(json!({
                 "modeId": format!("mode-{:03}", mode.ordinal),
-                "rayleighRitzFrequencyHz": mode.frequency_hz,
+                "finiteStripFrequencyHz": mode.frequency_hz,
                 "finiteDifferenceRayleighFrequencyHz": reference,
                 "relativeDifference": (reference - mode.frequency_hz).abs() / mode.frequency_hz,
             }));
@@ -433,47 +456,58 @@ fn build_textures(
     }
     let layers = result.modes.len();
     let mut textures = BTreeMap::new();
-    textures.insert(
-        "signed-displacement".to_owned(),
-        write_ktx2_array(size, size, layers, 1, &displacement)?,
-    );
-    textures.insert(
-        "normal".to_owned(),
-        write_ktx2_array(size, size, layers, 2, &normal)?,
-    );
-    textures.insert(
-        "nodal-mask".to_owned(),
-        write_ktx2_array(size, size, layers, 1, &nodal)?,
-    );
-    textures.insert(
-        "sand-density".to_owned(),
-        write_ktx2_array(size, size, layers, 1, &sand)?,
-    );
     let mut metadata = BTreeMap::new();
-    for kind in textures.keys() {
-        let channels = if kind == "normal" { 2 } else { 1 };
-        metadata.insert(
-            kind.clone(),
-            json!({
-                "widthPx": size,
-                "heightPx": size,
-                "layers": layers,
-                "channels": channels,
-                "vkFormat": if channels == 2 { "VK_FORMAT_R8G8_UNORM" } else { "VK_FORMAT_R8_UNORM" },
-                "supercompression": "none",
-                "orientation": "ru",
-                "uvOrigin": "negative-x-negative-y",
-                "quantization": if kind == "signed-displacement" {
-                    "signed [-1,1] mapped to [0,255]"
-                } else {
-                    "linear UNORM"
-                },
-            }),
-        );
+    for (kind, image_data, channels) in [
+        ("signed-displacement", displacement.as_slice(), 1_usize),
+        ("normal", normal.as_slice(), 2_usize),
+        ("nodal-mask", nodal.as_slice(), 1_usize),
+        ("sand-density", sand.as_slice(), 1_usize),
+    ] {
+        let layer_stride = size
+            .checked_mul(size)
+            .and_then(|pixels| pixels.checked_mul(channels))
+            .ok_or_else(|| "texture shard layer stride overflows".to_owned())?;
+        for first_layer in (0..layers).step_by(algorithm.texture_layers_per_shard) {
+            let shard_layers = algorithm.texture_layers_per_shard.min(layers - first_layer);
+            let last_layer = first_layer + shard_layers - 1;
+            let shard_key = format!("{kind}-{first_layer:02}-{last_layer:02}");
+            let start = first_layer
+                .checked_mul(layer_stride)
+                .ok_or_else(|| "texture shard offset overflows".to_owned())?;
+            let end = (first_layer + shard_layers)
+                .checked_mul(layer_stride)
+                .ok_or_else(|| "texture shard range overflows".to_owned())?;
+            textures.insert(
+                shard_key.clone(),
+                write_ktx2_array(size, size, shard_layers, channels, &image_data[start..end])?,
+            );
+            metadata.insert(
+                shard_key,
+                json!({
+                    "kind": kind,
+                    "firstLayer": first_layer,
+                    "lastLayer": last_layer,
+                    "widthPx": size,
+                    "heightPx": size,
+                    "layers": shard_layers,
+                    "channels": channels,
+                    "vkFormat": if channels == 2 { "VK_FORMAT_R8G8_UNORM" } else { "VK_FORMAT_R8_UNORM" },
+                    "supercompression": "KTX2_ZLIB",
+                    "supercompressionScheme": 3,
+                    "orientation": "ru",
+                    "uvOrigin": "negative-x-negative-y",
+                    "quantization": if kind == "signed-displacement" {
+                        "signed [-1,1] mapped to [0,255]"
+                    } else {
+                        "linear UNORM"
+                    },
+                }),
+            );
+        }
     }
     let minimum_alignment = sand_alignment.into_iter().fold(f64::INFINITY, f64::min);
     let cross_validation = json!({
-        "independentReferenceMethod": "nine-point finite-difference Hessian Kirchhoff-Love Rayleigh quotient on the rasterized mode; independent spatial discretization, not a second certified solver",
+        "independentReferenceMethod": "nine-point finite-difference Hessian Kirchhoff-Love Rayleigh quotient on the rasterized finite-strip mode; independent operator/discretization check, not a second certified solver",
         "frequencyChecks": fd_checks,
         "sandDensityMeanContrastLowMinusHighVelocity": minimum_alignment,
         "textureCoordinateAlignment": {
@@ -489,4 +523,30 @@ fn build_textures(
 
 fn quantize_byte(value: f64) -> u8 {
     value.round_ties_even().clamp(0.0, 255.0) as u8
+}
+
+#[cfg(test)]
+mod tests {
+    use super::quantize_runtime_scalar;
+
+    #[test]
+    fn runtime_modal_quantization_is_ties_to_even_and_positive_zero() {
+        let quantum = 2.0_f64.powi(-20);
+        assert_eq!(
+            quantize_runtime_scalar(2.5 * quantum, quantum),
+            2.0 * quantum
+        );
+        assert_eq!(
+            quantize_runtime_scalar(3.5 * quantum, quantum),
+            4.0 * quantum
+        );
+        assert_eq!(
+            quantize_runtime_scalar(-2.5 * quantum, quantum),
+            -2.0 * quantum
+        );
+        assert_eq!(
+            quantize_runtime_scalar(-0.25 * quantum, quantum).to_bits(),
+            0.0_f64.to_bits()
+        );
+    }
 }

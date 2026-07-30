@@ -7,6 +7,8 @@
   "required": [
     "schemaVersion",
     "modalModelId",
+    "runtimeAlgorithmRevision",
+    "coverageContract",
     "generatedBy",
     "perValueRuntimeExceptionTable",
     "verificationStatus",
@@ -24,17 +26,35 @@
       "type": "string",
       "pattern": "^sha256:[a-f0-9]{64}$"
     },
+    "runtimeAlgorithmRevision": {
+      "const": "fixed-step-modal-feedback-v3"
+    },
+    "coverageContract": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schemaVersion", "schemaSha256"],
+      "properties": {
+        "schemaVersion": {
+          "const": "mandelhowl.coverage-report.v1"
+        },
+        "schemaSha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
     "generatedBy": {
       "type": "object",
       "additionalProperties": false,
       "required": [
         "algorithm",
+        "feedbackAlgorithmRevision",
         "perValueRuntimeLookup",
         "randomSource"
       ],
       "properties": {
         "algorithm": {
           "const": "deterministic-global-trajectory-search-v1"
+        },
+        "feedbackAlgorithmRevision": {
+          "const": "fixed-step-modal-feedback-v3"
         },
         "perValueRuntimeLookup": { "const": "forbidden" },
         "randomSource": { "const": "forbidden" }
@@ -45,11 +65,19 @@
     "runtimeSpecSha256": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["dial", "feedback", "volumeMap"],
+      "required": [
+        "dial",
+        "feedback",
+        "volumeMap",
+        "audioSafety",
+        "uiNVersion"
+      ],
       "properties": {
         "dial": { "$ref": "#/$defs/sha256" },
         "feedback": { "$ref": "#/$defs/sha256" },
-        "volumeMap": { "$ref": "#/$defs/sha256" }
+        "volumeMap": { "$ref": "#/$defs/sha256" },
+        "audioSafety": { "$ref": "#/$defs/sha256" },
+        "uiNVersion": { "$ref": "#/$defs/sha256" }
       }
     },
     "staticDistribution": {
@@ -91,7 +119,7 @@
       "type": "array",
       "minItems": 101,
       "maxItems": 101,
-      "items": { "$ref": "resonance-trajectory-trace.v1.schema.json" }
+      "items": { "$ref": "resonance-trajectory-trace.schema.json" }
     },
     "outputs": {
       "type": "array",
@@ -106,7 +134,7 @@
           "verification": { "const": "runtime-replay-verified" },
           "verified": { "const": true },
           "trace": {
-            "$ref": "resonance-trajectory-trace.v1.schema.json"
+            "$ref": "resonance-trajectory-trace.schema.json"
           }
         }
       }

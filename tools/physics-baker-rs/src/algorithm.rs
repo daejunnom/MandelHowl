@@ -15,14 +15,8 @@ pub struct Algorithm {
     pub field_box_passes: usize,
     pub field_bevel_passes: usize,
     pub conjugate_tolerance: f64,
-    pub axisymmetric_radial_orders: usize,
-    pub low_angular_minimum: usize,
-    pub low_angular_maximum: usize,
-    pub low_angular_radial_orders: usize,
-    pub high_angular_minimum: usize,
-    pub high_angular_maximum: usize,
-    pub high_angular_radial_orders: usize,
-    pub hessian_step_ratio: f64,
+    pub radial_gauss_nodes: Vec<f64>,
+    pub radial_gauss_weights: Vec<f64>,
     pub jacobi_relative_tolerance: f64,
     pub jacobi_maximum_sweeps: usize,
     pub probe_ring_samples: usize,
@@ -35,6 +29,9 @@ pub struct Algorithm {
     pub damping_slope: f64,
     pub response_sample_count: usize,
     pub normalization_floor: f64,
+    pub runtime_frequency_quantum_hz: f64,
+    pub runtime_coupling_quantum: f64,
+    pub texture_layers_per_shard: usize,
     pub nodal_threshold: f64,
     pub sand_scale: f64,
     pub low_velocity_threshold: f64,
@@ -42,12 +39,23 @@ pub struct Algorithm {
     pub normal_visual_scale: f64,
     pub fd_check_ordinals: Vec<usize>,
     pub cross_validation_tolerance: f64,
+    pub material_section_sample_count: usize,
+    pub material_section_axis: String,
+    pub material_section_position_convention: String,
+    pub material_section_resampling: String,
     pub coverage_capture_rate: f64,
     pub coverage_maximum_fraction: f64,
     pub coverage_minimum_log_argument: f64,
     pub coverage_base_detune: f64,
     pub coverage_detune_step: f64,
     pub coverage_detune_cycle: usize,
+    pub handoff_thin_plate_supported: bool,
+    pub handoff_surface_mesh_validated: bool,
+    pub handoff_finite_element_assembly_used: bool,
+    pub handoff_analysis_surface_mesh_coupled: bool,
+    pub handoff_surface_triangle_archive_coupled: bool,
+    pub handoff_strict_literal_conformance: bool,
+    pub handoff_operational_disposition: String,
 }
 
 impl Algorithm {
@@ -63,9 +71,91 @@ impl Algorithm {
             || text(&value, &["numericPolicy", "summationOrder"])? != "source-loop-order"
             || text(&value, &["numericPolicy", "randomSource"])? != "forbidden"
             || text(&value, &["response", "spacing"])? != "logarithmic"
-            || integer(&value, &["basis", "hubClampPower"])? != 2
+            || text(&value, &["assembly", "analysisDiscretization"])?
+                != "c1-cubic-hermite-annular-finite-strip"
+            || text(&value, &["assembly", "radialInterpolation"])? != "cubic-hermite-c1"
+            || text(&value, &["assembly", "angularInterpolation"])? != "normalized-real-fourier"
+            || text(&value, &["assembly", "radialMesh"])? != "uniform-annular-strips"
+            || integer(&value, &["assembly", "radialGaussOrder"])? != 5
+            || text(&value, &["assembly", "angularQuadrature"])? != "midpoint"
+            || text(&value, &["assembly", "quadratureLoopOrder"])?
+                != "element-then-radial-gauss-ascending-then-theta-ascending-then-active-global-index-ascending"
+            || text(&value, &["assembly", "boundaryEnforcement"])?
+                != "eliminate-inner-value-and-radial-slope-dofs"
+            || text(&value, &["assembly", "analysisResolutionSource"])?
+                != "plate-spec.solverRequest.meshLevels[*].analysisFiniteStrip"
+            || text(&value, &["handoffConformance", "section"])? != "10.3/B1"
+            || text(&value, &["handoffConformance", "executedMethod"])?
+                != "c1-cubic-hermite-annular-finite-strip"
+            || !boolean(
+                &value,
+                &["handoffConformance", "thinPlateEigenanalysisSupported"],
+            )?
+            || !boolean(
+                &value,
+                &["handoffConformance", "surfaceMeshQualityValidated"],
+            )?
+            || !boolean(&value, &["handoffConformance", "finiteElementAssemblyUsed"])?
+            || !boolean(
+                &value,
+                &[
+                    "handoffConformance",
+                    "analysisSurfaceElementMeshCoupledToEigenproblem",
+                ],
+            )?
+            || boolean(
+                &value,
+                &[
+                    "handoffConformance",
+                    "surfaceTriangleArchiveCoupledToEigenproblem",
+                ],
+            )?
+            || !boolean(&value, &["handoffConformance", "strictLiteralConformance"])?
+            || text(&value, &["handoffConformance", "operationalDisposition"])?
+                != "strict-thin-plate-finite-element-adapter"
+            || text(&value, &["runtimeModalOutput", "rounding"])? != "ties-to-even"
+            || text(
+                &value,
+                &["runtimeModalOutput", "angularFrequencyDerivation"],
+            )? != "quantized-frequency-times-ieee754-tau"
+            || text(&value, &["runtimeModalOutput", "negativeZero"])?
+                != "canonicalize-to-positive-zero"
+            || number(&value, &["runtimeModalOutput", "frequencyQuantumHz"])? != 2.0_f64.powi(-20)
+            || number(&value, &["runtimeModalOutput", "couplingQuantum"])? != 2.0_f64.powi(-27)
+            || text(&value, &["texture", "container"])? != "KTX2"
+            || integer(&value, &["texture", "supercompressionScheme"])? != 3
+            || integer(&value, &["texture", "layersPerShard"])? != 4
+            || text(&value, &["texture", "shardOrdering"])?
+                != "kind-then-global-texture-layer-ascending"
+            || text(&value, &["texture", "shardPathPattern"])?
+                != "textures/{kind}-{firstLayer:02d}-{lastLayer:02d}.ktx2"
+            || text(&value, &["texture", "emissiveBasisSource"])? != "nodal-mask"
+            || text(&value, &["texture", "emissiveBasisAliasPolicy"])?
+                != "byte-identical-basis-reuse"
+            || integer(&value, &["materialSectionProfile", "sampleCount"])? != 64
+            || text(&value, &["materialSectionProfile", "axis"])? != "x-at-y-zero"
+            || text(
+                &value,
+                &["materialSectionProfile", "samplePositionConvention"],
+            )? != "uniform-cell-centres"
+            || text(&value, &["materialSectionProfile", "resampling"])?
+                != "bilinear-binary64-thickness"
         {
             return Err("algorithm numeric policy is incompatible".to_owned());
+        }
+        if at(&value, &["handoffConformance", "deviationCode"]).is_ok() {
+            return Err("strict finite-strip contract cannot contain a deviation code".to_owned());
+        }
+        let radial_gauss_nodes = finite_number_array(&value, &["assembly", "radialGaussNodes"])?;
+        let radial_gauss_weights =
+            finite_number_array(&value, &["assembly", "radialGaussWeights"])?;
+        if radial_gauss_nodes.len() != 5
+            || radial_gauss_weights.len() != 5
+            || radial_gauss_nodes.windows(2).any(|pair| pair[0] >= pair[1])
+            || radial_gauss_weights.iter().any(|weight| *weight <= 0.0)
+            || (radial_gauss_weights.iter().sum::<f64>() - 2.0).abs() > 1e-15
+        {
+            return Err("finite-strip radial Gauss rule is incompatible".to_owned());
         }
         let ordinals = at(&value, &["texture", "finiteDifferenceCheckOrdinals"])?
             .as_array()
@@ -85,14 +175,8 @@ impl Algorithm {
             field_box_passes: integer(&value, &["field", "gaussianApproximationBoxPasses"])?,
             field_bevel_passes: integer(&value, &["field", "manufacturingBevelBoxPasses"])?,
             conjugate_tolerance: number(&value, &["field", "conjugateSymmetryTolerance"])?,
-            axisymmetric_radial_orders: integer(&value, &["basis", "axisymmetricRadialOrders"])?,
-            low_angular_minimum: integer(&value, &["basis", "lowAngularOrderMinimum"])?,
-            low_angular_maximum: integer(&value, &["basis", "lowAngularOrderMaximum"])?,
-            low_angular_radial_orders: integer(&value, &["basis", "lowAngularRadialOrders"])?,
-            high_angular_minimum: integer(&value, &["basis", "highAngularOrderMinimum"])?,
-            high_angular_maximum: integer(&value, &["basis", "highAngularOrderMaximum"])?,
-            high_angular_radial_orders: integer(&value, &["basis", "highAngularRadialOrders"])?,
-            hessian_step_ratio: number(&value, &["assembly", "finiteDifferenceHessianStepRatio"])?,
+            radial_gauss_nodes,
+            radial_gauss_weights,
             jacobi_relative_tolerance: number(&value, &["eigensolver", "relativeTolerance"])?,
             jacobi_maximum_sweeps: integer(&value, &["eigensolver", "maximumSweeps"])?,
             probe_ring_samples: integer(&value, &["coupling", "probeRingSamples"])?,
@@ -105,6 +189,12 @@ impl Algorithm {
             damping_slope: number(&value, &["coupling", "ordinalDampingSlope"])?,
             response_sample_count: integer(&value, &["response", "sampleCount"])?,
             normalization_floor: number(&value, &["response", "normalizationFloor"])?,
+            runtime_frequency_quantum_hz: number(
+                &value,
+                &["runtimeModalOutput", "frequencyQuantumHz"],
+            )?,
+            runtime_coupling_quantum: number(&value, &["runtimeModalOutput", "couplingQuantum"])?,
+            texture_layers_per_shard: integer(&value, &["texture", "layersPerShard"])?,
             nodal_threshold: number(&value, &["texture", "nodalAbsoluteThreshold"])?,
             sand_scale: number(&value, &["texture", "sandGaussianScale"])?,
             low_velocity_threshold: number(&value, &["texture", "lowVelocityThreshold"])?,
@@ -115,6 +205,18 @@ impl Algorithm {
                 &value,
                 &["texture", "maximumCrossValidationRelativeDifference"],
             )?,
+            material_section_sample_count: integer(
+                &value,
+                &["materialSectionProfile", "sampleCount"],
+            )?,
+            material_section_axis: text(&value, &["materialSectionProfile", "axis"])?.to_owned(),
+            material_section_position_convention: text(
+                &value,
+                &["materialSectionProfile", "samplePositionConvention"],
+            )?
+            .to_owned(),
+            material_section_resampling: text(&value, &["materialSectionProfile", "resampling"])?
+                .to_owned(),
             coverage_capture_rate: number(&value, &["foundationCoverage", "captureRate"])?,
             coverage_maximum_fraction: number(&value, &["foundationCoverage", "maximumFraction"])?,
             coverage_minimum_log_argument: number(
@@ -124,6 +226,41 @@ impl Algorithm {
             coverage_base_detune: number(&value, &["foundationCoverage", "baseDetuneRatio"])?,
             coverage_detune_step: number(&value, &["foundationCoverage", "detuneStep"])?,
             coverage_detune_cycle: integer(&value, &["foundationCoverage", "detuneCycle"])?,
+            handoff_thin_plate_supported: boolean(
+                &value,
+                &["handoffConformance", "thinPlateEigenanalysisSupported"],
+            )?,
+            handoff_surface_mesh_validated: boolean(
+                &value,
+                &["handoffConformance", "surfaceMeshQualityValidated"],
+            )?,
+            handoff_finite_element_assembly_used: boolean(
+                &value,
+                &["handoffConformance", "finiteElementAssemblyUsed"],
+            )?,
+            handoff_analysis_surface_mesh_coupled: boolean(
+                &value,
+                &[
+                    "handoffConformance",
+                    "analysisSurfaceElementMeshCoupledToEigenproblem",
+                ],
+            )?,
+            handoff_surface_triangle_archive_coupled: boolean(
+                &value,
+                &[
+                    "handoffConformance",
+                    "surfaceTriangleArchiveCoupledToEigenproblem",
+                ],
+            )?,
+            handoff_strict_literal_conformance: boolean(
+                &value,
+                &["handoffConformance", "strictLiteralConformance"],
+            )?,
+            handoff_operational_disposition: text(
+                &value,
+                &["handoffConformance", "operationalDisposition"],
+            )?
+            .to_owned(),
         })
     }
 }
@@ -159,8 +296,40 @@ fn integer(root: &Value, path: &[&str]) -> Result<usize, String> {
         .ok_or_else(|| format!("$.{} must be a non-negative integer", path.join(".")))
 }
 
+fn finite_number_array(root: &Value, path: &[&str]) -> Result<Vec<f64>, String> {
+    at(root, path)?
+        .as_array()
+        .ok_or_else(|| format!("$.{} must be an array", path.join(".")))?
+        .iter()
+        .map(|value| {
+            value
+                .as_f64()
+                .filter(|number| number.is_finite())
+                .ok_or_else(|| format!("$.{} contains a non-finite number", path.join(".")))
+        })
+        .collect()
+}
+
 fn boolean(root: &Value, path: &[&str]) -> Result<bool, String> {
     at(root, path)?
         .as_bool()
         .ok_or_else(|| format!("$.{} must be a boolean", path.join(".")))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Algorithm;
+
+    #[test]
+    fn b1_finite_strip_contract_requires_strict_fem_conformance() {
+        let algorithm = Algorithm::load().expect("algorithm contract");
+        assert!(algorithm.handoff_thin_plate_supported);
+        assert!(algorithm.handoff_surface_mesh_validated);
+        assert!(algorithm.handoff_finite_element_assembly_used);
+        assert!(algorithm.handoff_analysis_surface_mesh_coupled);
+        assert!(!algorithm.handoff_surface_triangle_archive_coupled);
+        assert!(algorithm.handoff_strict_literal_conformance);
+        assert_eq!(algorithm.radial_gauss_nodes.len(), 5);
+        assert_eq!(algorithm.texture_layers_per_shard, 4);
+    }
 }

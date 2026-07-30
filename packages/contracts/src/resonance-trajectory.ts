@@ -32,8 +32,14 @@ export interface StaticDistributionReport {
 export interface ReachabilityCoverageReport {
   readonly schemaVersion: "mandelhowl.coverage-report.v1";
   readonly modalModelId: `sha256:${string}`;
+  readonly runtimeAlgorithmRevision: "fixed-step-modal-feedback-v3";
+  readonly coverageContract: {
+    readonly schemaVersion: "mandelhowl.coverage-report.v1";
+    readonly schemaSha256: string;
+  };
   readonly generatedBy: {
     readonly algorithm: "deterministic-global-trajectory-search-v1";
+    readonly feedbackAlgorithmRevision: "fixed-step-modal-feedback-v3";
     readonly perValueRuntimeLookup: "forbidden";
     readonly randomSource: "forbidden";
   };
@@ -43,6 +49,8 @@ export interface ReachabilityCoverageReport {
     readonly dial: string;
     readonly feedback: string;
     readonly volumeMap: string;
+    readonly audioSafety: string;
+    readonly uiNVersion: string;
   };
   readonly staticDistribution: StaticDistributionReport;
   readonly replayVerified: boolean;

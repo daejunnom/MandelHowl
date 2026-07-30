@@ -1,5 +1,6 @@
 export {
   advanceResonance,
+  advanceResonanceScalars,
   classifyResonanceRegime,
   createResonanceState,
   estimateOpenLoopMarginAtFrequency,
@@ -8,6 +9,7 @@ export {
   interpolateBakedFrequencyResponse,
   replaceResonanceDataset,
   resetResonanceAfterPausedGap,
+  RUNTIME_FEEDBACK_ALGORITHM_REVISION,
   runtimeModalDatasetFromResonanceDataset,
   stepResonance,
   volumeFromVirtualRms,
@@ -27,6 +29,7 @@ export {
 } from "./prototype-dataset";
 export {
   advanceMandelHowlRuntime,
+  advanceMandelHowlRuntimeInPlace,
   createMandelHowlRuntime,
   createRuntimeSnapshotWriter,
   dispatchRuntimeDial,
@@ -42,14 +45,3 @@ export type {
   RuntimeSnapshotRebuildReason,
   RuntimeSnapshotWriter,
 } from "./runtime-engine";
-export {
-  measureStaticDistribution,
-  replayResonanceTrajectory,
-  searchReachabilityCoverage,
-  validateResonanceTrajectoryTrace,
-} from "./trajectory-coverage";
-export type {
-  ReachabilitySearchOptions,
-  ReachabilitySearchResult,
-  ReplayTrajectoryResult,
-} from "./trajectory-coverage";

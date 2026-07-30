@@ -8,7 +8,7 @@ export default defineConfig({
     "performance/**/*.spec.ts",
   ],
   fullyParallel: false,
-  forbidOnly: Boolean(process.env.CI),
+  forbidOnly: true,
   retries: process.env.CI ? 1 : 0,
   workers: 1,
   reporter: [["list"], ["html", { open: "never" }]],
@@ -37,12 +37,18 @@ export default defineConfig({
       use: {
         ...devices["Desktop Chrome"],
         viewport: { width: 1440, height: 1000 },
+        launchOptions: {
+          args: ["--enable-precise-memory-info"],
+        },
       },
     },
   ],
   webServer: {
     command: "npm run dev",
     url: "http://localhost:3000",
+    env: {
+      MANDELHOWL_PORTABLE_BROWSER_TEST_SERVER: "1",
+    },
     reuseExistingServer: true,
     timeout: 120_000,
     stdout: "pipe",

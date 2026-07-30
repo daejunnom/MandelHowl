@@ -6,14 +6,17 @@
   "sharedAlgorithms": {
     "runtimeSnapshot": "mandelhowl.runtime-snapshot.v1",
     "dialInputMapping": "packages/browser-runtime/src/dial-input.ts",
-    "oscilloscopePresentation": "packages/presentation-model/src/oscilloscope-presenter.ts"
+    "oscilloscopePresentation": "packages/presentation-model/src/oscilloscope-presenter.ts",
+    "causalMotionPresentation": "packages/presentation-model/src/causal-motion-presenter.ts",
+    "instrumentOutputPresentation": "packages/presentation-model/src/instrument-output-presenter.ts",
+    "visualSpecProjection": "packages/contracts/src/generated/runtime-specs.generated.ts"
   },
   "requiredSceneRegions": [
     "header-status",
     "frequency-dial",
     "plate-and-sand",
     "oscilloscope",
-    "phase-meter",
+    "oscilloscope-phase-emphasis",
     "measurement-progress",
     "virtual-volume",
     "diagnostic",

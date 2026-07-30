@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  canStartDialPointerGesture,
   createDialKeyboardCommand,
   createDialPointerCommand,
   createDialWheelCommand,
@@ -8,6 +9,11 @@ import {
 } from "../../packages/browser-runtime/src";
 
 describe("framework-neutral dial input contract", () => {
+  it("keeps one pointer as the gesture owner until it is released", () => {
+    expect(canStartDialPointerGesture(null)).toBe(true);
+    expect(canStartDialPointerGesture(41)).toBe(false);
+  });
+
   it("maps identical React and Svelte pointer geometry to one command", () => {
     const nativeInput = {
       type: "pointer-start" as const,
@@ -51,9 +57,46 @@ describe("framework-neutral dial input contract", () => {
     const svelteIds = createUiInputEventIdScope("svelte5:1");
     const reactIds = createUiInputEventIdScope("react:2");
 
-    expect(svelteIds.forCommand(command)).toBe("keyboard:91.25");
-    expect(reactIds.forCommand(command)).toBe("keyboard:91.25");
-    expect(svelteIds.related()).toBe("keyboard:91.25");
-    expect(reactIds.related()).toBe("keyboard:91.25");
+    expect(svelteIds.forCommand(command)).toBe(
+      "keyboard:91.25:ArrowUp",
+    );
+    expect(reactIds.forCommand(command)).toBe(
+      "keyboard:91.25:ArrowUp",
+    );
+    expect(svelteIds.related()).toBe("keyboard:91.25:ArrowUp");
+    expect(reactIds.related()).toBe("keyboard:91.25:ArrowUp");
+  });
+
+  it("does not collapse distinct low-resolution events with one timestamp", () => {
+    const ids = createUiInputEventIdScope("svelte5:1");
+    const left = ids.forCommand(
+      createDialKeyboardCommand("ArrowLeft", 100),
+    );
+    const right = ids.forCommand(
+      createDialKeyboardCommand("ArrowRight", 100),
+    );
+    expect(left).not.toBe(right);
+
+    const firstPointer = ids.forCommand(
+      createDialPointerCommand({
+        type: "pointer-move",
+        clientX: 10,
+        clientY: 20,
+        timestampMs: 100,
+        bounds: { left: 0, top: 0, width: 100, height: 100 },
+        radialDeadZone: 0.2,
+      }),
+    );
+    const secondPointer = ids.forCommand(
+      createDialPointerCommand({
+        type: "pointer-move",
+        clientX: 11,
+        clientY: 20,
+        timestampMs: 100,
+        bounds: { left: 0, top: 0, width: 100, height: 100 },
+        radialDeadZone: 0.2,
+      }),
+    );
+    expect(firstPointer).not.toBe(secondPointer);
   });
 });

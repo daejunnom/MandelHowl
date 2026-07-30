@@ -136,10 +136,28 @@ solverRequest:
   meshLevels:
     - name: coarse
       targetElementSizeM: 0.006
+      analysisFiniteStrip:
+        radialElementCount: 3
+        maximumFourierOrder: 7
+        angularQuadratureSamples: 64
     - name: medium
       targetElementSizeM: 0.003
+      analysisFiniteStrip:
+        radialElementCount: 4
+        maximumFourierOrder: 8
+        angularQuadratureSamples: 80
     - name: fine
       targetElementSizeM: 0.0015
+      analysisFiniteStrip:
+        radialElementCount: 5
+        maximumFourierOrder: 9
+        angularQuadratureSamples: 96
+  meshQuality:
+    minimumEdgeM: 0.00014
+    minimumSignedAreaM2: 0.00000001
+    maximumAspectRatio: 2.1
+    requiredConnectedComponentCount: 1
+    maximumInvertedTriangleCount: 0
   convergence:
     maximumRelativeFrequencyChange: 0.02
     minimumModalAssuranceCriterion: 0.95

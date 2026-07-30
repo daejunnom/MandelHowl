@@ -4,13 +4,28 @@ import test from "node:test";
 
 const projectRoot = new URL("../", import.meta.url);
 
-async function render() {
+async function staticRootHeaders() {
+  const source = await readFile(
+    new URL("../public/_headers", import.meta.url),
+    "utf8",
+  );
+  const rootBlock = source.split(/\r?\n\r?\n/, 1)[0] ?? "";
+  return new Map(
+    rootBlock
+      .split(/\r?\n/)
+      .map((line) => /^\s{2}([^:]+):\s*(.+)$/.exec(line))
+      .filter((match) => match !== null)
+      .map((match) => [match[1], match[2]]),
+  );
+}
+
+async function render(pathname = "/") {
   const workerUrl = new URL("../dist/server/index.js", import.meta.url);
   workerUrl.searchParams.set("test", `${process.pid}-${Date.now()}`);
   const { default: worker } = await import(workerUrl.href);
 
   return worker.fetch(
-    new Request("http://localhost/", {
+    new Request(new URL(pathname, "http://localhost/"), {
       headers: { accept: "text/html" },
     }),
     {
@@ -24,6 +39,16 @@ async function render() {
     },
   );
 }
+
+test("does not expose development-only fixture routes in production", async () => {
+  for (const pathname of [
+    "/visual-fixture/critical",
+    "/audio-safety-fixture",
+  ]) {
+    const response = await render(pathname);
+    assert.equal(response.status, 404, pathname);
+  }
+});
 
 test("server-renders the framework-neutral MandelHowl N-version shell", async () => {
   const response = await render();
@@ -39,6 +64,9 @@ test("server-renders the framework-neutral MandelHowl N-version shell", async ()
   );
   assert.equal(response.headers.get("x-content-type-options"), "nosniff");
   assert.equal(response.headers.get("x-frame-options"), "SAMEORIGIN");
+  for (const [name, expectedValue] of await staticRootHeaders()) {
+    assert.equal(response.headers.get(name), expectedValue, name);
+  }
 
   const html = await response.text();
   assert.match(html, /<title>MandelHowl — Resonance Volume Instrument<\/title>/i);
@@ -65,8 +93,15 @@ test("removes starter-only source and metadata", async () => {
 
   assert.match(page, /MandelHowlLab/);
   assert.match(layout, /MandelHowl — Resonance Volume Instrument/);
-  assert.match(scene, /frequencyMin = 45/);
-  assert.match(scene, /frequencyMax = 6_000/);
+  assert.match(scene, /GENERATED_DIAL_SPEC/);
+  assert.match(
+    scene,
+    /frequencyMin = GENERATED_DIAL_SPEC\.mapping\.minimumFrequencyHz/,
+  );
+  assert.match(
+    scene,
+    /frequencyMax = GENERATED_DIAL_SPEC\.mapping\.maximumFrequencyHz/,
+  );
   assert.match(scene, /aria-valuemin=\{frequencyMin\}/);
   assert.match(scene, /aria-valuemax=\{frequencyMax\}/);
   assert.match(svelteScene, /data-ui-implementation="svelte5"/);

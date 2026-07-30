@@ -46,6 +46,15 @@ sand density가 128×128×48 KTX2 array로 미리 계산되어 있다. 브라우
 기존 `dominantModeId` 계산은 분석적 fallback과 보조 표시를 위해 남아 있지만,
 검증된 atlas의 WebGL2·Canvas2D 합성 경로를 제한하지 않는다.
 
+공진 적분기는 생성 시 만든 주파수 정렬 인덱스로 현재 주파수의 activation
+bandwidth 안에 있는 모드와 잔류 에너지가 임계값 이상인 모드만 결정적으로
+합친다. 이 bounded 후보의 응답·drive·loop score를 고정 scratch buffer에서
+계산한 뒤 우선순위
+`max(drive score, residual energy)`로 정렬한다. 동률은 dataset index로
+해소하며 최대 12개만 완전 적분한다. 선택 밖 모드는 고정 식으로 잔류 에너지를
+감쇠시킨다. active index·priority·응답·에너지·위상 배열은 초기화 때 할당해
+고정 step마다 재사용한다.
+
 ### 2. 다음 paint와 결정적 잔류
 
 포획 identity는 공진 엔진에서 같은 fixed step에 계산되고 snapshot으로
@@ -66,11 +75,13 @@ state와 sequence에서 만든 owned immutable snapshot을 최대 24 Hz로 받�
 dataset 교체와 visibility reset에는 두 lane을 강제로 함께 발행한다. differential
 unit test가 lease와 immutable projection의 필드 값을 비교한다.
 
-이는 전체 런타임을 allocation-free라고 주장하는 결정이 아니다.
-`advanceMandelHowlRuntime`의 immutable wrapper와 dial 갱신에는 작은 객체가
-남아 있다. 이번 변경은 48-mode bulk projection과 renderer/audio 보조 frame
-객체를 매 RAF 생성하던 비용을 제거하고, 장시간 누적이 없음을 soak로 검증하는
-범위다.
+프로덕션 RAF는 dial·resonance scalar state를 in-place로 갱신하고, 위
+active-set scratch, snapshot writer lease, render blend와 audio voice bank의
+고정 typed buffer identity를 유지한다. owned immutable snapshot은 UI처럼
+값을 보관하는 경계에만 최대 24 Hz로 만든다. 입력 command, dataset 교체와
+retaining-consumer 경계까지 포함해 전체 런타임이 allocation-free라고
+주장하지는 않으며, 매-RAF bulk graph 생성을 제거하고 장시간 identity·heap
+안정성을 soak로 검증하는 범위다.
 
 ### 3. 원형 금속판과 모래 표현
 
@@ -86,11 +97,13 @@ WebGL2 판은 품질 단계별 polar tessellation을 사용한다.
 방사 변형과 투영 높이에 반영한다. fragment 셰이더는 같은 모드 집합의 normal,
 nodal, sand layer를 혼합한다.
 
-모래알은 별도 입자 물리를 주장하지 않는다. WebGL2는 화면 좌표의 고정 hash,
-Canvas2D는 `(x, y, layer)` 정수 hash로 density의 alpha를 결정한다. 따라서
-시간에 따라 무작위로 반짝이지 않으며 같은 입력·해상도에서는 같은 grain
-패턴을 만든다. density가 0인 상태에 항상 남던 모래 가시성 하한은 제거하고,
-전체 모래 가시성은 모달 presence에 연결한다.
+모래알은 별도 입자 물리를 주장하지 않는다. WebGL2는 canonical plate UV의
+고정 grain cell hash를 사용하고 품질 tier의 `sandParticleBudget`으로 grid
+밀도를 정한다. Canvas2D는 같은 예산으로 제한한 저해상도 grain grid에서
+`(x, y, layer)` 정수 hash로 density의 occupancy와 alpha를 결정한다. 따라서
+화면 해상도나 시간에 따라 무작위로 반짝이지 않으며 같은 입력에서는 같은
+입자 배치를 만든다. density가 0인 상태에 항상 남던 모래 가시성 하한은
+제거하고, 전체 모래 가시성은 모달 presence에 연결한다.
 
 ### 4. content-hash 캐시와 검증 진행 단계
 
@@ -123,18 +136,46 @@ renderer 상태까지 확인되기 전에는 runtime dataset과 화면의 `datas
 바꾸지 않는다. 실패하거나 component가 dispose되면 예열 texture를 제거하고
 pending manifest/asset fetch를 abort하며 labelled prototype에 남는다.
 
-현재 고정된 KTX2 v1은 종류별 48 layer가 하나의 monolithic 파일이므로, 한
-모드나 주파수 구간만 독립적으로 fetch·hash 검증·evict할 수 없다. 현재의
-progressive 경계는 core binary → 전체 sand atlas prewarm → 나머지 atlas
-병렬 검증이다. 진정한 per-mode/range lazy residency는 chunk descriptor와
-개별 checksum을 가진 atlas-v2 및 새 content hash가 필요하며, 기존 고정
-dataset을 조용히 재해석하지 않는다.
+versioned r2 KTX2는 종류별 48 mode를 전역 순서의 12개 4-layer shard로
+나눈다. core/evidence `ready` 경계에서는 texture 요청이 0 byte이며, 현재
+top-K 또는 포획 전 8% 대역의 최근접 mode에 속한 shard만 immutable URL,
+byte length, SHA-256, KTX2 계약을 통과한 뒤 decode된다. WebGL2의 decoded
+cache는 종류별 top-4+prefetch 1개, Canvas2D는 sand top-2+prefetch 1개로
+제한된다. 선택 집합이 바뀌면 WebGL의 이미 resident인 mode는 slot을 유지하고,
+새 mode는 새 top-K에 없는 가장 낮은 번호의 slot을 결정적으로 교체한다.
+legacy 종류별 48-layer monolith는 eager 호환 경로로만 남는다.
 
-KTX2 decoder는 검증된 `Uint8Array`를 직접 받고 payload를 `subarray` view로
-노출한다. 렌더러 경로에서는 atlas 전체를 한 번 더 복사하지 않는다. 단, 진행
-observer에는 검증 입력을 변경하지 못하도록 격리된 byte copy를 제공한다.
+현재 알고리즘 revision의 KTX2 writer는 R8/RG8 array를 표준
+supercompression scheme 3 ZLIB로 저장하고, 두 baker가 동일하게
+`fixed-Huffman-or-stored` DEFLATE 프로필을 따른다. 브라우저 decoder는
+dynamic Huffman과 preset dictionary를 거부하고, header·block range·back
+reference·선언된 uncompressed length·trailing data·Adler-32를 검사하며
+정확한 길이의 `Uint8Array`에 동기적으로 inflate한다. 기존 pin의 scheme 0은
+검증된 payload를 `subarray` view로 노출하는 legacy 호환 경로다. 진행
+observer에는 어느 경로든 검증 입력을 변경하지 못하도록 격리된 byte copy를
+제공한다.
 
-## `response.bin` 재통합 보류
+### 5. 정확한 6단계 frame-pressure governor
+
+`RenderQualityGovernor`는 desktop 60 FPS의 `16.67 ms` frame-work budget을
+기준으로 120-frame window의 p95를 계산한다. 두 window가 연속으로 초과할 때
+한 단계만 전진하고, 정상화되어도 자동으로 품질을 올리지 않는다. 순서는
+canonical quality spec의 다음 여섯 단계와 정확히 같다.
+
+1. `reduce-sand-residual`
+2. `reduce-normal-resolution`
+3. `disable-post-processing`
+4. `reduce-oscilloscope-samples`
+5. `reduce-internal-resolution`
+6. `switch-to-canvas-data`
+
+1단계는 시각 잔류 release를 `580 ms`에서 `240 ms`로 줄이고, 2단계는 normal
+LOD, 3단계는 post effect, 4단계는 oscilloscope sample 수, 5단계는 internal
+pixel ratio만 낮춘다. 6단계는 새 sibling canvas에 Canvas2D renderer를
+연결하고 같은 texture source와 canonical snapshot을 이어받는다. 모든 단계는
+presentation work만 바꾸며 simulation snapshot과 `VOLUME`을 바꾸지 않는다.
+
+## `response.bin`의 계약상 역할
 
 `response.bin`은 manifest pin, byte length, SHA-256, binary format을
 검증하고 `ResonanceDataset.response`로 디코딩한다. 런타임 모달 dataset도
@@ -142,21 +183,15 @@ observer에는 검증 입력을 변경하지 못하도록 격리된 byte copy를
 실수부·허수부 보간을 제공한다. science 검증은 512개 전 표본을 baker의
 합산 전달함수와 다시 비교한다.
 
-다만 `response-v1`은 모든 모드를 합산해 전역 peak로 정규화한 하나의 곡선이며
-모드별 행이 아니다. 따라서 공진 적분기의 포획·에너지 가중치에는 사용할 수
-없고, 그 경로는 계속 모드 주파수·감쇠·결합계수에서 analytical response를
-계산한다.
-
-이번 렌더 수정에 `response.bin` 사용을 함께 넣지 않는다. 응답 함수를 바꾸면
-critical 폭, 0/100 극단 비율, 1..99 전체 도달 trace가 함께 달라질 수 있기
-때문이다. 재통합은 다음을 모두 통과하는 별도 변경으로 진행한다.
-
-- 45..6000 Hz sweep에서 complex table 보간과 현재 analytical 응답의
-  differential report
-- 모든 공식 gesture trace의 volume, regime, active mode 비교
-- `0..100` coverage 독립 replay
-- 필요 시 전역 calibration 재생성과 새 dataset/content hash 발행
-- 기존 dataset을 조용히 재해석하지 않는 schema 또는 runtime 호환 버전 변경
+`response-v1`은 모든 모드를 합산해 전역 peak로 정규화한 하나의 곡선이며
+모드별 행이 아니다. 런타임 적분기는 같은 dataset의 모드 주파수·감쇠·가진·
+마이크 결합계수로 각 mode의 복소 응답을 계산하므로, aggregate table을 다시
+포획·에너지 가중치에 곱하면 동일 전달함수를 이중 적용하게 된다. 따라서
+v1 table은 package/science 교차검증과 로그축 응답 곡선 consumer의 canonical
+자산이고, canonical modal state는 모드별 행을 직접 사용한다. 이 구분은
+미구현 경로가 아니라 `mandelhowl-response-v1`의 데이터 차원 계약이다.
+향후 모드별 response-v2를 도입한다면 schema, coverage와 dataset ID를 함께
+바꾸고 기존 dataset을 조용히 재해석하지 않는다.
 
 ## UI·baker 구현체 이전 게이트
 
@@ -176,9 +211,11 @@ framework view error처럼 확인된 availability failure에만 허용한다. �
 input lease를 폐기하며 같은 native event identity는 새 generation에서도
 두 번 dispatch하지 않는다. plate와 framework view는 detach하지만 canonical
 runtime, dataset loader와 safe-audio graph는 계속 소유자가 유지한다.
-활성 view에 연결된 plate renderer의 context·texture·render failure도
-view-local availability fault로 보고한다. standby까지 실패하면 host는 정적
-fatal 상태를 표시하고 safe audio engine을 suspend한다.
+활성 view에 연결된 plate renderer의 WebGL context·texture·render failure는
+먼저 동일 attachment의 Canvas2D renderer로 전환한다. Canvas까지 만들 수
+없거나 attachment 자체가 실패한 경우에만 view-local availability fault로
+보고한다. standby까지 실패하면 host는 정적 fatal 상태를 표시하고 safe
+audio engine을 suspend한다.
 
 scientific algorithm digest 또는 presentation contract digest의 불일치는
 실패 복구 후보가 아니라 split-brain이다. supervisor는 두 view를 격리하고
@@ -194,11 +231,14 @@ contract digest, release provenance와 verifier가 source drift를 차단한다.
 | NUI3 | `MH-UI-*` evidence, hidden-page heartbeat suspension, spec·두 entry/source·supervisor·route host digest를 release provenance에서 검증 |
 
 이는 framework view의 fail-operational 경계이지 과학 엔진의 두 구현이 아니다.
-두 view는 runtime, renderer, audio, dataset, CSS, supervisor와 React/Vinext
-route·hosting bootstrap을
-공유하므로 해당 공통-mode 오류에는 이 failover를 사용하지 않는다. 과거의
-JavaScript transfer·commit CPU·dial-to-paint 성능 기준은 React standby 제거
-근거가 아니라 두 구현의 성능 회귀를 측정하는 예산으로 남긴다.
+두 view는 canonical runtime snapshot, dial-input mapping, oscilloscope·causal
+motion·instrument output presentation model, generated visual spec projection,
+renderer/audio, dataset, `.mh-*` CSS, supervisor와 React/Vinext route·hosting
+bootstrap을 공유한다. 이 공통 알고리즘은 두 UI가 서로 다른 과학·계측 결과를
+만들지 않게 하는 의도적인 계약이며 핸드오프의 미완료 항목이 아니다. 해당
+공통-mode 오류는 renderer의 WebGL→Canvas, audio mute, dataset fallback 또는
+정적 fatal 경계로 처리한다. JavaScript transfer·commit CPU·dial-to-paint
+성능 기준은 두 구현의 회귀 예산으로 유지한다.
 
 ### Rust-primary / Python-standby baker N-version
 
@@ -207,8 +247,8 @@ Python baker는 브라우저 UI hot path가 아니라 오프라인 생성 도구
 순서, ties-to-even 양자화, field/solver/mesh/texture/package 규칙과
 differential tolerance를 versioned 계약으로 고정한다.
 `tools/physics-baker-rs`와 `tools/physics-baker`는 field부터 세 해상도 solve,
-48 modes/response, 네 KTX2 atlas, mesh/evidence와 content-addressed package까지
-각각 독립 구현한다.
+48 modes/response, 4종×12개 4-layer KTX2 shard, mesh/evidence와
+content-addressed package까지 각각 독립 구현한다.
 
 broker는 두 full candidate가 semantic하게 합의한 경우에만 Rust primary를
 선택하고 promotion/release를 허용한다. Rust missing/timeout/Application
@@ -230,17 +270,13 @@ revision/raw digest, semantic metrics와 선택 정책을 machine-readable하게
 promotion/release true, Rust 선택과 candidate identity/dataset binding을
 재검증하며 terminal output만을 증거로 사용하지 않는다.
 
-strict full WSL differential은 Rust `3.041 s`, Python `62.283 s`에 완료됐고
-`mismatchCount = 0`이었다. field, 네 decoded texture atlas와 mesh는 exact였고
-모드·응답·solver/report는 versioned 허용오차
-(`1e-9` mode frequency relative, `1e-10` mode scalar absolute,
-`2e-10` response component absolute, texture/field 최대 `1 LSB` 등) 안이었다.
-
-현재 배포 pin은 algorithm revision 도입 전 legacy/unversioned dataset이다.
-그러므로 위 strict 결과는 implementation attestation이며 현재 pin을 새
-N-version 결과라고 소급 증명하지 않는다. 새 dataset은 두 candidate의
-versioned manifest와 report identity를 묶은 dataset-bound attestation 뒤에만
-승격한다.
+promotion-time Linux/amd64 OCI differential은 두 candidate의 전체 inventory,
+field, 48개 decoded texture shard와 mesh를 비교하고, 모드·응답·solver/report는
+versioned 허용오차(`1e-9` mode frequency relative, `1e-10` mode scalar
+absolute, `2e-10` response component absolute, texture/field 최대 `1 LSB` 등)
+안인지 확인한다. 결과가 `dual-verified`, mismatch 0인 exact Rust candidate와
+container/source-tree envelope를 `release/attestations/<dataset-id>/`에
+보존한 뒤에만 release pin으로 승격한다.
 
 런타임 Rust/WASM은 현재 도입하지 않는다. representative trace에서
 시뮬레이션 step이 `2 ms p95`를 넘거나 시뮬레이션이 메인 스레드 CPU의
@@ -249,14 +285,26 @@ versioned manifest와 report identity를 묶은 dataset-bound attestation 뒤에
 
 ## 검증 증거
 
-2026-07-30 worktree에서 render-engine·asset-runtime·runtime snapshot
-focused unit, 두 snapshot fanout lane의 web unit, renderer integrity와
-resource soak를 통과했다. UI N-version 검증은 supervisor availability/
-split-brain/lease unit, Svelte compile check, React/Svelte presentation
-inventory와 load·mount·active-view fault E2E 및 failover 전후 frequency
-continuity를 포함한다. Baker N-version 검증은 broker policy/process/semantic
-unit, 관리된 native self-test와 strict WSL full-generation differential을
-포함한다.
+`specs/acceptance/handoff-verification.v1.json`은 핸드오프 원문 SHA-256,
+503개 bullet·ordered·narrative·blockquote·table-row·code-flow 규범 의무,
+모든 번호 heading, 16.1–16.5 검증 절, A0–G0, NUI0–NUI3, M1–M3와 완료 품질
+18개를 suite와 repository evidence에 일대일로 연결한다. `npm run
+handoff:check`는 이 구조와 파일 존재·중복·허위 PASS를 빠르게 검사한다.
+`npm run handoff:verify`는 각 구현·브라우저·보안 suite를 별도 stage로
+실행·기록한 뒤 attested release와 deterministic archive를 실행하고
+`mandelhowl.handoff-verification-report.v1`을 남긴다. Rust
+fmt·clippy·unit·strict dual validation은 선행 Linux CI가 담당하며, Windows
+whole verifier는 Cargo나 로컬 Rust PE를 실행하지 않고 dataset lock으로
+선택한 committed promotion-time OCI bundle을 검증한다.
+
+세부 검증은 render-engine·asset-runtime·runtime snapshot unit, 두 snapshot
+fanout lane의 web unit, renderer integrity, ordered degradation, fixed-buffer
+identity와 resource soak를 포함한다. UI N-version 검증은 supervisor
+availability/split-brain/lease unit, Svelte compile check, React/Svelte
+presentation inventory와 load·mount·active-view fault E2E 및 failover 전후
+frequency continuity를 포함한다. Baker N-version 검증은 broker
+policy/process/semantic unit, 관리된 native self-test와 strict full-generation
+differential을 포함한다.
 
 temporal fixture E2E는 WebGL2와 Canvas2D 각각 baseline 뒤 정확한 다음
 animation frame, 50 ms, 250 ms snapshot을 순서대로 그린다. 새
@@ -266,21 +314,18 @@ animation frame, 50 ms, 250 ms snapshot을 순서대로 그린다. 새
 screenshot hash로 비교해 실제 입력 뒤 근접 paint, 50 ms, 250 ms의 가시
 변화를 확인한다.
 
-## 의도적으로 미구현인 항목
+## 계약 경계와 별도 버전 변경 조건
 
 - `response-v1` aggregate를 모드별 공진 적분에 사용하는 것
 - 검증 진행 이벤트만으로 부분 dataset을 `VERIFIED`로 승격하는 것
-- monolithic atlas-v1에서 per-mode/range lazy fetch·eviction을 주장하는 것
+- 4-layer shard 크기·정렬·prefetch bandwidth를 기존 algorithm revision 안에서
+  조용히 바꾸는 것
 - immutable runtime-state wrapper까지 포함한 완전한 zero-allocation 전환
-- 48개 중 inactive mode를 건너뛰는 적분 active-set/culling
-- runtime frame-pressure를 입력으로 한 자동 `60→30 FPS` 전환과
-  핸드오프 15.3의 전체 단계적 품질 저하. 현재는 startup hardware tier,
-  reduced-motion, forced-colors만 적용한다.
-- UI framework와 무관한 두 번째 scientific runtime, 독립 CSS·renderer·audio,
-  별도 hosting bootstrap. 현재 N-version은 Svelte/React presentation
-  availability를 보호하며 이 공통-mode 범위를 넘어선다고 주장하지 않는다.
 - Rust/WASM 브라우저 런타임. Rust native는 오프라인 baker N-version으로
   승격했지만 browser fixed-step scientific runtime은 계속 TypeScript 하나다.
 
-이 항목은 누락을 완료로 표시하지 않고 위 검증 게이트가 충족될 때 별도
-변경으로 추적한다.
+`response-v1` 재통합, 부분 `VERIFIED`, texture shard 계약 변경은 기존
+dataset/data contract를 조용히 재해석하지 않기 위한 버전 경계다. 완전한
+zero-allocation과 Rust/WASM은 측정 근거가 있을 때만 여는 선택적 최적화
+경계다. Svelte/React가 공통 presentation 알고리즘을 소비하는 현재 범위는 위
+N-version 계약 자체이며 이 목록의 gap이 아니다.

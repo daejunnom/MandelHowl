@@ -1,5 +1,6 @@
 import {
   GENERATED_DIAL_SPEC,
+  VERSIONED_TEXTURE_LAYERS_PER_SHARD,
   type AssetReference,
   type DiagnosticRecord,
   type ResonanceManifest,
@@ -14,14 +15,23 @@ import {
 const SHA256 = /^[a-f0-9]{64}$/;
 const CONTENT_ID = /^sha256:[a-f0-9]{64}$/;
 const SEMVER = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z.-]+)?$/;
-const TEXTURE_KINDS = new Set([
+const TEXTURE_KIND_ORDER = [
   "signed-displacement",
   "normal",
   "nodal-mask",
   "sand-density",
-]);
+] as const;
+const TEXTURE_KINDS = new Set<string>(TEXTURE_KIND_ORDER);
 const IDENTITY_SCOPE =
   "manifest-with-datasetId-and-directoryName-omitted-and-all-referenced-file-digests";
+const ALGORITHM_REVISION = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+const SUPPORTED_ALGORITHM_REVISION =
+  "kirchhoff-love-c1-finite-strip-r2";
+const GENERATED_ARTIFACT_GENERATORS = new Set([
+  "tools/physics-baker",
+  "tools/physics-baker-rs",
+]);
+const MATERIAL_SECTION_SAMPLE_COUNT = 64;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -50,7 +60,23 @@ export function isSafeDatasetRelativePath(path: string): boolean {
   ) {
     return false;
   }
-  return !path.split("/").some((segment) => segment === "" || segment === "..");
+  /*
+   * Keep the manifest vocabulary narrower than WHATWG URL parsing.
+   *
+   * A value such as `data:...` or `https:host/file` is a URL even without
+   * `://`, while `%2e%2e/file` may become a parent traversal when a browser,
+   * proxy, or origin decodes it. Rejecting every non-canonical path character
+   * also prevents a second decoding pass from turning `%252e%252e` into a dot
+   * segment. Generated dataset paths use only portable ASCII filename
+   * characters, so accepting anything broader creates ambiguity without
+   * adding a valid asset name.
+   */
+  if (!/^[A-Za-z0-9._-]+(?:\/[A-Za-z0-9._-]+)*$/.test(path)) {
+    return false;
+  }
+  return !path
+    .split("/")
+    .some((segment) => segment === "." || segment === "..");
 }
 
 function validateAsset(
@@ -103,6 +129,7 @@ function validateTexture(
       "widthPx",
       "heightPx",
       "layers",
+      "supercompressionScheme",
       "uvOrigin",
     ])
   ) {
@@ -142,7 +169,85 @@ function validateTexture(
   if (texture.uvOrigin !== "negative-x-negative-y") {
     errors.push(`files.textures[${index}].uvOrigin`);
   }
+  if (
+    texture.supercompressionScheme !== undefined &&
+    texture.supercompressionScheme !== 3
+  ) {
+    errors.push(`files.textures[${index}].supercompressionScheme`);
+  }
   return true;
+}
+
+function validateMaterialSectionProfile(
+  value: unknown,
+  errors: string[],
+): void {
+  const label = "plate.materialSectionProfile";
+  if (!isRecord(value)) {
+    errors.push(`${label}:not-object`);
+    return;
+  }
+  validateKeys(
+    value,
+    [
+      "schemaVersion",
+      "axis",
+      "sampleCount",
+      "minimumThicknessM",
+      "maximumThicknessM",
+      "thicknessUnorm8",
+    ],
+    label,
+    errors,
+  );
+  if (
+    value.schemaVersion !==
+    "mandelhowl.material-section-profile.v1"
+  ) {
+    errors.push(`${label}.schemaVersion`);
+  }
+  if (value.axis !== "x-at-y-zero") {
+    errors.push(`${label}.axis`);
+  }
+  if (value.sampleCount !== MATERIAL_SECTION_SAMPLE_COUNT) {
+    errors.push(`${label}.sampleCount`);
+  }
+  if (
+    typeof value.minimumThicknessM !== "number" ||
+    !Number.isFinite(value.minimumThicknessM) ||
+    value.minimumThicknessM <= 0
+  ) {
+    errors.push(`${label}.minimumThicknessM`);
+  }
+  if (
+    typeof value.maximumThicknessM !== "number" ||
+    !Number.isFinite(value.maximumThicknessM) ||
+    value.maximumThicknessM <= 0
+  ) {
+    errors.push(`${label}.maximumThicknessM`);
+  }
+  if (
+    typeof value.minimumThicknessM === "number" &&
+    typeof value.maximumThicknessM === "number" &&
+    Number.isFinite(value.minimumThicknessM) &&
+    Number.isFinite(value.maximumThicknessM) &&
+    value.maximumThicknessM <= value.minimumThicknessM
+  ) {
+    errors.push(`${label}.thicknessRange`);
+  }
+  if (
+    !Array.isArray(value.thicknessUnorm8) ||
+    value.thicknessUnorm8.length !== MATERIAL_SECTION_SAMPLE_COUNT ||
+    value.thicknessUnorm8.some(
+      (sample) =>
+        typeof sample !== "number" ||
+        !Number.isInteger(sample) ||
+        sample < 0 ||
+        sample > 255,
+    )
+  ) {
+    errors.push(`${label}.thicknessUnorm8`);
+  }
 }
 
 export interface ManifestValidationResult {
@@ -173,6 +278,7 @@ export function validateResonanceManifest(
     [
       "$schema",
       "schemaVersion",
+      "algorithmRevision",
       "datasetId",
       "ownership",
       "contentAddressing",
@@ -193,6 +299,14 @@ export function validateResonanceManifest(
     errors.push("schemaVersion");
   }
   if (
+    input.algorithmRevision !== undefined &&
+    (typeof input.algorithmRevision !== "string" ||
+      !ALGORITHM_REVISION.test(input.algorithmRevision) ||
+      input.algorithmRevision !== SUPPORTED_ALGORITHM_REVISION)
+  ) {
+    errors.push("algorithmRevision");
+  }
+  if (
     typeof input.datasetId !== "string" ||
     !CONTENT_ID.test(input.datasetId)
   ) {
@@ -202,7 +316,8 @@ export function validateResonanceManifest(
   if (
     !isRecord(ownership) ||
     ownership.kind !== "generated" ||
-    ownership.generator !== "tools/physics-baker" ||
+    typeof ownership.generator !== "string" ||
+    !GENERATED_ARTIFACT_GENERATORS.has(ownership.generator) ||
     ownership.policy !== "immutable-regenerate"
   ) {
     errors.push("ownership");
@@ -233,16 +348,32 @@ export function validateResonanceManifest(
     );
   }
   const plate = input.plate;
-  if (
-    !isRecord(plate) ||
-    typeof plate.plateId !== "string" ||
-    plate.plateId === "" ||
-    typeof plate.specSha256 !== "string" ||
-    !SHA256.test(plate.specSha256)
-  ) {
+  if (!isRecord(plate)) {
     errors.push("plate");
   } else {
-    validateKeys(plate, ["plateId", "specSha256"], "plate", errors);
+    validateKeys(
+      plate,
+      ["plateId", "specSha256", "materialSectionProfile"],
+      "plate",
+      errors,
+    );
+    if (typeof plate.plateId !== "string" || plate.plateId === "") {
+      errors.push("plate.plateId");
+    }
+    if (
+      typeof plate.specSha256 !== "string" ||
+      !SHA256.test(plate.specSha256)
+    ) {
+      errors.push("plate.specSha256");
+    }
+    if (plate.materialSectionProfile !== undefined) {
+      validateMaterialSectionProfile(
+        plate.materialSectionProfile,
+        errors,
+      );
+    } else if (input.algorithmRevision !== undefined) {
+      errors.push("plate.materialSectionProfile:required");
+    }
   }
   const compatibility = input.runtimeCompatibility;
   if (
@@ -335,14 +466,28 @@ export function validateResonanceManifest(
     validateKeys(range, ["minimumHz", "maximumHz"], "frequencyRange", errors);
   }
   const solver = input.solverProvenance;
+  const versioned = input.algorithmRevision !== undefined;
+  const executionKindValid =
+    isRecord(solver) &&
+    (solver.executionKind === undefined
+      ? !versioned
+      : solver.executionKind === "native-process"
+        ? solver.containerImageDigest === null
+        : solver.executionKind === "oci-container"
+          ? typeof solver.containerImageDigest === "string" &&
+            CONTENT_ID.test(solver.containerImageDigest)
+          : false);
   if (
     !isRecord(solver) ||
     typeof solver.solverName !== "string" ||
     solver.solverName === "" ||
     typeof solver.solverVersion !== "string" ||
     solver.solverVersion === "" ||
-    typeof solver.containerImageDigest !== "string" ||
-    !CONTENT_ID.test(solver.containerImageDigest) ||
+    !executionKindValid ||
+    (solver.executionKind === undefined &&
+      solver.containerImageDigest !== null &&
+      (typeof solver.containerImageDigest !== "string" ||
+        !CONTENT_ID.test(solver.containerImageDigest))) ||
     typeof solver.optionsSha256 !== "string" ||
     !SHA256.test(solver.optionsSha256)
   ) {
@@ -350,7 +495,13 @@ export function validateResonanceManifest(
   } else {
     validateKeys(
       solver,
-      ["solverName", "solverVersion", "containerImageDigest", "optionsSha256"],
+      [
+        "solverName",
+        "solverVersion",
+        "executionKind",
+        "containerImageDigest",
+        "optionsSha256",
+      ],
       "solverProvenance",
       errors,
     );
@@ -385,26 +536,117 @@ export function validateResonanceManifest(
     ] as const) {
       validateAsset(files[key], `files.${key}`, errors);
     }
-    if (
-      !Array.isArray(files.textures) ||
-      files.textures.length !== TEXTURE_KINDS.size
-    ) {
+    if (!Array.isArray(files.textures)) {
       errors.push("files.textures");
     } else {
       files.textures.forEach((texture, index) =>
         validateTexture(texture, index, errors),
       );
-      const kinds = new Set(
-        files.textures
-          .filter(isRecord)
-          .map((texture) => texture.kind)
-          .filter((kind): kind is string => typeof kind === "string"),
-      );
-      if (kinds.size !== files.textures.length) {
-        errors.push("files.textures.kind:duplicate");
-      }
-      for (const kind of TEXTURE_KINDS) {
-        if (!kinds.has(kind)) errors.push(`files.textures.missing:${kind}`);
+      if (versioned) {
+        files.textures.forEach((texture, index) => {
+          if (
+            !isRecord(texture) ||
+            texture.supercompressionScheme !== 3
+          ) {
+            errors.push(
+              `files.textures[${index}].supercompressionScheme:required`,
+            );
+          }
+        });
+        const modeCount =
+          typeof input.modeCount === "number" &&
+          Number.isInteger(input.modeCount)
+            ? input.modeCount
+            : 0;
+        if (
+          modeCount < 1 ||
+          modeCount % VERSIONED_TEXTURE_LAYERS_PER_SHARD !== 0
+        ) {
+          errors.push("files.textures.shards:modeCount");
+        } else {
+          const shardsPerKind =
+            modeCount / VERSIONED_TEXTURE_LAYERS_PER_SHARD;
+          if (
+            files.textures.length !==
+            TEXTURE_KIND_ORDER.length * shardsPerKind
+          ) {
+            errors.push("files.textures.shards:count");
+          }
+          for (
+            let kindIndex = 0;
+            kindIndex < TEXTURE_KIND_ORDER.length;
+            kindIndex += 1
+          ) {
+            const kind = TEXTURE_KIND_ORDER[kindIndex];
+            const firstTexture =
+              files.textures[kindIndex * shardsPerKind];
+            const expectedWidthPx =
+              isRecord(firstTexture) &&
+              typeof firstTexture.widthPx === "number"
+                ? firstTexture.widthPx
+                : null;
+            const expectedHeightPx =
+              isRecord(firstTexture) &&
+              typeof firstTexture.heightPx === "number"
+                ? firstTexture.heightPx
+                : null;
+            for (
+              let shardIndex = 0;
+              shardIndex < shardsPerKind;
+              shardIndex += 1
+            ) {
+              const descriptorIndex =
+                kindIndex * shardsPerKind + shardIndex;
+              const texture = files.textures[descriptorIndex];
+              const firstLayer =
+                shardIndex * VERSIONED_TEXTURE_LAYERS_PER_SHARD;
+              const lastLayer =
+                firstLayer + VERSIONED_TEXTURE_LAYERS_PER_SHARD - 1;
+              const expectedPath =
+                `textures/${kind}-${String(firstLayer).padStart(2, "0")}-${String(lastLayer).padStart(2, "0")}.ktx2`;
+              if (
+                !isRecord(texture) ||
+                texture.kind !== kind ||
+                texture.layers !== VERSIONED_TEXTURE_LAYERS_PER_SHARD ||
+                !Array.isArray(texture.modeIds) ||
+                texture.modeIds.length !==
+                  VERSIONED_TEXTURE_LAYERS_PER_SHARD ||
+                texture.path !== expectedPath
+              ) {
+                errors.push(
+                  `files.textures[${descriptorIndex}].shard-contract`,
+                );
+              }
+              if (
+                isRecord(texture) &&
+                (texture.widthPx !== expectedWidthPx ||
+                  texture.heightPx !== expectedHeightPx)
+              ) {
+                errors.push(
+                  `files.textures[${descriptorIndex}].shard-dimensions`,
+                );
+              }
+            }
+          }
+        }
+      } else {
+        if (files.textures.length !== TEXTURE_KIND_ORDER.length) {
+          errors.push("files.textures");
+        }
+        const kinds = new Set(
+          files.textures
+            .filter(isRecord)
+            .map((texture) => texture.kind)
+            .filter((kind): kind is string => typeof kind === "string"),
+        );
+        if (kinds.size !== files.textures.length) {
+          errors.push("files.textures.kind:duplicate");
+        }
+        for (const kind of TEXTURE_KIND_ORDER) {
+          if (!kinds.has(kind)) {
+            errors.push(`files.textures.missing:${kind}`);
+          }
+        }
       }
     }
   }

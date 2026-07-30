@@ -12,17 +12,19 @@ export interface DialConfig {
   readonly maxFrequencyHz: number;
   readonly minAngleRadians: number;
   readonly maxAngleRadians: number;
+  readonly unwrapPeriodRadians: number;
   readonly radialDeadZone: number;
   readonly maximumPointerSampleGapSeconds: number;
   readonly maximumPointerDeltaRadians: number;
   readonly maxPointerAngularVelocity: number;
+  readonly velocityHistoryWindowSeconds: number;
   readonly stationaryVelocityThreshold: number;
   readonly approachDirectionThresholdHzPerSecond: number;
-  readonly velocitySmoothing: number;
   readonly keyboardStepRadians: number;
   readonly keyboardPageStepRadians: number;
   readonly wheelRadiansPerUnit: number;
   readonly maxWheelStepRadians: number;
+  readonly maximumInitialInertiaVelocity: number;
   readonly inertiaFrictionPerSecond: number;
   readonly inertiaStopVelocity: number;
   readonly inertiaMaximumDurationSeconds: number;
@@ -61,6 +63,7 @@ export const DEFAULT_DIAL_CONFIG: DialConfig = Object.freeze({
   maxFrequencyHz: GENERATED_DIAL_SPEC.mapping.maximumFrequencyHz,
   minAngleRadians: GENERATED_DIAL_SPEC.mapping.minimumUnwrappedAngleRad,
   maxAngleRadians: GENERATED_DIAL_SPEC.mapping.maximumUnwrappedAngleRad,
+  unwrapPeriodRadians: GENERATED_DIAL_SPEC.pointerSampling.unwrapPeriodRad,
   radialDeadZone: GENERATED_DIAL_SPEC.pointerSampling.minimumRadiusRatio,
   maximumPointerSampleGapSeconds:
     GENERATED_DIAL_SPEC.pointerSampling.maximumSampleGapSeconds,
@@ -68,16 +71,19 @@ export const DEFAULT_DIAL_CONFIG: DialConfig = Object.freeze({
     GENERATED_DIAL_SPEC.pointerSampling.maximumAngularDeltaPerSampleRad,
   maxPointerAngularVelocity:
     GENERATED_DIAL_SPEC.velocityEstimator.maximumAbsoluteRadPerSecond,
+  velocityHistoryWindowSeconds:
+    GENERATED_DIAL_SPEC.velocityEstimator.historyWindowSeconds,
   stationaryVelocityThreshold:
     GENERATED_DIAL_SPEC.velocityEstimator.stationaryThresholdRadPerSecond,
   approachDirectionThresholdHzPerSecond:
     GENERATED_DIAL_SPEC.velocityEstimator
       .approachDirectionThresholdHzPerSecond,
-  velocitySmoothing: 0.32,
   keyboardStepRadians: GENERATED_DIAL_SPEC.keyboard.arrowStepRad,
   keyboardPageStepRadians: GENERATED_DIAL_SPEC.keyboard.pageStepRad,
   wheelRadiansPerUnit: GENERATED_DIAL_SPEC.wheel.radiansPerDeltaPixel,
   maxWheelStepRadians: GENERATED_DIAL_SPEC.wheel.maximumDeltaRadPerEvent,
+  maximumInitialInertiaVelocity:
+    GENERATED_DIAL_SPEC.inertia.maximumInitialRadPerSecond,
   inertiaFrictionPerSecond:
     GENERATED_DIAL_SPEC.inertia.frictionRadPerSecondSquared,
   inertiaStopVelocity: GENERATED_DIAL_SPEC.inertia.stopThresholdRadPerSecond,
@@ -129,6 +135,14 @@ export function createDialConfig(
     maxFrequencyHz,
     minAngleRadians,
     maxAngleRadians,
+    unwrapPeriodRadians: Math.max(
+      Number.EPSILON,
+      finiteOr(
+        overrides.unwrapPeriodRadians ??
+          DEFAULT_DIAL_CONFIG.unwrapPeriodRadians,
+        DEFAULT_DIAL_CONFIG.unwrapPeriodRadians,
+      ),
+    ),
     radialDeadZone: Math.max(
       0,
       finiteOr(
@@ -160,6 +174,14 @@ export function createDialConfig(
         DEFAULT_DIAL_CONFIG.maxPointerAngularVelocity,
       ),
     ),
+    velocityHistoryWindowSeconds: Math.max(
+      Number.EPSILON,
+      finiteOr(
+        overrides.velocityHistoryWindowSeconds ??
+          DEFAULT_DIAL_CONFIG.velocityHistoryWindowSeconds,
+        DEFAULT_DIAL_CONFIG.velocityHistoryWindowSeconds,
+      ),
+    ),
     stationaryVelocityThreshold: Math.max(
       0,
       finiteOr(
@@ -175,14 +197,6 @@ export function createDialConfig(
           DEFAULT_DIAL_CONFIG.approachDirectionThresholdHzPerSecond,
         DEFAULT_DIAL_CONFIG.approachDirectionThresholdHzPerSecond,
       ),
-    ),
-    velocitySmoothing: clamp(
-      finiteOr(
-        overrides.velocitySmoothing ?? DEFAULT_DIAL_CONFIG.velocitySmoothing,
-        DEFAULT_DIAL_CONFIG.velocitySmoothing,
-      ),
-      0,
-      1,
     ),
     keyboardStepRadians: Math.max(
       Number.EPSILON,
@@ -211,6 +225,14 @@ export function createDialConfig(
       finiteOr(
         overrides.maxWheelStepRadians ?? DEFAULT_DIAL_CONFIG.maxWheelStepRadians,
         DEFAULT_DIAL_CONFIG.maxWheelStepRadians,
+      ),
+    ),
+    maximumInitialInertiaVelocity: Math.max(
+      0,
+      finiteOr(
+        overrides.maximumInitialInertiaVelocity ??
+          DEFAULT_DIAL_CONFIG.maximumInitialInertiaVelocity,
+        DEFAULT_DIAL_CONFIG.maximumInitialInertiaVelocity,
       ),
     ),
     inertiaFrictionPerSecond: Math.max(

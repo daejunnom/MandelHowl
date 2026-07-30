@@ -1,6 +1,7 @@
 # Canonical owner of the virtual speaker-plate-microphone loop. Per-frequency
 # exceptions and random forcing are intentionally absent.
 schemaVersion: mandelhowl.feedback-spec.v1
+algorithmRevision: fixed-step-modal-feedback-v3
 canonicalOwner:
   path: specs/runtime/feedback.v1.yaml
   policy: edit-source-regenerate-derived
@@ -59,8 +60,12 @@ calibration:
     decayBasePerSecond: 0.68
     decayMarginMultiplierPerSecond: 1.55
     criticalFollowRatePerSecond: 0.92
-    criticalLowerRmsMultiplier: 0.75
-    criticalSaturationPosition: 0.82
+    # The complete critical-margin interval maps continuously onto the
+    # canonical logarithmic RMS interval. Values below 1.0 would make the
+    # lowest integer outputs physically unreachable; values below 1.0 for the
+    # saturation position would collapse the upper critical interval to 100.
+    criticalLowerRmsMultiplier: 1
+    criticalSaturationPosition: 1
   microphone:
     modeBaseWeight: 0.72
     modePhaseWeight: 0.12

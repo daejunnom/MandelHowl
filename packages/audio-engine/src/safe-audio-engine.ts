@@ -1,18 +1,24 @@
 import {
   GENERATED_AUDIO_SAFETY_SPEC,
+  createDiagnosticRecord,
   type AudioSafetySpec,
   type DiagnosticRecord,
   type RuntimeSnapshot,
 } from "../../contracts/src";
-import { createDiagnostic } from "../../diagnostics/src";
 import {
   dbToLinear,
   measureAudioSamples,
   outputGainFromEnvelope,
   rateLimitGain,
-  updateExposureState,
+  updateExposureStateInPlace,
+  type MutableExposureState,
 } from "./audio-safety-math";
 import { createAudioSafetyChain } from "./audio-safety-graph";
+import {
+  createAudibleModalVoiceBuffer,
+  writeAudibleModalVoices,
+  type AudibleModalVoiceBuffer,
+} from "./modal-voice-bank";
 
 export interface AudibleSnapshot {
   readonly frequency: number;
@@ -42,7 +48,6 @@ export interface AudioSafetyTelemetry {
 }
 
 export interface SafeAudioEngineOptions {
-  readonly safetySpec?: Readonly<AudioSafetySpec>;
   readonly onDiagnostic?: (diagnostic: DiagnosticRecord) => void;
   readonly onTelemetry?: (telemetry: AudioSafetyTelemetry) => void;
 }
@@ -55,10 +60,10 @@ export type SafeAudioEngineObservers = Pick<
 interface NormalizedAudibleFrame {
   frequency: number;
   envelope: number;
-  activeMode: number;
   regime: RuntimeSnapshot["regime"];
   sequence: number | null;
   datasetId: string | null;
+  modalVoices: AudibleModalVoiceBuffer;
 }
 
 const MIN_AUDIBLE_FREQUENCY = 20;
@@ -92,6 +97,7 @@ function isRuntimeSnapshot(
 function writeNormalizedSnapshot(
   snapshot: RuntimeSnapshot | AudibleSnapshot,
   target: NormalizedAudibleFrame,
+  safety: Readonly<AudioSafetySpec>,
 ): boolean {
   const frequency = isRuntimeSnapshot(snapshot)
     ? snapshot.dial.driveFrequencyHz
@@ -99,18 +105,6 @@ function writeNormalizedSnapshot(
   const envelope = isRuntimeSnapshot(snapshot)
     ? snapshot.feedback.envelopeNormalized
     : snapshot.feedbackEnvelope;
-  let activeMode = isRuntimeSnapshot(snapshot) ? 0 : snapshot.activeMode;
-  if (isRuntimeSnapshot(snapshot)) {
-    let strongestEnergy = Number.NEGATIVE_INFINITY;
-    for (let index = 0; index < snapshot.modes.length; index += 1) {
-      const energy =
-        snapshot.modes[index]?.energyNormalized ?? Number.NEGATIVE_INFINITY;
-      if (energy > strongestEnergy) {
-        strongestEnergy = energy;
-        activeMode = index;
-      }
-    }
-  }
   const sequence = isRuntimeSnapshot(snapshot)
     ? snapshot.sequence
     : (snapshot.sequence ?? null);
@@ -121,9 +115,33 @@ function writeNormalizedSnapshot(
   if (
     !Number.isFinite(frequency) ||
     !Number.isFinite(envelope) ||
-    !Number.isFinite(activeMode)
+    !(
+      snapshot.regime === "decaying" ||
+      snapshot.regime === "critical" ||
+      snapshot.regime === "growing" ||
+      snapshot.regime === "saturated"
+    ) ||
+    (sequence !== null &&
+      (!Number.isInteger(sequence) || sequence < 0))
   ) {
     return false;
+  }
+  if (
+    isRuntimeSnapshot(snapshot) &&
+    !writeAudibleModalVoices(
+      snapshot.modes,
+      safety.modalTimbre.minimumEnergyNormalized,
+      target.modalVoices,
+    )
+  ) {
+    return false;
+  }
+  if (!isRuntimeSnapshot(snapshot)) {
+    if (!Number.isFinite(snapshot.activeMode)) return false;
+    target.modalVoices.count = 0;
+    target.modalVoices.modeIndices.fill(-1);
+    target.modalVoices.frequenciesHz.fill(0);
+    target.modalVoices.weights.fill(0);
   }
 
   target.frequency = clamp(
@@ -132,7 +150,6 @@ function writeNormalizedSnapshot(
     MAX_AUDIBLE_FREQUENCY,
   );
   target.envelope = clamp(envelope, 0, 1);
-  target.activeMode = Math.max(0, Math.floor(activeMode));
   target.regime = snapshot.regime;
   target.sequence = sequence;
   target.datasetId = datasetId;
@@ -169,26 +186,35 @@ export class SafeAudioEngine {
   private lastDatasetId: string | null = null;
   private lastFrameContextTime = 0;
   private lastMeterContextTime = 0;
-  private highFrequencySeconds = 0;
-  private saturationSeconds = 0;
+  private readonly exposureState: MutableExposureState = {
+    highFrequencySeconds: 0,
+    saturationSeconds: 0,
+    active: false,
+  };
   private requestedGain = 0;
   private appliedGain = 0;
   private measuredRmsDbfs = -120;
   private measuredPeakDbfs = -120;
-  private exposureGuardActive = false;
   private lifecycleGeneration = 0;
   private invalidSnapshotReported = false;
-  private readonly normalizedFrame: NormalizedAudibleFrame = {
-    frequency: MIN_AUDIBLE_FREQUENCY,
-    envelope: 0,
-    activeMode: 0,
-    regime: "decaying",
-    sequence: null,
-    datasetId: null,
-  };
+  private runtimeFailureReported = false;
+  private activationPromise: Promise<boolean> | null = null;
+  private readonly normalizedFrame: NormalizedAudibleFrame;
 
   constructor(options: SafeAudioEngineOptions = {}) {
-    this.safety = options.safetySpec ?? GENERATED_AUDIO_SAFETY_SPEC;
+    // The live monitor has one safety owner. Callers may observe it, but may
+    // not relax canonical gain, bandwidth, limiter, or exposure ceilings.
+    this.safety = GENERATED_AUDIO_SAFETY_SPEC;
+    this.normalizedFrame = {
+      frequency: MIN_AUDIBLE_FREQUENCY,
+      envelope: 0,
+      regime: "decaying",
+      sequence: null,
+      datasetId: null,
+      modalVoices: createAudibleModalVoiceBuffer(
+        this.safety.modalTimbre.maximumVoices,
+      ),
+    };
     this.observers = {
       onDiagnostic: options.onDiagnostic,
       onTelemetry: options.onTelemetry,
@@ -197,7 +223,7 @@ export class SafeAudioEngine {
 
   setObservers(observers: SafeAudioEngineObservers): void {
     this.observers = { ...observers };
-    this.observers.onTelemetry?.(this.telemetry);
+    this.emitTelemetry();
   }
 
   get isActivated(): boolean {
@@ -212,9 +238,11 @@ export class SafeAudioEngine {
       peakDbfs: this.measuredPeakDbfs,
       requestedGain: this.requestedGain,
       appliedGain: this.appliedGain,
-      exposureGuardActive: this.exposureGuardActive,
-      continuousHighFrequencySeconds: this.highFrequencySeconds,
-      continuousSaturationSeconds: this.saturationSeconds,
+      exposureGuardActive: this.exposureState.active,
+      continuousHighFrequencySeconds:
+        this.exposureState.highFrequencySeconds,
+      continuousSaturationSeconds:
+        this.exposureState.saturationSeconds,
       graphNodeCount: this.graphNodeCount,
       framesApplied: this.framesApplied,
       lastSequence: this.lastSequence,
@@ -241,11 +269,28 @@ export class SafeAudioEngine {
     );
   }
 
-  async activate(): Promise<boolean> {
-    if (typeof window === "undefined" || this.lifecycle === "disposed") {
-      return false;
+  activate(): Promise<boolean> {
+    if (
+      typeof window === "undefined" ||
+      this.lifecycle === "disposed" ||
+      this.lifecycle === "unavailable"
+    ) {
+      return Promise.resolve(false);
     }
+    if (this.activationPromise) return this.activationPromise;
 
+    const activation = this.activateOnce();
+    this.activationPromise = activation;
+    const clearActivation = () => {
+      if (this.activationPromise === activation) {
+        this.activationPromise = null;
+      }
+    };
+    void activation.then(clearActivation, clearActivation);
+    return activation;
+  }
+
+  private async activateOnce(): Promise<boolean> {
     if (!this.context) {
       const AudioContextConstructor =
         window.AudioContext ??
@@ -297,6 +342,12 @@ export class SafeAudioEngine {
       try {
         await context.resume();
       } catch (error) {
+        if (
+          generation !== this.lifecycleGeneration ||
+          this.lifecycle === "disposed"
+        ) {
+          return false;
+        }
         this.lifecycle = "unavailable";
         this.reportDiagnostic(
           "MH-AUDIO-RESUME-FAILED",
@@ -326,7 +377,7 @@ export class SafeAudioEngine {
    */
   applySnapshot(snapshot: RuntimeSnapshot | AudibleSnapshot): void {
     const frame = this.normalizedFrame;
-    if (!writeNormalizedSnapshot(snapshot, frame)) {
+    if (!writeNormalizedSnapshot(snapshot, frame, this.safety)) {
       this.muteInvalidSnapshot();
       return;
     }
@@ -341,76 +392,126 @@ export class SafeAudioEngine {
       return;
     }
 
-    if (
-      frame.sequence !== null &&
-      frame.sequence === this.lastSequence &&
-      frame.datasetId === this.lastDatasetId
-    ) {
-      return;
-    }
-
-    const now = context.currentTime;
-    const elapsed = clamp(now - this.lastFrameContextTime, 0, 0.25);
-    this.lastFrameContextTime = now;
-    this.lastSequence = frame.sequence;
-    this.lastDatasetId = frame.datasetId;
-    this.framesApplied += 1;
-    this.invalidSnapshotReported = false;
-
-    this.updateExposure(frame, elapsed);
-    for (let index = 0; index < this.oscillators.length; index += 1) {
-      const oscillator = this.oscillators[index];
-      if (!oscillator) continue;
-      const partialRatio =
-        index === 0
-          ? 1
-          : index === 1
-            ? 1.498 + (frame.activeMode % 3) * 0.006
-            : 2.01;
-      const partialWeight = index === 0 ? 0.62 : index === 1 ? 0.25 : 0.13;
-      setTarget(
-        oscillator.frequency,
-        clamp(
-          frame.frequency * partialRatio,
-          MIN_AUDIBLE_FREQUENCY,
-          Math.min(MAX_AUDIBLE_FREQUENCY, this.safety.bandLimiter.lowPassHz),
-        ),
-        context,
-        0.025,
-      );
-      const partialGain = this.oscillatorGains[index];
-      if (partialGain) {
-        setTarget(
-          partialGain.gain,
-          frame.envelope * partialWeight,
-          context,
-          frame.regime === "saturated" ? 0.08 : 0.035,
+    try {
+      if (context.state !== "running") {
+        throw new Error(
+          `AudioContext left the running state (${context.state}).`,
         );
       }
-    }
 
-    setTarget(
-      this.lowPass.frequency,
-      clamp(
-        frame.frequency * 3.2,
-        Math.max(220, this.safety.bandLimiter.highPassHz * 2),
+      if (
+        frame.sequence !== null &&
+        this.lastSequence !== null &&
+        frame.sequence <= this.lastSequence &&
+        frame.datasetId === this.lastDatasetId
+      ) {
+        return;
+      }
+
+      const now = context.currentTime;
+      const elapsed = clamp(now - this.lastFrameContextTime, 0, 0.25);
+      this.lastFrameContextTime = now;
+      this.lastSequence = frame.sequence;
+      this.lastDatasetId = frame.datasetId;
+      this.framesApplied += 1;
+      this.invalidSnapshotReported = false;
+
+      this.updateExposure(frame, elapsed);
+      const maximumFrequency = Math.min(
+        MAX_AUDIBLE_FREQUENCY,
         this.safety.bandLimiter.lowPassHz,
-      ),
-      context,
-      0.08,
-    );
+      );
+      const driveOscillator = this.oscillators[0];
+      const driveGain = this.oscillatorGains[0];
+      if (driveOscillator) {
+        setTarget(
+          driveOscillator.frequency,
+          clamp(
+            frame.frequency,
+            MIN_AUDIBLE_FREQUENCY,
+            maximumFrequency,
+          ),
+          context,
+          this.safety.modalTimbre.frequencySmoothingSeconds,
+        );
+      }
+      if (driveGain) {
+        setTarget(
+          driveGain.gain,
+          frame.envelope *
+            this.safety.modalTimbre.driveToneWeight,
+          context,
+          this.safety.modalTimbre.gainAttackSeconds,
+        );
+      }
 
-    this.requestedGain = outputGainFromEnvelope(
-      frame.envelope,
-      frame.regime,
-      this.exposureGuardActive,
-      this.safety,
-    );
-    this.measureOutput(now);
-    const measuredSafetyTrim = this.measurementSafetyTrim();
-    const safeTarget = this.requestedGain * measuredSafetyTrim;
-    this.appliedGain = this.scheduleRateLimitedGain(safeTarget, elapsed);
-    this.emitTelemetry();
+      for (
+        let voiceIndex = 0;
+        voiceIndex < this.normalizedFrame.modalVoices.weights.length;
+        voiceIndex += 1
+      ) {
+        const oscillator = this.oscillators[voiceIndex + 1];
+        const gain = this.oscillatorGains[voiceIndex + 1];
+        const audible =
+          voiceIndex < frame.modalVoices.count &&
+          Boolean(oscillator && gain);
+        const voiceWeight = audible
+          ? (frame.modalVoices.weights[voiceIndex] ?? 0)
+          : 0;
+        if (audible && oscillator) {
+          setTarget(
+            oscillator.frequency,
+            clamp(
+              frame.modalVoices.frequenciesHz[voiceIndex] ??
+                frame.frequency,
+              MIN_AUDIBLE_FREQUENCY,
+              maximumFrequency,
+            ),
+            context,
+            this.safety.modalTimbre.frequencySmoothingSeconds,
+          );
+        }
+        if (gain) {
+          const modalTarget =
+            frame.envelope *
+            this.safety.modalTimbre.modalVoiceWeight *
+            voiceWeight;
+          setTarget(
+            gain.gain,
+            modalTarget,
+            context,
+            Math.abs(modalTarget) > Math.abs(gain.gain.value)
+              ? this.safety.modalTimbre.gainAttackSeconds
+              : this.safety.modalTimbre.gainReleaseSeconds,
+          );
+        }
+      }
+
+      setTarget(
+        this.lowPass.frequency,
+        clamp(
+          frame.frequency * 3.2,
+          Math.max(220, this.safety.bandLimiter.highPassHz * 2),
+          this.safety.bandLimiter.lowPassHz,
+        ),
+        context,
+        0.08,
+      );
+
+      this.requestedGain = outputGainFromEnvelope(
+        frame.envelope,
+        frame.regime,
+        this.exposureState.active,
+        this.safety,
+      );
+      this.measureOutput(now);
+      const measuredSafetyTrim = this.measurementSafetyTrim();
+      const safeTarget = this.requestedGain * measuredSafetyTrim;
+      this.appliedGain = this.scheduleRateLimitedGain(safeTarget, elapsed);
+      this.emitTelemetry();
+    } catch (error) {
+      this.failClosedAfterRuntimeError(error);
+    }
   }
 
   async suspend(
@@ -522,19 +623,20 @@ export class SafeAudioEngine {
     const oscillators: OscillatorNode[] = [];
     const oscillatorGains: GainNode[] = [];
     try {
-      const oscillatorTypes: OscillatorType[] = ["sine", "triangle", "sine"];
-      oscillatorTypes.forEach((type, index) => {
+      const sourceCount =
+        1 + this.normalizedFrame.modalVoices.weights.length;
+      for (let index = 0; index < sourceCount; index += 1) {
         const oscillator = context.createOscillator();
         const gain = context.createGain();
-        oscillator.type = type;
-        oscillator.frequency.value = 110 * (index + 1);
+        oscillator.type = "sine";
+        oscillator.frequency.value = 110;
         gain.gain.value = 0;
         oscillator.connect(gain);
         gain.connect(inputMix);
         oscillator.start();
         oscillators.push(oscillator);
         oscillatorGains.push(gain);
-      });
+      }
     } catch (error) {
       oscillators.forEach((oscillator) => {
         try {
@@ -573,20 +675,14 @@ export class SafeAudioEngine {
   }
 
   private updateExposure(frame: NormalizedAudibleFrame, elapsed: number): void {
-    const next = updateExposureState(
-      {
-        highFrequencySeconds: this.highFrequencySeconds,
-        saturationSeconds: this.saturationSeconds,
-        active: this.exposureGuardActive,
-      },
+    const wasActive = this.exposureState.active;
+    updateExposureStateInPlace(
+      this.exposureState,
       frame,
       elapsed,
       this.safety,
     );
-    this.highFrequencySeconds = next.highFrequencySeconds;
-    this.saturationSeconds = next.saturationSeconds;
-    const active = next.active;
-    if (active && !this.exposureGuardActive) {
+    if (this.exposureState.active && !wasActive) {
       this.reportDiagnostic(
         "MH-AUDIO-SAFETY-GUARD",
         "warning",
@@ -595,7 +691,6 @@ export class SafeAudioEngine {
         this.safety.exposureGuard.attenuationDb,
       );
     }
-    this.exposureGuardActive = active;
   }
 
   private measureOutput(now: number): void {
@@ -675,6 +770,43 @@ export class SafeAudioEngine {
     }
   }
 
+  private failClosedAfterRuntimeError(error: unknown): void {
+    const context = this.context;
+    ++this.lifecycleGeneration;
+    this.requestedGain = 0;
+    this.appliedGain = 0;
+    this.lifecycle = "unavailable";
+
+    if (context && this.masterGain) {
+      try {
+        this.masterGain.gain.cancelScheduledValues(context.currentTime);
+        this.masterGain.gain.setValueAtTime(0, context.currentTime);
+      } catch {
+        try {
+          this.masterGain.gain.value = 0;
+        } catch {
+          // The graph is quarantined below even if its AudioParam is broken.
+        }
+      }
+    }
+    if (!this.runtimeFailureReported) {
+      this.runtimeFailureReported = true;
+      this.reportDiagnostic(
+        "MH-AUDIO-RUNTIME-FAILED",
+        "warning",
+        "audio.runtimeFailed",
+        "reason",
+        error instanceof Error ? error.message : "unknown",
+      );
+    }
+    this.emitTelemetry();
+    if (context?.state === "running") {
+      void context.suspend().catch(() => {
+        // The master gain is already zero and the graph stays quarantined.
+      });
+    }
+  }
+
   private reportDiagnostic(
     code: string,
     severity: "info" | "warning" | "fatal",
@@ -682,23 +814,33 @@ export class SafeAudioEngine {
     key: string,
     value: string | number | boolean | null,
   ): void {
-    this.observers.onDiagnostic?.(
-      createDiagnostic({
-        code,
-        severity,
-        messageKey,
-        evidence: [
-          {
-            key,
-            value,
-            source: "safe-audio-engine",
-          },
-        ],
-      }),
-    );
+    try {
+      this.observers.onDiagnostic?.(
+        createDiagnosticRecord({
+          code,
+          severity,
+          messageKey,
+          evidence: [
+            {
+              key,
+              value,
+              source: "safe-audio-engine",
+            },
+          ],
+        }),
+      );
+    } catch {
+      // Observability is not part of the audible graph or its safety owner.
+      // A broken UI/telemetry sink must never make activation, muting, or
+      // limiter enforcement throw.
+    }
   }
 
   private emitTelemetry(): void {
-    this.observers.onTelemetry?.(this.telemetry);
+    try {
+      this.observers.onTelemetry?.(this.telemetry);
+    } catch {
+      // Telemetry cannot become a bypass around fail-closed audio lifecycle.
+    }
   }
 }

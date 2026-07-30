@@ -4,12 +4,15 @@ import { finiteOr, TAU } from "./math";
 export function unwrapAngleDelta(
   previousWrappedRadians: number,
   currentWrappedRadians: number,
+  periodRadians = TAU,
 ): number {
   const previous = finiteOr(previousWrappedRadians, 0);
   const current = finiteOr(currentWrappedRadians, previous);
-  let delta = (current - previous) % TAU;
-  if (delta > Math.PI) delta -= TAU;
-  if (delta < -Math.PI) delta += TAU;
+  const period = Math.max(Number.EPSILON, finiteOr(periodRadians, TAU));
+  const halfPeriod = period / 2;
+  let delta = (current - previous) % period;
+  if (delta > halfPeriod) delta -= period;
+  if (delta < -halfPeriod) delta += period;
   return Object.is(delta, -0) ? 0 : delta;
 }
 
@@ -17,9 +20,14 @@ export function accumulateUnwrappedAngle(
   unwrappedRadians: number,
   previousWrappedRadians: number,
   currentWrappedRadians: number,
+  periodRadians = TAU,
 ): number {
   return (
     finiteOr(unwrappedRadians, 0) +
-    unwrapAngleDelta(previousWrappedRadians, currentWrappedRadians)
+    unwrapAngleDelta(
+      previousWrappedRadians,
+      currentWrappedRadians,
+      periodRadians,
+    )
   );
 }

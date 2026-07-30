@@ -1,4 +1,12 @@
 import { expect, test } from "@playwright/test";
+import { GENERATED_DIAL_SPEC } from "../../packages/contracts/src";
+
+const DIAL_MINIMUM = String(
+  GENERATED_DIAL_SPEC.mapping.minimumFrequencyHz,
+);
+const DIAL_MAXIMUM = String(
+  GENERATED_DIAL_SPEC.mapping.maximumFrequencyHz,
+);
 
 test("exposes one conceptual dial input and one integer result", async ({
   page,
@@ -7,8 +15,8 @@ test("exposes one conceptual dial input and one integer result", async ({
 
   const dial = page.getByRole("slider", { name: "Drive frequency" });
   await expect(dial).toHaveCount(1);
-  await expect(dial).toHaveAttribute("aria-valuemin", "45");
-  await expect(dial).toHaveAttribute("aria-valuemax", "6000");
+  await expect(dial).toHaveAttribute("aria-valuemin", DIAL_MINIMUM);
+  await expect(dial).toHaveAttribute("aria-valuemax", DIAL_MAXIMUM);
 
   await expect(page.locator("button, input, select, textarea")).toHaveCount(0);
   await expect(page.locator(".mh-volume-readout")).toContainText("VOLUME");

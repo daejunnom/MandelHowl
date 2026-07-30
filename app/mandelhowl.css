@@ -437,7 +437,11 @@
 .mh-dial-face {
   width: 53%;
   height: 53%;
-  z-index: 2;
+  /*
+   * Keep the frequency readout above the rotating hand. The indicator and
+   * its grab dot remain visible in the outer ring, but can never cover Hz.
+   */
+  z-index: 4;
   display: grid;
   place-items: center;
   align-content: center;
@@ -610,6 +614,51 @@
   pointer-events: none;
 }
 
+.mh-apparatus-canvas {
+  position: absolute;
+  z-index: 3;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  border-radius: 0;
+  pointer-events: none;
+}
+
+/*
+ * WebGL owns the literal D0 apparatus geometry. The labelled DOM structure
+ * remains in place as the accessibility presenter; Canvas/static expose the
+ * same structure as the visual fail-operational fallback.
+ */
+.mh-apparatus[data-renderer-kind="webgl2"] .mh-speaker-frame,
+.mh-apparatus[data-renderer-kind="webgl2"] .mh-drive-waves,
+.mh-apparatus[data-renderer-kind="webgl2"] .mh-air-waves,
+.mh-apparatus[data-renderer-kind="webgl2"] .mh-mic-capsule,
+.mh-apparatus[data-renderer-kind="webgl2"] .mh-mic-body,
+.mh-apparatus[data-renderer-kind="webgl2"] .mh-mic-mount,
+.mh-apparatus[data-renderer-kind="webgl2"] .mh-feedback-flow,
+.mh-apparatus[data-renderer-kind="webgl2"] .mh-plate-sheen {
+  visibility: hidden;
+}
+
+.mh-apparatus[data-renderer-kind="webgl2"] .mh-feedback-cable {
+  border-color: transparent;
+  box-shadow: none;
+}
+
+.mh-apparatus[data-renderer-kind="webgl2"] .mh-feedback-cable::before,
+.mh-apparatus[data-renderer-kind="webgl2"] .mh-feedback-cable::after {
+  visibility: hidden;
+}
+
+.mh-apparatus[data-renderer-kind="webgl2"] .mh-plate-surface,
+.mh-apparatus[data-renderer-kind="canvas2d"] .mh-plate-surface {
+  overflow: visible;
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+}
+
 .mh-signal-key {
   position: absolute;
   z-index: 6;
@@ -656,8 +705,8 @@
 .mh-speaker {
   position: absolute;
   z-index: 4;
-  left: 4%;
-  bottom: 24%;
+  left: calc(var(--speaker-center-x) - 10%);
+  top: calc(var(--speaker-center-y) - 14%);
   width: 20%;
   min-width: 6.4rem;
   display: grid;
@@ -711,7 +760,7 @@
   box-shadow:
     inset 0 0 1rem #000,
     0 0 0 0.16rem rgb(237 240 233 / 15%);
-  animation: mh-speaker-pulse calc(1.35s - var(--envelope) * 1.05s) ease-in-out infinite;
+  animation: mh-speaker-pulse var(--drive-cycle) ease-in-out infinite;
 }
 
 .mh-speaker-cone i {
@@ -755,9 +804,9 @@
   height: 35%;
   border-top: 1px solid var(--signal);
   border-radius: 50%;
-  opacity: calc(0.25 + var(--envelope) * 0.65);
+  opacity: calc(0.12 + var(--speaker-travel) * 0.72);
   transform: rotate(-18deg);
-  animation: mh-wave-drive 1.5s ease-out infinite;
+  animation: mh-wave-drive var(--drive-cycle) ease-out infinite;
 }
 
 .mh-drive-waves span:nth-child(2) {
@@ -771,8 +820,8 @@
 .mh-plate-assembly {
   position: absolute;
   z-index: 4;
-  left: 25%;
-  top: 12%;
+  left: calc(var(--plate-center-x) - 24%);
+  top: calc(var(--plate-center-y) - 32.5%);
   width: 48%;
   height: 65%;
   display: grid;
@@ -902,21 +951,24 @@
     0 0 0 0.5rem var(--ink),
     0.75rem 1rem 1.8rem rgb(10 13 14 / 27%),
     0 0 calc(0.5rem + var(--envelope) * 1.9rem) var(--signal-soft);
-  transform: perspective(40rem) rotateX(58deg) rotateZ(-2deg)
-    scale(calc(1 + var(--envelope) * 0.012));
+  transform: perspective(40rem) rotateX(58deg) rotateZ(-2deg);
   transform-origin: center;
   transition:
     box-shadow 180ms linear,
     transform 120ms linear;
 }
 
-.mh-plate-canvas {
+.mh-plate-surface > .mh-plate-canvas {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
   display: block;
   border-radius: 50%;
+}
+
+.mh-plate-canvas-suspended {
+  display: none;
 }
 
 .mh-plate-sheen {
@@ -987,9 +1039,9 @@
   height: 70%;
   border-right: 1px solid var(--signal);
   border-radius: 50%;
-  opacity: calc(0.2 + var(--envelope) * 0.7);
+  opacity: calc(var(--microphone-level) * 0.92);
   transform: translateY(-50%);
-  animation: mh-wave-return 1.35s ease-out infinite;
+  animation: mh-wave-return var(--return-cycle) ease-out infinite;
 }
 
 .mh-air-waves span:nth-child(2) {
@@ -1003,8 +1055,8 @@
 .mh-microphone {
   position: absolute;
   z-index: 6;
-  right: 1%;
-  top: 30%;
+  left: calc(var(--microphone-center-x) - 8%);
+  top: calc(var(--microphone-center-y) - 5%);
   width: 16%;
   min-width: 5rem;
   display: grid;
@@ -1118,7 +1170,8 @@
   border-right: 0.13rem solid var(--signal);
   border-bottom: 0.13rem solid var(--signal);
   transform: rotate(135deg);
-  animation: mh-feedback-flow 2.2s linear infinite;
+  opacity: var(--feedback-level);
+  animation: mh-feedback-flow var(--feedback-cycle) linear infinite;
 }
 
 .mh-flow-one {
@@ -1144,16 +1197,13 @@
 
 .mh-instrumentation {
   min-height: 6.3rem;
-  display: grid;
-  grid-template-columns: minmax(12rem, 1fr) minmax(8rem, 0.44fr);
-  gap: 0.55rem;
+  display: block;
   padding: 0.55rem 1rem;
   border-top: 1px solid var(--line);
   background: rgb(10 13 14 / 4%);
 }
 
-.mh-oscilloscope,
-.mh-phase-meter {
+.mh-oscilloscope {
   min-width: 0;
   display: grid;
   align-items: center;
@@ -1161,13 +1211,7 @@
 }
 
 .mh-oscilloscope {
-  grid-template-columns: minmax(4.8rem, 0.45fr) minmax(8rem, 1fr);
-}
-
-.mh-phase-meter {
-  grid-template-columns: minmax(4.8rem, 1fr) 3.6rem;
-  border-left: 1px solid var(--line);
-  padding-left: 0.7rem;
+  grid-template-columns: minmax(4.8rem, 0.28fr) minmax(12rem, 1fr);
 }
 
 .mh-instrument-label {
@@ -1177,8 +1221,7 @@
 
 .mh-instrument-label span,
 .mh-instrument-label strong,
-.mh-oscilloscope > p,
-.mh-phase-meter > p {
+.mh-oscilloscope > p {
   font-family: var(--font-geist-mono), "Courier New", monospace;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -1209,6 +1252,10 @@
     #111616;
   background-size: 0.72rem 0.72rem;
   box-shadow: inset 0 0 0.8rem #000;
+}
+
+.mh-scope-screen[data-sample-count="20"] {
+  grid-template-columns: repeat(20, minmax(1px, 1fr));
 }
 
 .mh-scope-zero {
@@ -1244,8 +1291,7 @@
   top: 50%;
 }
 
-.mh-oscilloscope > p,
-.mh-phase-meter > p {
+.mh-oscilloscope > p {
   color: rgb(10 13 14 / 52%);
   font-size: 0.42rem;
 }
@@ -1257,72 +1303,9 @@
   justify-content: space-between;
 }
 
-.mh-phase-meter > p {
-  grid-column: 2;
-  text-align: center;
-}
-
-.mh-phase-face {
-  position: relative;
-  grid-column: 2;
-  grid-row: 1;
-  width: 3.25rem;
-  aspect-ratio: 1;
-  border: 1px solid var(--ink);
-  border-radius: 50%;
-  background:
-    linear-gradient(90deg, transparent 49%, rgb(10 13 14 / 18%) 50% 51%, transparent 52%),
-    linear-gradient(transparent 49%, rgb(10 13 14 / 18%) 50% 51%, transparent 52%),
-    var(--panel);
-}
-
-.mh-phase-face::after {
-  content: "";
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  width: 0.34rem;
-  height: 0.34rem;
-  translate: -50% -50%;
-  border-radius: 50%;
-  background: var(--ink);
-}
-
-.mh-phase-face > i {
-  position: absolute;
-  inset: 0.24rem;
-  border-radius: 50%;
-  transform: rotate(var(--phase-angle));
-}
-
-.mh-phase-face > i::before {
-  content: "";
-  position: absolute;
-  left: 50%;
-  top: 0;
-  width: 0.13rem;
-  height: 43%;
-  translate: -50% 0;
-  border-radius: 1rem;
-  background: var(--signal);
-  box-shadow: 0 0 0.45rem var(--signal);
-}
-
-.mh-phase-face > span {
-  position: absolute;
-  top: 50%;
-  translate: 0 -50%;
-  color: rgb(10 13 14 / 45%);
-  font-family: var(--font-geist-mono), "Courier New", monospace;
-  font-size: 0.35rem;
-}
-
-.mh-phase-face > span:nth-of-type(1) {
-  right: 0.18rem;
-}
-
-.mh-phase-face > span:nth-of-type(2) {
-  left: 0.18rem;
+.mh-scope-phase-emphasis {
+  color: var(--signal);
+  font-weight: 750;
 }
 
 .mh-measurement > div:first-child {
@@ -1603,7 +1586,7 @@
   border-radius: 50%;
   background: var(--signal);
   box-shadow: 0 0 0.6rem var(--signal);
-  animation: mh-status-blink 1.35s steps(2, end) infinite;
+  animation: mh-status-blink var(--status-cycle) steps(2, end) infinite;
 }
 
 .mh-regime-card p {
@@ -1714,10 +1697,10 @@
 @keyframes mh-speaker-pulse {
   0%,
   100% {
-    transform: scale(0.985);
+    transform: scale(calc(1 - var(--speaker-travel) * 0.012));
   }
   50% {
-    transform: scale(calc(1 + var(--envelope) * 0.035));
+    transform: scale(calc(1 + var(--speaker-travel) * 0.035));
   }
 }
 
@@ -1727,7 +1710,7 @@
     transform: translate(0, 0) rotate(-18deg) scale(0.35);
   }
   30% {
-    opacity: calc(0.2 + var(--envelope) * 0.65);
+    opacity: calc(0.12 + var(--speaker-travel) * 0.72);
   }
   100% {
     opacity: 0;
@@ -1741,7 +1724,7 @@
     transform: translate(-60%, -50%) scale(0.28);
   }
   30% {
-    opacity: calc(0.18 + var(--envelope) * 0.65);
+    opacity: calc(var(--microphone-level) * 0.92);
   }
   100% {
     opacity: 0;
@@ -2006,18 +1989,6 @@
     gap: 0.7rem;
   }
 
-  .mh-instrumentation {
-    grid-template-columns: 1fr;
-  }
-
-  .mh-phase-meter {
-    grid-template-columns: minmax(5rem, 1fr) 3.6rem;
-    border-top: 1px solid var(--line);
-    border-left: 0;
-    padding-top: 0.55rem;
-    padding-left: 0;
-  }
-
   .mh-measurement p {
     grid-column: 1 / -1;
   }
@@ -2056,9 +2027,12 @@
     transition-duration: 0.001ms !important;
   }
 
-  .mh-drive-waves span,
+  .mh-drive-waves span {
+    opacity: calc(0.12 + var(--speaker-travel) * 0.5);
+  }
+
   .mh-air-waves span {
-    opacity: calc(0.15 + var(--envelope) * 0.5);
+    opacity: calc(var(--microphone-level) * 0.72);
   }
 }
 
@@ -2122,6 +2096,7 @@
   .mh-plate-surface,
   .mh-mic-capsule {
     border-color: CanvasText;
+    border-width: var(--forced-border-width, 1px);
   }
 
   .mh-dial:focus-visible::after {

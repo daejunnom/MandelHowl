@@ -7,8 +7,12 @@ desktopTargetFramesPerSecond: 60
 lowTierMinimumFramesPerSecond: 30
 lowTierMaximumFrameWorkMs: 33.333333333333336
 headlessSchedulerLivenessFramesPerSecond: 10
+runtimeDegradation:
+  sampleWindowFrames: 120
+  percentile: 0.95
+  requiredOverBudgetWindows: 2
 browserSoak:
-  minimumSeconds: 5
+  minimumSeconds: 15
   maximumHeapGrowthBytes: 33554432
   expectedSnapshotConsumers: 5
 simulationSoak:

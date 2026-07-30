@@ -111,7 +111,19 @@ export interface PlateSpec {
     readonly meshLevels: readonly {
       readonly name: string;
       readonly targetElementSizeM: number;
+      readonly analysisFiniteStrip: {
+        readonly radialElementCount: number;
+        readonly maximumFourierOrder: number;
+        readonly angularQuadratureSamples: number;
+      };
     }[];
+    readonly meshQuality: {
+      readonly minimumEdgeM: number;
+      readonly minimumSignedAreaM2: number;
+      readonly maximumAspectRatio: number;
+      readonly requiredConnectedComponentCount: 1;
+      readonly maximumInvertedTriangleCount: 0;
+    };
     readonly convergence: {
       readonly maximumRelativeFrequencyChange: number;
       readonly minimumModalAssuranceCriterion: number;

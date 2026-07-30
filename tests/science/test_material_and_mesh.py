@@ -64,14 +64,53 @@ class MaterialAndMeshTests(unittest.TestCase):
     def test_packaged_meshes_have_positive_quality_and_fingerprint(self) -> None:
         self.assertTrue(datasets(), "no generated physics dataset found")
         for dataset in datasets():
+            plate = json.loads(
+                (dataset / "plate-spec.json").read_text(encoding="utf-8")
+            )
             report = json.loads(
                 (dataset / "mesh" / "mesh-evidence.json").read_text(encoding="utf-8")
             )
+            requested = plate["solverRequest"].get("meshQuality")
+            policy = report["qualityPolicy"]
+            if requested is not None:
+                for key in (
+                    "minimumEdgeM",
+                    "minimumSignedAreaM2",
+                    "maximumAspectRatio",
+                    "requiredConnectedComponentCount",
+                    "maximumInvertedTriangleCount",
+                ):
+                    self.assertEqual(policy[key], requested[key])
+                self.assertTrue(policy["accepted"])
+            self.assertFalse(policy["negativeAreaAllowed"])
+            self.assertFalse(policy["disconnectedComponentsAllowed"])
             self.assertEqual(len(report["levels"]), 3)
             for level in report["levels"]:
-                self.assertEqual(level["invertedTriangleCount"], 0)
-                self.assertEqual(level["connectedComponentCount"], 1)
-                self.assertGreater(level["minimumSignedAreaM2"], 0)
+                if requested is None:
+                    self.assertEqual(level["invertedTriangleCount"], 0)
+                    self.assertEqual(level["connectedComponentCount"], 1)
+                    self.assertGreater(level["minimumSignedAreaM2"], 0)
+                else:
+                    self.assertLessEqual(
+                        level["invertedTriangleCount"],
+                        requested["maximumInvertedTriangleCount"],
+                    )
+                    self.assertEqual(
+                        level["connectedComponentCount"],
+                        requested["requiredConnectedComponentCount"],
+                    )
+                    self.assertGreaterEqual(
+                        level["minimumEdgeM"],
+                        requested["minimumEdgeM"],
+                    )
+                    self.assertGreaterEqual(
+                        level["minimumSignedAreaM2"],
+                        requested["minimumSignedAreaM2"],
+                    )
+                    self.assertLessEqual(
+                        level["maximumAspectRatio"],
+                        requested["maximumAspectRatio"],
+                    )
                 self.assertEqual(len(level["fingerprintSha256"]), 64)
                 self.assertTrue(math.isfinite(level["maximumAspectRatio"]))
             fine = report["levels"][-1]

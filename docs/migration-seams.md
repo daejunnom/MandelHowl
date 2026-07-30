@@ -35,9 +35,11 @@ detach한 뒤 같은 browser session과 snapshot sequence를 React에 넘긴다.
 deadline을 중지한다. 반대로 두 구현의 scientific algorithm digest 또는
 presentation contract digest가 다르면 availability 문제가 아니므로
 `MH-UI-SPLIT-BRAIN`으로 둘 다 격리하며 임의의 한쪽을 선택하지 않는다.
-활성 view에 연결된 plate renderer의 context/texture/render failure도
-view-local availability failure로 전달된다. 두 view가 모두 실패하면 host는
-정적 fatal 상태를 남기고 safe audio engine을 suspend한다.
+활성 view에 연결된 plate renderer의 context/texture/render failure는 먼저
+같은 attachment의 WebGL→Canvas fail-operational 경계에서 복구한다. Canvas
+생성까지 실패하거나 attachment 자체가 unavailable일 때만 view-local
+availability failure로 전달된다. 두 view가 모두 실패하면 host는 정적 fatal
+상태를 남기고 safe audio engine을 suspend한다.
 
 이 N-version은 framework presentation availability를 보호한다. 두 UI는 같은
 TypeScript runtime, UI port, supervisor, dial-input mapping, presentation
@@ -54,9 +56,9 @@ WebGL→Canvas, audio mute 및 정적 fatal 진단 경계에서 처리한다.
 revision, binary64/fast-math 금지, 반복·합산 순서, ties-to-even 양자화와
 semantic 허용오차를 고정한다. `tools/physics-baker-rs`와
 `tools/physics-baker`는 각각 field → basis/assembly/eigensolver →
-coupling/response → postprocess/네 KTX2 atlas → mesh/evidence → packaging
-전체를 독립 구현한다. 어느 구현도 다른 구현의 executable이나 소스 함수를
-호출하지 않는다.
+coupling/response → postprocess/4종×12개 4-layer KTX2 shard →
+mesh/evidence → packaging 전체를 독립 구현한다. 어느 구현도 다른 구현의
+executable이나 소스 함수를 호출하지 않는다.
 
 `tools/baker-supervisor`의 정책은 다음과 같다.
 
@@ -73,27 +75,31 @@ coupling/response → postprocess/네 KTX2 atlas → mesh/evidence → packaging
 `tools/physics-baker-rs/bin/<platform>-<arch>/mandelhowl-baker-native[.exe]`
 한 파일만 실행한다. `cargo run/test`나 `target/` 탐색은 운영 표면에 포함하지
 않는다. managed CI/installer만 승인된 절대 경로와 SHA-256의 단일 executable을
-주입할 수 있다. 이 구조는 Windows가 매번 새 Cargo 산출물을 별도 실행 파일로
-판정해 `4551`을 발생시키는 표면을 줄인다. Cargo fmt/clippy/test/build는 개발과
-Linux CI 품질 gate다.
+주입할 수 있다. Cargo fmt/clippy/test/build와 strict native validation은
+Linux CI/OCI 품질 gate에서만 실행한다. Windows whole verifier는 dataset
+lock에서 선택한 `release/attestations/<dataset-id-hex>/`의 promotion-time
+OCI bundle을 검증하며 Cargo나 로컬 Rust PE를 만들거나 실행하지 않는다.
 
 모든 broker command의 `--report-file`은 terminal text를 scraping하지 않아도
 backend status/duration, native binary SHA-256, algorithm revision/raw digest,
 semantic metrics, degraded/split-brain 상태와 promotion/release eligibility를
-검증할 수 있는 machine-readable attestation을 쓴다. release verifier는 strict
-`generate` report만 선택적으로 결합하고 identity와 dataset binding을 다시
-검증한다.
+검증할 수 있는 machine-readable attestation을 쓴다. release verifier는
+committed strict OCI `generate` bundle의 두 candidate 전체와 container
+runner/envelope를 다시 검사하고, Rust candidate identity·manifest·image ID를
+현재 pin에 정확히 결속한다. Linux CI의 fresh native bundle은 구현 품질
+gate이며 promotion identity로 재사용하지 않는다.
 
 ## Strict full-generation 증거
 
-WSL의 full strict 실행은 다음 결과를 기록했다.
+promotion-time Linux/amd64 OCI 실행은 다음 결과를
+`release/attestations/<dataset-id>/`에 전체 candidate와 함께 기록한다.
 
-| 항목 | 결과 |
+| 항목 | 필수 결과 |
 |---|---|
 | supervisor | `dual-verified`, `mismatchCount = 0` |
-| 실행 시간 | Rust `3.041 s`, Python `62.283 s` |
+| source | 고정 source-tree digest, network 없는 read-only envelope |
 | field | exact |
-| texture | displacement·normal·nodal·sand 네 atlas 모두 exact |
+| texture | displacement·normal·nodal·sand 48개 shard의 decoded pixel 비교 |
 | mesh | node/evidence exact |
 
 모드·응답·solver/report 수치는 아래 versioned 허용오차를 적용한다. 이번 strict
@@ -112,12 +118,11 @@ WSL의 full strict 실행은 다음 결과를 기록했다.
 | texture | 최대 `1 LSB`, different fraction `1e-4` |
 | field | 최대 `1 LSB` |
 
-이 증거는 현재 두 구현과 알고리즘 계약의 동등성을 증명한다. 배포 중인
-`sha256:d31d968f5812deae76626be450446e5d67cd9075515e36e3e57631204a3a8d98`
-dataset manifest는 `algorithmRevision` 도입 전 legacy/unversioned 형식이다.
-기존 pin의 무결성은 유지하지만 이를 현재 N-version이 생성한 dataset이라고
-소급 주장하지 않는다. 새 versioned dataset만 동일 candidate identity와
-manifest digest를 묶은 dataset-bound attestation으로 승격할 수 있다.
+이 증거는 두 구현과 알고리즘 계약의 동등성뿐 아니라 exact Rust candidate,
+manifest digest와 release pin의 동일성을 dataset-bound attestation으로
+증명한다. Windows whole verifier는 native executable을 다시 만들거나
+실행하지 않고 이 committed bundle의 inventory, source tree, OCI image와
+현재 pin을 fail-closed로 재검증한다.
 
 ## 이번 UX 보정과 알고리즘 경계
 

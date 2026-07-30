@@ -10,10 +10,12 @@ import {
   type WheelEvent,
 } from "react";
 import {
+  canStartDialPointerGesture,
   createDialKeyboardCommand,
   createDialPointerCommand,
   createDialWheelCommand,
   isDialKeyboardKey,
+  resolveDatasetPresentationState,
   type MandelHowlBrowserRuntimePort,
   type MandelHowlViewAttachment,
 } from "../../../packages/browser-runtime/src";
@@ -135,6 +137,10 @@ export function MandelHowlReactApp({
   const onDialPointerDown = useCallback(
     (event: PointerEvent<HTMLDivElement>) => {
       if (event.pointerType === "mouse" && event.button !== 0) return;
+      if (!canStartDialPointerGesture(activePointerIdRef.current)) {
+        event.preventDefault();
+        return;
+      }
       event.preventDefault();
       try {
         event.currentTarget.setPointerCapture(event.pointerId);
@@ -242,10 +248,13 @@ export function MandelHowlReactApp({
       ? snapshot.volume.value
       : (snapshot.volume.lastSettledValue ?? 0);
   const diagnostic = presentation.diagnostic;
+  const datasetPresentationState =
+    resolveDatasetPresentationState(presentation);
 
   return (
     <MandelHowlScene
       frequency={snapshot.dial.driveFrequencyHz}
+      snapshotSequence={snapshot.sequence}
       frequencyMin={presentation.minimumFrequencyHz}
       frequencyMax={presentation.maximumFrequencyHz}
       angle={snapshot.dial.unwrappedAngleRad}
@@ -266,7 +275,13 @@ export function MandelHowlReactApp({
       audioEnabled={presentation.audioEnabled}
       rendererKind={presentation.renderer?.kind ?? "static"}
       renderQuality={presentation.renderer?.quality ?? "reduced"}
-      datasetStatus={presentation.datasetStatus}
+      renderDegradationStage={
+        presentation.renderer?.degradationStage ?? 0
+      }
+      materialSectionReady={
+        presentation.renderer?.materialSectionReady ?? false
+      }
+      datasetStatus={datasetPresentationState}
       diagnosticSeverity={diagnostic.severity}
       diagnosticTitle={diagnostic.title}
       diagnosticMessage={diagnostic.message}

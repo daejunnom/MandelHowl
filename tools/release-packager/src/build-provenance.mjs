@@ -1,8 +1,12 @@
 import { createHash } from "node:crypto";
-import { copyFile, lstat, readFile, writeFile } from "node:fs/promises";
+import { copyFile, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
 import { execFileSync } from "node:child_process";
+
+import { collectBakerSourceInventory } from "../../baker-supervisor/src/source-tree.mjs";
+import { collectReleaseInputDigests } from "./release-input-bindings.mjs";
+import { verifyWebglShaderIntegrity } from "./webgl-shader-integrity.mjs";
 
 const projectRoot = path.resolve(process.cwd());
 const manifestPath = path.join(
@@ -13,17 +17,11 @@ const manifestPath = path.join(
 );
 const manifestBytes = await readFile(manifestPath);
 const manifest = JSON.parse(manifestBytes.toString("utf8"));
+const releaseInputDigests =
+  await collectReleaseInputDigests(projectRoot);
 const bakerNVersionPolicyPath = "specs/physics/baker-nversion.v1.json";
-const bakerNVersionSourceRoots = [
-  "specs/physics",
-  "tools/baker-supervisor",
-  "tools/physics-baker",
-  "tools/physics-baker-rs",
-  "Cargo.toml",
-  "Cargo.lock",
-  "rust-toolchain.toml",
-  ".github/workflows",
-];
+const handoffVerificationContractPath =
+  "specs/acceptance/handoff-verification.v1.json";
 const uiNVersionSourceInputs = [
   ["specSha256", "specs/runtime/ui-nversion.v1.json"],
   ["svelteEntrySha256", "apps/svelte-ui/src/entry.ts"],
@@ -48,17 +46,6 @@ function git(...args) {
   }).trim();
 }
 
-function gitPathList(...args) {
-  const output = execFileSync("git", args, {
-    cwd: projectRoot,
-  });
-  return output.toString("utf8").split("\0").filter(Boolean);
-}
-
-function comparePath(left, right) {
-  return left < right ? -1 : left > right ? 1 : 0;
-}
-
 function assertBakerNVersionPolicy(policy) {
   if (
     policy?.schemaVersion !== "mandelhowl.baker-nversion-policy.v1" ||
@@ -73,74 +60,6 @@ function assertBakerNVersionPolicy(policy) {
   ) {
     throw new Error("Unsupported Baker N-version release policy.");
   }
-}
-
-async function collectBakerNVersionSourceTree() {
-  const candidates = gitPathList(
-    "ls-files",
-    "-z",
-    "--cached",
-    "--others",
-    "--exclude-standard",
-    "--",
-    ...bakerNVersionSourceRoots,
-  );
-  const files = [];
-  for (const sourcePath of new Set(candidates)) {
-    const normalizedPath = sourcePath.replaceAll("\\", "/");
-    const absolutePath = path.join(projectRoot, normalizedPath);
-    let metadata;
-    try {
-      metadata = await lstat(absolutePath);
-    } catch (error) {
-      if (error?.code === "ENOENT") {
-        // A tracked deletion remains dirty evidence, but is not current source.
-        continue;
-      }
-      throw error;
-    }
-    if (!metadata.isFile()) {
-      throw new Error(
-        `Baker N-version source must be a regular file: ${normalizedPath}`,
-      );
-    }
-    files.push({
-      path: normalizedPath,
-      sha256: digest(await readFile(absolutePath)),
-    });
-  }
-  files.sort((left, right) => comparePath(left.path, right.path));
-
-  for (const requiredPath of [
-    "specs/physics/baker-algorithm.v1.json",
-    bakerNVersionPolicyPath,
-    "tools/baker-supervisor/src/supervisor.mjs",
-    "tools/physics-baker/bake.py",
-    "tools/physics-baker-rs/Cargo.toml",
-    "tools/physics-baker-rs/src/lib.rs",
-    "Cargo.toml",
-    "Cargo.lock",
-    "rust-toolchain.toml",
-    ".github/workflows/verify.yml",
-  ]) {
-    if (!files.some((file) => file.path === requiredPath)) {
-      throw new Error(
-        `Required Baker N-version source is missing: ${requiredPath}`,
-      );
-    }
-  }
-
-  const canonicalInventory = files
-    .map((file) => `${file.path}\0${file.sha256}\n`)
-    .join("");
-  return {
-    schemaVersion: "mandelhowl.baker-source-tree.v1",
-    digestAlgorithm: "sha256(path-nul-content-sha256-lf:v1)",
-    sha256: digest(Buffer.from(canonicalInventory, "utf8")),
-    fileCount: files.length,
-    roots: bakerNVersionSourceRoots,
-    files,
-  };
 }
 
 async function datasetAlgorithmCompatibility(
@@ -204,12 +123,13 @@ if (
     "The staged dataset uses a different Baker algorithm revision.",
   );
 }
-const bakerNVersionSourceTree = await collectBakerNVersionSourceTree();
+const bakerNVersionSourceTree = collectBakerSourceInventory(projectRoot);
 const algorithmContractSha256 = digest(algorithmContractBytes);
 const pinnedDatasetCompatibility = await datasetAlgorithmCompatibility(
   manifest.algorithmRevision,
   algorithmContractSha256,
 );
+const webglShaderIntegrity = verifyWebglShaderIntegrity(projectRoot);
 
 const uiNVersionSpec = JSON.parse(
   await readFile(
@@ -232,9 +152,54 @@ const uiNVersionInputs = Object.fromEntries(
     ]),
   ),
 );
+const handoffVerificationContractBytes = await readFile(
+  path.join(projectRoot, handoffVerificationContractPath),
+);
+const handoffVerificationContract = JSON.parse(
+  handoffVerificationContractBytes.toString("utf8"),
+);
+if (
+  handoffVerificationContract.schemaVersion !==
+    "mandelhowl.handoff-verification.v1" ||
+  handoffVerificationContract.handoff?.path !== "MandelHowl_핸드오프.md" ||
+  !/^[a-f0-9]{64}$/.test(
+    handoffVerificationContract.handoff?.sha256 ?? "",
+  ) ||
+  handoffVerificationContract.architectureReference?.path !==
+    "MandelHowl_파일_구조.md" ||
+  !/^[a-f0-9]{64}$/.test(
+    handoffVerificationContract.architectureReference?.sha256 ?? "",
+  )
+) {
+  throw new Error("Unsupported whole-handoff verification contract.");
+}
+const handoffSourceBytes = await readFile(
+  path.join(projectRoot, handoffVerificationContract.handoff.path),
+);
+if (
+  digest(handoffSourceBytes) !== handoffVerificationContract.handoff.sha256
+) {
+  throw new Error(
+    "The whole-handoff verification contract does not bind the current handoff source.",
+  );
+}
+const architectureReferenceBytes = await readFile(
+  path.join(
+    projectRoot,
+    handoffVerificationContract.architectureReference.path,
+  ),
+);
+if (
+  digest(architectureReferenceBytes) !==
+  handoffVerificationContract.architectureReference.sha256
+) {
+  throw new Error(
+    "The whole-handoff verification contract does not bind the current architecture reference.",
+  );
+}
 
 const provenance = {
-  schemaVersion: "mandelhowl.release-provenance.v3",
+  schemaVersion: "mandelhowl.release-provenance.v4",
   webCommit: git("rev-parse", "HEAD"),
   webCommitTimestamp: git("show", "-s", "--format=%cI", "HEAD"),
   sourceTreeDirty:
@@ -243,6 +208,7 @@ const provenance = {
   datasetManifestSha256: digest(manifestBytes),
   plateSpecSha256: manifest.plate?.specSha256 ?? null,
   solver: manifest.solverProvenance ?? null,
+  webglShaderIntegrity,
   bakerNVersion: {
     policy: {
       ...bakerNVersionPolicy,
@@ -261,7 +227,7 @@ const provenance = {
       attestationScope: pinnedDatasetCompatibility.contractBound
         ? "dataset-bound"
         : "implementation-only-legacy",
-      verificationOption: "--nversion-attestation",
+      verificationOption: "--pinned-nversion-attestation",
     },
   },
   uiNVersion: {
@@ -270,23 +236,18 @@ const provenance = {
     standby: uiNVersionSpec.standby,
     inputs: uiNVersionInputs,
   },
-  inputs: {
-    packageLockSha256: digest(
-      await readFile(path.join(projectRoot, "package-lock.json")),
-    ),
-    licenseSha256: digest(await readFile(path.join(projectRoot, "LICENSE"))),
-    thirdPartyNoticesSha256: digest(
-      await readFile(path.join(projectRoot, "THIRD_PARTY_NOTICES.md")),
-    ),
-    thirdPartyLicenseInventorySha256: digest(
-      await readFile(
-        path.join(projectRoot, "release", "third-party-license-inventory.json"),
-      ),
-    ),
-    securityHeadersSha256: digest(
-      await readFile(path.join(projectRoot, "public", "_headers")),
-    ),
+  acceptance: {
+    schemaVersion: handoffVerificationContract.schemaVersion,
+    verificationContractPath: handoffVerificationContractPath,
+    verificationContractSha256: digest(handoffVerificationContractBytes),
+    handoffPath: handoffVerificationContract.handoff.path,
+    handoffSha256: handoffVerificationContract.handoff.sha256,
+    architectureReferencePath:
+      handoffVerificationContract.architectureReference.path,
+    architectureReferenceSha256:
+      handoffVerificationContract.architectureReference.sha256,
   },
+  inputs: releaseInputDigests,
   buildContract: {
     packageManager: "npm",
     nodeVersion: process.version,

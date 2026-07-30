@@ -1,14 +1,17 @@
 export {
+  CHALLENGE_HOST_CONTRACT,
   CHALLENGE_RESULT_MESSAGE,
   CHALLENGE_TARGET_MESSAGE,
   createChallengeHostBridge,
   normalizeChallengeTarget,
   parseChallengeTargetMessage,
+  validateChallengeResult,
   type ChallengeHostBridge,
   type ChallengeResultMessage,
   type ChallengeTargetMessage,
 } from "./challenge-host";
 export {
+  canStartDialPointerGesture,
   createDialKeyboardCommand,
   createDialPointerCommand,
   createDialWheelCommand,
@@ -31,9 +34,11 @@ export {
 } from "./snapshot-fanout";
 export {
   MandelHowlUiSnapshotStore,
+  resolveDatasetPresentationState,
   RuntimeSnapshotStore,
   type MandelHowlBrowserRuntimePort,
   type MandelHowlBrowserSessionOwner,
+  type MandelHowlDatasetPresentationState,
   type MandelHowlDatasetStatus,
   type MandelHowlPresentedDiagnostic,
   type MandelHowlUiSnapshot,

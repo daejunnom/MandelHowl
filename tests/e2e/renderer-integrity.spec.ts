@@ -1,8 +1,14 @@
 import { expect, test, type Browser, type Page } from "@playwright/test";
+import {
+  GENERATED_DATASET_RELEASE_SPEC,
+  GENERATED_DIAL_SPEC,
+} from "../../packages/contracts/src";
 import { waitForRuntimeReady } from "./runtime-ready";
 
-const DATASET_ID =
-  "sha256:d31d968f5812deae76626be450446e5d67cd9075515e36e3e57631204a3a8d98";
+const DATASET_ID = GENERATED_DATASET_RELEASE_SPEC.datasetId;
+const DIAL_MINIMUM = String(
+  GENERATED_DIAL_SPEC.mapping.minimumFrequencyHz,
+);
 
 interface CoreResult {
   readonly datasetId: string | null | undefined;
@@ -56,13 +62,22 @@ async function collectCoreResult(
     await expect(page.locator(".mh-prototype-status")).toHaveText(
       "CONTENT-ADDRESSED / VERIFIED THIN-PLATE BAKE",
     );
+    const plateCanvas = page.locator(".mh-plate-canvas");
+    await expect(plateCanvas).toHaveAttribute(
+      "data-material-section",
+      "verified",
+    );
+    await expect(plateCanvas).toHaveAttribute(
+      "aria-label",
+      /precomputed Mandelbrot material thickness cutaway visible at the lower plate edge/u,
+    );
 
     const dial = page.getByRole("slider", {
       name: "Drive frequency",
     });
     await dial.focus();
     await dial.press("Home");
-    await expect(dial).toHaveAttribute("aria-valuenow", "45");
+    await expect(dial).toHaveAttribute("aria-valuenow", DIAL_MINIMUM);
     await expect(page.locator(".mh-output-state")).toHaveText("SETTLED", {
       timeout: 15_000,
     });
@@ -97,7 +112,7 @@ test("WebGL2 and Canvas consume the same canonical core result", async ({
 
   expect(webgl).toEqual({
     datasetId: DATASET_ID,
-    frequency: "45",
+    frequency: DIAL_MINIMUM,
     volume: "000",
     measurement: "SETTLED",
     regime: "decaying",
@@ -105,7 +120,7 @@ test("WebGL2 and Canvas consume the same canonical core result", async ({
   expect(canvas).toEqual(webgl);
 });
 
-test("texture upload failure cannot claim a verified production bake", async ({
+test("texture upload throw degrades to Canvas before making any verified claim", async ({
   page,
 }) => {
   await page.addInitScript(() => {
@@ -130,20 +145,37 @@ test("texture upload failure cannot claim a verified production bake", async ({
     .poll(() =>
       page.evaluate(() => {
         const renderer = window.__MANDELHOWL_HEALTH__?.getSnapshot().renderer;
-        return [renderer?.kind, renderer?.textureReady, renderer?.datasetId];
+        return [renderer?.kind, renderer?.contextLost];
       }),
     )
-    .toEqual(["webgl2", false, null]);
-  await expect(page.locator(".mh-prototype-status")).toHaveText(
-    "ANALYTICAL PROTOTYPE / PRODUCTION BAKE PENDING",
+    .toEqual(["canvas2d", false]);
+  await expect(
+    page.locator(
+      '.mh-shell[data-ui-implementation="svelte5"] canvas[data-render-fallback-reason="webgl-texture-failed"]',
+    ),
+  ).toBeVisible();
+  await expect(page.locator(".mh-ui-nversion-host")).toHaveAttribute(
+    "data-ui-failover-count",
+    "0",
   );
-  await expect(page.locator(".mh-prototype-status")).not.toContainText(
-    "VERIFIED",
+  await expect(page.locator(".mh-prototype-status")).toContainText(
+    "CONTENT-ADDRESSED",
   );
+  const dial = page.getByRole("slider", { name: "Drive frequency" });
+  await dial.focus();
+  await dial.press("Home");
+  await expect(page.locator(".mh-output-state")).toHaveText("SETTLED", {
+    timeout: 15_000,
+  });
+  await expect(
+    page.locator(
+      '.mh-shell[data-ui-implementation="svelte5"] canvas[data-render-fallback-reason="webgl-texture-failed"]',
+    ),
+  ).toHaveAttribute("data-settled-snapshot-sequence", /^\d+$/);
   expect(pageErrors).toEqual([]);
 });
 
-test("reported WebGL upload errors cannot claim texture readiness", async ({
+test("reported WebGL upload errors degrade to Canvas presentation", async ({
   page,
 }) => {
   await page.addInitScript(() => {
@@ -182,16 +214,22 @@ test("reported WebGL upload errors cannot claim texture readiness", async ({
     .poll(() =>
       page.evaluate(() => {
         const renderer = window.__MANDELHOWL_HEALTH__?.getSnapshot().renderer;
-        return [renderer?.kind, renderer?.textureReady, renderer?.datasetId];
+        return [renderer?.kind, renderer?.contextLost];
       }),
     )
-    .toEqual(["webgl2", false, null]);
-  await expect(page.locator(".mh-prototype-status")).not.toContainText(
-    "VERIFIED",
+    .toEqual(["canvas2d", false]);
+  await expect(
+    page.locator(
+      'canvas[data-render-fallback-reason="webgl-texture-failed"]',
+    ).last(),
+  ).toBeVisible();
+  await expect(page.locator(".mh-ui-nversion-host")).toHaveAttribute(
+    "data-ui-failover-count",
+    "0",
   );
 });
 
-test("context loss during texture installation cannot promote the dataset", async ({
+test("context loss during active texture installation quarantines WebGL before Canvas promotion", async ({
   page,
 }) => {
   await page.addInitScript(() => {
@@ -206,9 +244,17 @@ test("context loss during texture installation cannot promote the dataset", asyn
       ) {
         Reflect.apply(originalUpload, this, args);
         if (dispatched) return;
+        const canvas = this.canvas as HTMLCanvasElement;
+        if (
+          !canvas.closest(
+            '.mh-shell[data-ui-implementation="svelte5"]',
+          )
+        ) {
+          return;
+        }
         dispatched = true;
         queueMicrotask(() => {
-          (this.canvas as HTMLCanvasElement).dispatchEvent(
+          canvas.dispatchEvent(
             new Event("webglcontextlost", {
               bubbles: false,
               cancelable: true,
@@ -236,11 +282,22 @@ test("context loss during texture installation cannot promote the dataset", asyn
         ];
       }),
     )
-    // Health reports the active visible renderer. The injected loss occurs
-    // first on the hidden parking renderer, so the visible view remains
-    // context-capable but must not receive or claim the rejected dataset.
-    .toEqual(["webgl2", false, false, null]);
-  await expect(page.locator(".mh-prototype-status")).not.toContainText(
-    "VERIFIED",
+    .toEqual(["canvas2d", false, true, DATASET_ID]);
+  await expect(
+    page.locator(
+      '.mh-shell[data-ui-implementation="svelte5"] canvas[data-render-fallback-reason="webgl-context-lost"]',
+    ),
+  ).toBeVisible();
+  await expect(
+    page.locator(
+      '.mh-shell[data-ui-implementation="svelte5"] canvas.mh-plate-canvas-suspended',
+    ),
+  ).toHaveAttribute("data-material-section", "unavailable");
+  await expect(page.locator(".mh-ui-nversion-host")).toHaveAttribute(
+    "data-ui-failover-count",
+    "0",
+  );
+  await expect(page.locator(".mh-prototype-status")).toHaveText(
+    "CONTENT-ADDRESSED / VERIFIED THIN-PLATE BAKE",
   );
 });

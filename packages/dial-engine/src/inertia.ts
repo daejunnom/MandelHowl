@@ -52,16 +52,19 @@ export function integrateDialInertia(
     velocity = 0;
   }
 
+  const endStopSnapDistance =
+    config.inertiaStopVelocity *
+    Math.max(config.integrationStepSeconds, dt);
   if (
     angle < config.minAngleRadians &&
-    Math.abs(angle - config.minAngleRadians) < 1e-6 &&
+    Math.abs(angle - config.minAngleRadians) <= endStopSnapDistance &&
     Math.abs(velocity) < config.inertiaStopVelocity
   ) {
     angle = config.minAngleRadians;
     velocity = 0;
   } else if (
     angle > config.maxAngleRadians &&
-    Math.abs(angle - config.maxAngleRadians) < 1e-6 &&
+    Math.abs(angle - config.maxAngleRadians) <= endStopSnapDistance &&
     Math.abs(velocity) < config.inertiaStopVelocity
   ) {
     angle = config.maxAngleRadians;

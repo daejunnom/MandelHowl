@@ -1,5 +1,6 @@
 import {
   GENERATED_AUDIO_SAFETY_SPEC,
+  GENERATED_DIAL_SPEC,
   type AudioSafetySpec,
 } from "../../contracts/src";
 import {
@@ -19,6 +20,8 @@ export interface OfflineAudioSafetySweep {
   readonly sampleRateHz: number;
   readonly durationSeconds: number;
   readonly frequenciesHz: readonly number[];
+  readonly sourceVoiceCount: number;
+  readonly negativeModalGainExercised: boolean;
   readonly maximumRmsDbfs: number;
   readonly maximumPeakDbfs: number;
   readonly rmsLimitDbfs: number;
@@ -27,14 +30,22 @@ export interface OfflineAudioSafetySweep {
   readonly passed: boolean;
 }
 
-const SWEEP_FREQUENCIES_HZ = Object.freeze([
-  55, 110, 220, 440, 1_000, 3_000, 6_000,
-]);
-const PARTIAL_RATIOS = Object.freeze([1, 1.498, 2.01]);
-const PARTIAL_WEIGHTS = Object.freeze([0.62, 0.25, 0.13]);
 const SAMPLE_RATE_HZ = 48_000;
 const SEGMENT_SECONDS = 0.75;
 const TRANSITION_SECONDS = 0.2;
+const MAX_AUDIBLE_SWEEP_FREQUENCY_HZ = 8_000;
+const SWEEP_FREQUENCIES_HZ = Object.freeze([
+  55,
+  110,
+  220,
+  440,
+  1_000,
+  3_000,
+  Math.min(
+    GENERATED_DIAL_SPEC.mapping.maximumFrequencyHz,
+    MAX_AUDIBLE_SWEEP_FREQUENCY_HZ,
+  ),
+]);
 
 function clamp(value: number, minimum: number, maximum: number): number {
   return Math.min(maximum, Math.max(minimum, value));
@@ -86,23 +97,52 @@ export async function renderOfflineAudioSafetySweep(
     );
   });
 
-  const oscillatorTypes: readonly OscillatorType[] = [
-    "sine",
-    "triangle",
-    "sine",
-  ];
-  oscillatorTypes.forEach((type, partialIndex) => {
+  const maximumModalVoices = Math.max(
+    1,
+    Math.floor(safety.modalTimbre.maximumVoices),
+  );
+  const sourceVoiceCount = 1 + maximumModalVoices;
+  let negativeModalGainExercised = false;
+  for (let sourceIndex = 0; sourceIndex < sourceVoiceCount; sourceIndex += 1) {
     const oscillator = context.createOscillator();
     const gain = context.createGain();
-    oscillator.type = type;
-    gain.gain.value = PARTIAL_WEIGHTS[partialIndex] ?? 0;
+    oscillator.type = "sine";
+    gain.gain.value = 0;
     SWEEP_FREQUENCIES_HZ.forEach((frequencyHz, index) => {
+      const modalIndex = sourceIndex - 1;
+      const spread =
+        maximumModalVoices <= 1
+          ? 0
+          : (modalIndex / (maximumModalVoices - 1)) * 2 - 1;
+      // The first segment is phase-aligned at one frequency (maximum coherent
+      // sum). Later segments span the canonical activation bandwidth and
+      // alternate signed modal gains so negative GainNode projections are
+      // exercised by the same graph.
+      const frequencyRatio =
+        sourceIndex === 0 || index === 0
+          ? 1
+          : 1 + spread * 0.08;
       oscillator.frequency.setValueAtTime(
         clamp(
-          frequencyHz * (PARTIAL_RATIOS[partialIndex] ?? 1),
+          frequencyHz * frequencyRatio,
           20,
-          Math.min(8_000, safety.bandLimiter.lowPassHz),
+          Math.min(MAX_AUDIBLE_SWEEP_FREQUENCY_HZ, safety.bandLimiter.lowPassHz),
         ),
+        index * SEGMENT_SECONDS,
+      );
+      const modalSign =
+        index > 0 && index % 2 === 1 && modalIndex % 2 === 1
+          ? -1
+          : 1;
+      const sourceGain =
+        sourceIndex === 0
+          ? safety.modalTimbre.driveToneWeight
+          : modalSign *
+            safety.modalTimbre.modalVoiceWeight /
+            maximumModalVoices;
+      if (sourceGain < 0) negativeModalGainExercised = true;
+      gain.gain.setValueAtTime(
+        sourceGain,
         index * SEGMENT_SECONDS,
       );
     });
@@ -110,7 +150,7 @@ export async function renderOfflineAudioSafetySweep(
     gain.connect(chain.inputMix);
     oscillator.start(0);
     oscillator.stop(durationSeconds);
-  });
+  }
 
   const rendered = await context.startRendering();
   const samples = rendered.getChannelData(0);
@@ -139,6 +179,8 @@ export async function renderOfflineAudioSafetySweep(
     sampleRateHz: SAMPLE_RATE_HZ,
     durationSeconds,
     frequenciesHz: SWEEP_FREQUENCIES_HZ,
+    sourceVoiceCount,
+    negativeModalGainExercised,
     maximumRmsDbfs,
     maximumPeakDbfs,
     rmsLimitDbfs: safety.rmsLimiter.maximumRmsDbfs,

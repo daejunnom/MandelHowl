@@ -1,8 +1,9 @@
-import type {
-  DiagnosticEvidence,
-  DiagnosticEvidenceState,
-  DiagnosticRecord,
-  DiagnosticSeverity,
+import {
+  createDiagnosticRecord,
+  type DiagnosticEvidence,
+  type DiagnosticRecord,
+  type DiagnosticRecordInput,
+  type DiagnosticSeverity,
 } from "../../contracts/src/diagnostic-record";
 
 export type RenderCapability = "webgl2" | "canvas2d" | "static";
@@ -19,22 +20,12 @@ export interface RuntimeCapabilities {
   readonly deviceMemoryGb: number | null;
 }
 
-export interface DiagnosticInput {
-  readonly code: string;
-  readonly severity: DiagnosticSeverity;
-  readonly evidenceState?: DiagnosticEvidenceState;
-  readonly messageKey: string;
+export interface DiagnosticInput extends DiagnosticRecordInput {
   readonly evidence?: readonly DiagnosticEvidence[];
 }
 
 export function createDiagnostic(input: DiagnosticInput): DiagnosticRecord {
-  return Object.freeze({
-    code: input.code,
-    severity: input.severity,
-    evidenceState: input.evidenceState ?? "confirmed",
-    messageKey: input.messageKey,
-    evidence: Object.freeze([...(input.evidence ?? [])]),
-  });
+  return createDiagnosticRecord(input);
 }
 
 function mediaQueryMatches(query: string): boolean {

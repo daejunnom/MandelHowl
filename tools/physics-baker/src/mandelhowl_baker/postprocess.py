@@ -15,7 +15,10 @@ from .algorithm import (
     NORMAL_VISUAL_SCALE,
     NORMALIZATION_FLOOR,
     RESPONSE_SAMPLE_COUNT,
+    RUNTIME_COUPLING_QUANTUM,
+    RUNTIME_FREQUENCY_QUANTUM_HZ,
     SAND_GAUSSIAN_SCALE,
+    TEXTURE_LAYERS_PER_SHARD,
 )
 from .field import MaterialField
 from .ktx2 import write_ktx2_array
@@ -35,7 +38,8 @@ class RuntimeMode:
     radiation_efficiency: float
     phase_reference_rad: float
     sign_reference: str
-    dominant_radial_order: int
+    dominant_radial_node_index: int
+    dominant_radial_dof: str
     dominant_angular_order: int
     dominant_symmetry: str
 
@@ -51,28 +55,55 @@ class PostprocessedDataset:
     cross_validation: dict[str, Any]
 
 
+def _quantize_runtime_scalar(value: float, quantum: float) -> float:
+    """Round to a binary grid identically in Python and Rust.
+
+    The shared contract requires ties-to-even. Canonicalize zero so the
+    serialized IEEE-754 bytes are portable across both implementations.
+    """
+
+    ticks = round(value / quantum)
+    return 0.0 if ticks == 0 else ticks * quantum
+
+
 def _normalized_runtime_modes(modes: tuple[Mode, ...]) -> tuple[RuntimeMode, ...]:
     actuator_scale = max(abs(mode.actuator_coupling_raw) for mode in modes)
     microphone_scale = max(abs(mode.microphone_coupling_raw) for mode in modes)
     radiation_scale = max(mode.radiation_efficiency_raw for mode in modes)
     result = []
     for layer, mode in enumerate(modes):
+        frequency_hz = _quantize_runtime_scalar(
+            mode.frequency_hz, RUNTIME_FREQUENCY_QUANTUM_HZ
+        )
+        actuator_coupling = _quantize_runtime_scalar(
+            mode.actuator_coupling_raw / actuator_scale,
+            RUNTIME_COUPLING_QUANTUM,
+        )
+        microphone_coupling = _quantize_runtime_scalar(
+            mode.microphone_coupling_raw / microphone_scale,
+            RUNTIME_COUPLING_QUANTUM,
+        )
+        radiation_efficiency = _quantize_runtime_scalar(
+            max(0.0, min(1.0, mode.radiation_efficiency_raw / radiation_scale)),
+            RUNTIME_COUPLING_QUANTUM,
+        )
         result.append(
             RuntimeMode(
                 mode_id=f"mode-{mode.ordinal:03d}",
                 ordinal=mode.ordinal,
                 texture_layer=layer,
-                natural_frequency_hz=mode.frequency_hz,
-                angular_frequency_rad_per_s=mode.angular_frequency_rad_per_s,
+                natural_frequency_hz=frequency_hz,
+                angular_frequency_rad_per_s=frequency_hz * math.tau,
                 damping_ratio=mode.damping_ratio,
-                actuator_coupling=mode.actuator_coupling_raw / actuator_scale,
-                microphone_coupling=mode.microphone_coupling_raw / microphone_scale,
-                radiation_efficiency=max(
-                    0.0, min(1.0, mode.radiation_efficiency_raw / radiation_scale)
-                ),
+                actuator_coupling=actuator_coupling,
+                microphone_coupling=microphone_coupling,
+                radiation_efficiency=radiation_efficiency,
                 phase_reference_rad=0.0,
                 sign_reference=mode.sign_reference,
-                dominant_radial_order=mode.dominant_radial_order,
+                dominant_radial_node_index=(
+                    mode.dominant_radial_node_index
+                ),
+                dominant_radial_dof=mode.dominant_radial_dof,
                 dominant_angular_order=mode.dominant_angular_order,
                 dominant_symmetry=mode.dominant_symmetry,
             )
@@ -339,7 +370,7 @@ def build_textures(
             fd_checks.append(
                 {
                     "modeId": f"mode-{mode.ordinal:03d}",
-                    "rayleighRitzFrequencyHz": mode.frequency_hz,
+                    "finiteStripFrequencyHz": mode.frequency_hz,
                     "finiteDifferenceRayleighFrequencyHz": reference,
                     "relativeDifference": abs(reference - mode.frequency_hz)
                     / mode.frequency_hz,
@@ -347,61 +378,60 @@ def build_textures(
             )
 
     layers = len(result.modes)
-    textures = {
-        "signed-displacement": write_ktx2_array(
-            width=size,
-            height=size,
-            layers=layers,
-            channels=1,
-            image_data=bytes(displacement),
-        ),
-        "normal": write_ktx2_array(
-            width=size,
-            height=size,
-            layers=layers,
-            channels=2,
-            image_data=bytes(normal),
-        ),
-        "nodal-mask": write_ktx2_array(
-            width=size,
-            height=size,
-            layers=layers,
-            channels=1,
-            image_data=bytes(nodal),
-        ),
-        "sand-density": write_ktx2_array(
-            width=size,
-            height=size,
-            layers=layers,
-            channels=1,
-            image_data=bytes(sand),
-        ),
+    raw_textures = {
+        "signed-displacement": (bytes(displacement), 1),
+        "normal": (bytes(normal), 2),
+        "nodal-mask": (bytes(nodal), 1),
+        "sand-density": (bytes(sand), 1),
     }
-    metadata = {
-        kind: {
-            "widthPx": size,
-            "heightPx": size,
-            "layers": layers,
-            "channels": 2 if kind == "normal" else 1,
-            "vkFormat": "VK_FORMAT_R8G8_UNORM"
-            if kind == "normal"
-            else "VK_FORMAT_R8_UNORM",
-            "supercompression": "none",
-            "orientation": "ru",
-            "uvOrigin": "negative-x-negative-y",
-            "quantization": (
-                "signed [-1,1] mapped to [0,255]"
-                if kind == "signed-displacement"
-                else "linear UNORM"
-            ),
-        }
-        for kind in textures
-    }
+    textures: dict[str, bytes] = {}
+    metadata: dict[str, dict[str, Any]] = {}
+    for kind, (image_data, channels) in raw_textures.items():
+        layer_stride = size * size * channels
+        for first_layer in range(0, layers, TEXTURE_LAYERS_PER_SHARD):
+            shard_layers = min(
+                TEXTURE_LAYERS_PER_SHARD,
+                layers - first_layer,
+            )
+            last_layer = first_layer + shard_layers - 1
+            shard_key = f"{kind}-{first_layer:02d}-{last_layer:02d}"
+            start = first_layer * layer_stride
+            end = (first_layer + shard_layers) * layer_stride
+            textures[shard_key] = write_ktx2_array(
+                width=size,
+                height=size,
+                layers=shard_layers,
+                channels=channels,
+                image_data=image_data[start:end],
+            )
+            metadata[shard_key] = {
+                "kind": kind,
+                "firstLayer": first_layer,
+                "lastLayer": last_layer,
+                "widthPx": size,
+                "heightPx": size,
+                "layers": shard_layers,
+                "channels": channels,
+                "vkFormat": (
+                    "VK_FORMAT_R8G8_UNORM"
+                    if channels == 2
+                    else "VK_FORMAT_R8_UNORM"
+                ),
+                "supercompression": "KTX2_ZLIB",
+                "supercompressionScheme": 3,
+                "orientation": "ru",
+                "uvOrigin": "negative-x-negative-y",
+                "quantization": (
+                    "signed [-1,1] mapped to [0,255]"
+                    if kind == "signed-displacement"
+                    else "linear UNORM"
+                ),
+            }
     cross_validation = {
         "independentReferenceMethod": (
             "nine-point finite-difference Hessian Kirchhoff-Love Rayleigh "
-            "quotient on the rasterized mode; independent spatial discretization, "
-            "not a second certified solver"
+            "quotient on the rasterized finite-strip mode; independent "
+            "operator/discretization check, not a second certified solver"
         ),
         "frequencyChecks": fd_checks,
         "sandDensityMeanContrastLowMinusHighVelocity": min(sand_alignment),

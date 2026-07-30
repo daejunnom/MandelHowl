@@ -3,7 +3,52 @@ import {
   test,
   type Page,
 } from "@playwright/test";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { decodeModesBinaryV1 } from "../../packages/asset-runtime/src";
+import {
+  GENERATED_DATASET_RELEASE_SPEC,
+  GENERATED_DIAL_SPEC,
+} from "../../packages/contracts/src";
+import {
+  DEFAULT_DIAL_CONFIG,
+  frequencyToAngle,
+} from "../../packages/dial-engine/src";
 import { waitForRuntimeReady } from "./runtime-ready";
+
+const PINNED_MODES = decodeModesBinaryV1(
+  readFileSync(
+    resolve(
+      process.cwd(),
+      GENERATED_DATASET_RELEASE_SPEC.sourceDirectory,
+      "modes.bin",
+    ),
+  ),
+);
+
+function separatedPinnedModes(): readonly [
+  (typeof PINNED_MODES)[number],
+  (typeof PINNED_MODES)[number],
+] {
+  if (PINNED_MODES.length < 4) {
+    throw new Error("The pinned production dataset must contain at least four modes");
+  }
+  const oldMode =
+    PINNED_MODES[Math.round((PINNED_MODES.length - 1) * 0.25)]!;
+  const newMode =
+    PINNED_MODES[Math.round((PINNED_MODES.length - 1) * 0.75)]!;
+  return [oldMode, newMode];
+}
+
+const [TEMPORAL_OLD_MODE, TEMPORAL_NEW_MODE] = separatedPinnedModes();
+const TEMPORAL_MODE_QUERY = new URLSearchParams({
+  oldModeId: TEMPORAL_OLD_MODE.modeId,
+  newModeId: TEMPORAL_NEW_MODE.modeId,
+}).toString();
+
+function temporalFixtureUrl(path: string): string {
+  return `${path}?${TEMPORAL_MODE_QUERY}`;
+}
 
 interface TemporalObservation {
   readonly stage: string | null;
@@ -89,14 +134,16 @@ for (const fixture of [
     context,
     page,
   }) => {
-    await page.goto(fixture.transitionPath);
+    await page.goto(temporalFixtureUrl(fixture.transitionPath));
     await waitForFixture(page, fixture.renderer, "baseline");
     const baseline = await observe(page);
 
-    expect(baseline.activeModeId).toBe(baseline.oldModeId);
-    expect(baseline.oldModeId).not.toBe("none");
-    expect(baseline.newModeId).not.toBe(baseline.oldModeId);
-    expect(baseline.frequency).toBe("4629.35");
+    expect(baseline.oldModeId).toBe(TEMPORAL_OLD_MODE.modeId);
+    expect(baseline.newModeId).toBe(TEMPORAL_NEW_MODE.modeId);
+    expect(baseline.activeModeId).toBe(TEMPORAL_OLD_MODE.modeId);
+    expect(baseline.frequency).toBe(
+      TEMPORAL_OLD_MODE.naturalFrequencyHz.toFixed(2),
+    );
     expect(baseline.sandLikeSamples).toBeGreaterThan(100);
     expect(baseline.sandContrast).toBeGreaterThanOrEqual(22);
 
@@ -105,8 +152,10 @@ for (const fixture of [
       "temporal-step-one-frame",
       "one-frame",
     );
-    expect(oneFrame.activeModeId).toBe(oneFrame.newModeId);
-    expect(oneFrame.frequency).toBe("4690.89");
+    expect(oneFrame.activeModeId).toBe(TEMPORAL_NEW_MODE.modeId);
+    expect(oneFrame.frequency).toBe(
+      TEMPORAL_NEW_MODE.naturalFrequencyHz.toFixed(2),
+    );
     expect(oneFrame.pixelSignature).not.toBe(
       baseline.pixelSignature,
     );
@@ -114,7 +163,9 @@ for (const fixture of [
 
     const referencePage = await context.newPage();
     try {
-      await referencePage.goto(fixture.referencePath);
+      await referencePage.goto(
+        temporalFixtureUrl(fixture.referencePath),
+      );
       await waitForFixture(
         referencePage,
         fixture.renderer,
@@ -162,9 +213,19 @@ for (const fixture of [
 }
 
 function dialAngleForFrequency(frequencyHz: number): number {
-  const normalized =
-    Math.log(frequencyHz / 45) / Math.log(6_000 / 45);
-  return -Math.PI * 3 + normalized * Math.PI * 6;
+  if (
+    DEFAULT_DIAL_CONFIG.minFrequencyHz !==
+      GENERATED_DIAL_SPEC.mapping.minimumFrequencyHz ||
+    DEFAULT_DIAL_CONFIG.maxFrequencyHz !==
+      GENERATED_DIAL_SPEC.mapping.maximumFrequencyHz ||
+    DEFAULT_DIAL_CONFIG.minAngleRadians !==
+      GENERATED_DIAL_SPEC.mapping.minimumUnwrappedAngleRad ||
+    DEFAULT_DIAL_CONFIG.maxAngleRadians !==
+      GENERATED_DIAL_SPEC.mapping.maximumUnwrappedAngleRad
+  ) {
+    throw new Error("The dial engine is not using the generated dial mapping.");
+  }
+  return frequencyToAngle(frequencyHz, DEFAULT_DIAL_CONFIG);
 }
 
 async function rotateActualDial(
@@ -267,17 +328,17 @@ test("actual dial transition repaints the plate near-term, at 50 ms, and at 250 
   page,
 }) => {
   test.setTimeout(60_000);
-  // mode-045's natural frequency is dominated by mode-046 after coupling
-  // normalization, so use two production modes that are independently
-  // capturable under the canonical active-mode score.
-  const oldFrequency = 3_781.990_827_524_38;
-  const newFrequency = 4_690.892_717_086_122;
+  // Select well-separated frequencies from the content-addressed production
+  // modes instead of pinning a solver-specific ordinal or frequency.
+  const oldFrequency = TEMPORAL_OLD_MODE.naturalFrequencyHz;
+  const newFrequency = TEMPORAL_NEW_MODE.naturalFrequencyHz;
   await page.goto("/");
   await waitForRuntimeReady(page);
   const initialFrequency = await page.evaluate(
     () =>
       window.__MANDELHOWL_HEALTH__?.getSnapshot().runtime
-        .driveFrequencyHz ?? 220,
+        .driveFrequencyHz ??
+      GENERATED_DIAL_SPEC.mapping.minimumFrequencyHz,
   );
   // Hold the baseline long enough for the dial's velocity estimator to decay.
   // Otherwise pointer-up inertia can cross a nearby capture boundary.
@@ -289,7 +350,7 @@ test("actual dial transition repaints the plate near-term, at 50 ms, and at 250 
           const activeModeId =
             window.__MANDELHOWL_HEALTH__?.getSnapshot().runtime
               .activeModeId;
-          return activeModeId !== null && activeModeId !== "mode-046";
+          return activeModeId !== null;
         },
       ),
       { timeout: 15_000 },
@@ -299,7 +360,6 @@ test("actual dial transition repaints the plate near-term, at 50 ms, and at 250 
     () => window.__MANDELHOWL_HEALTH__?.getSnapshot().runtime,
   );
   expect(baselineRuntime?.activeModeId).not.toBeNull();
-  expect(baselineRuntime?.activeModeId).not.toBe("mode-046");
   const baseline = await actualPlateSignature(page);
 
   await rotateActualDial(

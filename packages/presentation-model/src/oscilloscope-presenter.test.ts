@@ -70,4 +70,18 @@ describe("oscilloscope presenter", () => {
     expect(presentation.autoGainLinear).toBe(1);
     expect(presentation.displayPeakNormalized).toBe(1e-9);
   });
+
+  it("quantizes display-only samples for byte-stable SSR hydration", () => {
+    const presentation = presentOscilloscope({
+      recentSamples: [0.0123456789012345, -0.02],
+      rmsNormalized: 0.2,
+      peakNormalized: 0.3,
+      sampleCount: 2,
+    });
+
+    for (const sample of presentation.samples) {
+      expect(sample).toBe(Number(sample.toFixed(12)));
+    }
+    expect(presentation.samples).toEqual([0.481481477148, -0.78]);
+  });
 });

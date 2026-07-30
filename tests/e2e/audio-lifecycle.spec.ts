@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { GENERATED_AUDIO_SAFETY_SPEC } from "../../packages/contracts/src";
 import { waitForRuntimeReady } from "./runtime-ready";
 
 test("reuses one audio graph across hide, resume and teardown cycles", async ({
@@ -41,7 +42,12 @@ test("reuses one audio graph across hide, resume and teardown cycles", async ({
     () =>
       window.__MANDELHOWL_HEALTH__?.getSnapshot().audio.graphNodeCount,
   );
-  expect(initialNodeCount).toBe(16);
+  expect(initialNodeCount).toBe(
+    10 +
+      2 *
+        (1 +
+          GENERATED_AUDIO_SAFETY_SPEC.modalTimbre.maximumVoices),
+  );
   const initialPausedGapResets = await page.evaluate(
     () =>
       window.__MANDELHOWL_HEALTH__?.getSnapshot().pausedGapResets ?? 0,

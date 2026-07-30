@@ -8,6 +8,8 @@ import process from "node:process";
 const APPLICATION_CONTROL_PATTERN =
   /os error 4551|application control policy|app control policy|애플리케이션 제어 정책|응용 프로그램 제어 정책/i;
 const SHA256_PATTERN = /^[a-f0-9]{64}$/;
+export const EVIDENCE_ONLY_NO_NATIVE_SPAWN_ENV =
+  "MANDELHOWL_EVIDENCE_ONLY_NO_NATIVE_SPAWN";
 
 const EXPECTED_PROTOCOLS = {
   "rust-native": {
@@ -450,6 +452,29 @@ export function runRustBackend({
       scientificFailure: false,
       code: "MH_BAKER_NATIVE_ATTESTATION_MISMATCH",
       error: "native executable SHA-256 does not match its approved sidecar",
+    };
+  }
+  if (
+    process.env[EVIDENCE_ONLY_NO_NATIVE_SPAWN_ENV] === "1" ||
+    env[EVIDENCE_ONLY_NO_NATIVE_SPAWN_ENV] === "1"
+  ) {
+    return {
+      backend: "rust-native",
+      executable,
+      executableSha256,
+      approvedSha256,
+      preRunExecutableSha256: executableSha256,
+      durationMs: 0,
+      exitCode: null,
+      signal: null,
+      stdout: "",
+      stderr: "",
+      status: "blocked",
+      availabilityFailure: true,
+      scientificFailure: false,
+      code: "MH_BAKER_EVIDENCE_ONLY_NO_NATIVE_SPAWN",
+      error:
+        "native Baker process creation is disabled on the evidence-only verification surface",
     };
   }
   const command = args[0];

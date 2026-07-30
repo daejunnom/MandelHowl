@@ -5,6 +5,8 @@
 export const SCHEMA_VERSIONS = {
   plateSpec: "mandelhowl.plate-spec.v1",
   resonanceManifest: "mandelhowl.resonance-manifest.v1",
+  materialSectionProfile:
+    "mandelhowl.material-section-profile.v1",
   runtimeSnapshot: "mandelhowl.runtime-snapshot.v1",
   dialGestureTrace: "mandelhowl.dial-gesture-trace.v1",
   resonanceTrajectoryTrace: "mandelhowl.resonance-trajectory-trace.v1",
@@ -58,6 +60,10 @@ export interface ChecksumEntry {
 export interface ChecksumsFile {
   readonly schemaVersion: "mandelhowl.checksums.v1";
   readonly algorithm: "sha256";
-  /** Every referenced asset except checksums.json itself, sorted by path. */
+  /**
+   * Every packaged file except manifest.json and checksums.json itself, sorted
+   * by path. This includes offline scientific evidence not fetched by the web
+   * runtime as well as every manifest-referenced runtime asset.
+   */
   readonly files: readonly ChecksumEntry[];
 }

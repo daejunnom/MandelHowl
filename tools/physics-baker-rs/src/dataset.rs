@@ -4,13 +4,15 @@
 //! its decoders. It validates the runtime payload and solver evidence directly
 //! from the documented binary contracts.
 
-use std::collections::HashSet;
+use std::collections::{BTreeMap, HashSet};
 use std::fs;
 use std::path::{Path, PathBuf};
 
 use crate::algorithm::Algorithm;
 use crate::json::Value;
+use crate::mesh::zlib_decompress;
 use crate::sha256::{Sha256, digest, hex};
+use crate::solver::{build_basis, evaluate_mode, first_analysis_node_value, probe_average};
 use crate::{ModeRecord, ResponseSample, decode_modes_v1, decode_response_v1};
 
 const KTX2_IDENTIFIER: [u8; 12] = [
@@ -24,7 +26,7 @@ const MODAL_MASS_OFF_DIAGONAL_TOLERANCE: f64 = 5e-7;
 
 #[derive(Debug, Clone)]
 pub struct PayloadDigest {
-    pub path: &'static str,
+    pub path: String,
     pub byte_length: usize,
     pub sha256: String,
 }
@@ -49,6 +51,7 @@ pub struct DatasetSemanticReport {
     pub maximum_response_component_error: f64,
     pub maximum_modal_mass_diagonal_error: f64,
     pub maximum_modal_mass_off_diagonal: f64,
+    pub minimum_eigenvector_texture_correlation: f64,
     pub minimum_sand_low_minus_high_mean: f64,
     pub field_resolution: usize,
     pub texture_width: usize,
@@ -65,7 +68,7 @@ impl DatasetSemanticReport {
             .map(|payload| {
                 format!(
                     "{{\"path\":{},\"byteLength\":{},\"sha256\":{}}}",
-                    json_string(payload.path),
+                    json_string(&payload.path),
                     payload.byte_length,
                     json_string(&payload.sha256)
                 )
@@ -96,6 +99,7 @@ impl DatasetSemanticReport {
                 "\"maximumResponseComponentError\":{},",
                 "\"maximumModalMassDiagonalError\":{},",
                 "\"maximumModalMassOffDiagonal\":{},",
+                "\"minimumEigenvectorTextureCorrelation\":{},",
                 "\"minimumSandLowMinusHighMean\":{},",
                 "\"fieldResolution\":{},",
                 "\"textureWidth\":{},",
@@ -106,9 +110,11 @@ impl DatasetSemanticReport {
                 "\"modes-v1-all-records\",",
                 "\"response-v1-all-samples-recomputed\",",
                 "\"ktx2-four-atlases-and-layer-alignment\",",
+                "\"all-modal-sign-coupling-eigenvector-texture-semantics\",",
                 "\"sand-displacement-semantic-alignment\",",
                 "\"solver-evidence-unit-modal-mass\",",
                 "\"material-field-v1\",",
+                "\"material-section-profile-from-field-evidence\",",
                 "\"manifest-assets-checksums-and-content-identity\"",
                 "]",
                 "}}"
@@ -131,6 +137,7 @@ impl DatasetSemanticReport {
             json_number(self.maximum_response_component_error),
             json_number(self.maximum_modal_mass_diagonal_error),
             json_number(self.maximum_modal_mass_off_diagonal),
+            json_number(self.minimum_eigenvector_texture_correlation),
             json_number(self.minimum_sand_low_minus_high_mean),
             self.field_resolution,
             self.texture_width,
@@ -147,7 +154,13 @@ struct Ktx2Array {
     height: usize,
     layers: usize,
     channels: usize,
+    supercompression_scheme: u32,
     image_data: Vec<u8>,
+}
+
+#[derive(Debug)]
+struct SolverEvidence {
+    coefficients: Vec<Vec<f64>>,
 }
 
 fn checked_slice(bytes: &[u8], offset: usize, length: usize) -> Result<&[u8], String> {
@@ -228,7 +241,7 @@ fn validate_ktx2(bytes: &[u8], label: &str) -> Result<Ktx2Array, String> {
         || layers == 0
         || faces != 1
         || levels != 1
-        || supercompression != 0
+        || !matches!(supercompression, 0 | 3)
         || sgd_offset != 0
         || sgd_length != 0
     {
@@ -265,23 +278,42 @@ fn validate_ktx2(bytes: &[u8], label: &str) -> Result<Ktx2Array, String> {
         .and_then(|value| value.checked_mul(channels))
         .ok_or_else(|| format!("{label}: KTX2 dimensions overflow"))?;
     let alignment = 4;
-    if level_length != expected
-        || uncompressed != expected
+    if uncompressed != expected
+        || level_length == 0
         || level_offset % alignment != 0
         || level_offset.saturating_add(level_length) != bytes.len()
     {
         return Err(format!("{label}: KTX2 level range is inconsistent"));
     }
+    if (supercompression == 0 && level_length != expected)
+        || (supercompression == 3 && level_length >= expected)
+    {
+        return Err(format!(
+            "{label}: KTX2 level length contradicts its supercompression scheme"
+        ));
+    }
     let dfd_channels = (dfd_length - 28) / 16;
     if dfd_channels != channels || bytes[dfd_offset + 20] as usize != channels {
         return Err(format!("{label}: DFD channel layout mismatch"));
+    }
+    let encoded = checked_slice(bytes, level_offset, level_length)?;
+    let image_data = if supercompression == 3 {
+        zlib_decompress(encoded).map_err(|error| format!("{label}: {error}"))?
+    } else {
+        encoded.to_vec()
+    };
+    if image_data.len() != expected {
+        return Err(format!(
+            "{label}: decoded KTX2 level length does not match dimensions"
+        ));
     }
     Ok(Ktx2Array {
         width,
         height,
         layers,
         channels,
-        image_data: checked_slice(bytes, level_offset, level_length)?.to_vec(),
+        supercompression_scheme: supercompression,
+        image_data,
     })
 }
 
@@ -345,7 +377,10 @@ fn validate_response_against_modes(
 }
 
 #[allow(clippy::needless_range_loop)]
-fn validate_solver_evidence(bytes: &[u8], expected_modes: usize) -> Result<(f64, f64), String> {
+fn validate_solver_evidence(
+    bytes: &[u8],
+    expected_modes: usize,
+) -> Result<(SolverEvidence, f64, f64), String> {
     if bytes.len() < 20 || checked_slice(bytes, 0, 8)? != b"MHEVID01" {
         return Err("solver evidence header is invalid".to_owned());
     }
@@ -432,7 +467,11 @@ fn validate_solver_evidence(bytes: &[u8], expected_modes: usize) -> Result<(f64,
              offDiagonal={maximum_off_diagonal}"
         ));
     }
-    Ok((maximum_diagonal_error, maximum_off_diagonal))
+    Ok((
+        SolverEvidence { coefficients },
+        maximum_diagonal_error,
+        maximum_off_diagonal,
+    ))
 }
 
 fn validate_field(bytes: &[u8]) -> Result<usize, String> {
@@ -457,6 +496,80 @@ fn validate_field(bytes: &[u8]) -> Result<usize, String> {
         return Err("material field dimensions or bounds are invalid".to_owned());
     }
     Ok(size)
+}
+
+fn validate_material_section_profile(
+    field_bytes: &[u8],
+    manifest: &Value,
+    plate: &Value,
+    algorithm: &Algorithm,
+) -> Result<(), String> {
+    let profile = manifest
+        .get("plate")
+        .and_then(|value| value.get("materialSectionProfile"))
+        .ok_or_else(|| "versioned manifest material section profile is missing".to_owned())?;
+    let samples = profile
+        .get("thicknessUnorm8")
+        .and_then(Value::as_array)
+        .ok_or_else(|| "material section thickness samples are missing".to_owned())?;
+    let minimum = nested_number(plate, &["thicknessMapping", "minimumThicknessM"])?;
+    let maximum = nested_number(plate, &["thicknessMapping", "maximumThicknessM"])?;
+    if profile.get("schemaVersion").and_then(Value::as_str)
+        != Some("mandelhowl.material-section-profile.v1")
+        || profile.get("axis").and_then(Value::as_str)
+            != Some(algorithm.material_section_axis.as_str())
+        || profile.get("sampleCount").and_then(Value::as_u64)
+            != u64::try_from(algorithm.material_section_sample_count).ok()
+        || profile.get("minimumThicknessM").and_then(Value::as_f64) != Some(minimum)
+        || profile.get("maximumThicknessM").and_then(Value::as_f64) != Some(maximum)
+        || samples.len() != algorithm.material_section_sample_count
+    {
+        return Err("versioned material section profile is incompatible".to_owned());
+    }
+    let samples = samples
+        .iter()
+        .map(|value| {
+            value
+                .as_u64()
+                .and_then(|sample| u8::try_from(sample).ok())
+                .ok_or_else(|| "material section sample is outside UNORM8".to_owned())
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+    let minimum_sample = samples.iter().copied().min().unwrap_or(0);
+    let maximum_sample = samples.iter().copied().max().unwrap_or(0);
+    if maximum_sample.saturating_sub(minimum_sample) < 8 {
+        return Err("material section profile does not expose thickness variation".to_owned());
+    }
+
+    let size = usize_from_u32(u32_le(field_bytes, 12)?, "field resolution")?;
+    if size < 2 || field_bytes.len() != 24 + size * size {
+        return Err("material field evidence is incompatible".to_owned());
+    }
+    let pixels = checked_slice(field_bytes, 24, size * size)?;
+    let v = 0.5 * (size - 1) as f64;
+    let mut maximum_lsb_error = 0_u8;
+    for (index, actual) in samples.iter().copied().enumerate() {
+        let u = (index as f64 + 0.5) / algorithm.material_section_sample_count as f64
+            * (size - 1) as f64;
+        let x0 = (u.floor() as usize).min(size - 2);
+        let y0 = (v.floor() as usize).min(size - 2);
+        let tx = u - x0 as f64;
+        let ty = v - y0 as f64;
+        let i00 = y0 * size + x0;
+        let a = f64::from(pixels[i00]) * (1.0 - tx) + f64::from(pixels[i00 + 1]) * tx;
+        let b = f64::from(pixels[i00 + size]) * (1.0 - tx) + f64::from(pixels[i00 + size + 1]) * tx;
+        let normalized_field = ((a * (1.0 - ty) + b * ty) / 255.0).clamp(0.0, 1.0);
+        let smooth = normalized_field * normalized_field * (3.0 - 2.0 * normalized_field);
+        let expected = (smooth * 255.0).round_ties_even() as u8;
+        maximum_lsb_error = maximum_lsb_error.max(actual.abs_diff(expected));
+    }
+    if maximum_lsb_error > 2 {
+        return Err(format!(
+            "material section profile is not derived from packaged field evidence: \
+             maximumLsbError={maximum_lsb_error}"
+        ));
+    }
+    Ok(())
 }
 
 fn validate_texture_alignment(
@@ -534,7 +647,250 @@ fn validate_texture_alignment(
     Ok(minimum_contrast)
 }
 
-fn read_required(root: &Path, relative: &'static str) -> Result<Vec<u8>, String> {
+fn nested_value<'a>(value: &'a Value, path: &[&str]) -> Result<&'a Value, String> {
+    let mut current = value;
+    for component in path {
+        current = current
+            .get(component)
+            .ok_or_else(|| format!("missing scientific contract field {}", path.join(".")))?;
+    }
+    Ok(current)
+}
+
+fn nested_number(value: &Value, path: &[&str]) -> Result<f64, String> {
+    nested_value(value, path)?
+        .as_f64()
+        .filter(|number| number.is_finite())
+        .ok_or_else(|| format!("scientific contract field {} is not finite", path.join(".")))
+}
+
+fn nested_usize(value: &Value, path: &[&str]) -> Result<usize, String> {
+    usize::try_from(nested_value(value, path)?.as_u64().ok_or_else(|| {
+        format!(
+            "scientific contract field {} is not an integer",
+            path.join(".")
+        )
+    })?)
+    .map_err(|_| {
+        format!(
+            "scientific contract field {} overflows usize",
+            path.join(".")
+        )
+    })
+}
+
+fn quantize_runtime_scalar(value: f64, quantum: f64) -> f64 {
+    let ticks = (value / quantum).round_ties_even();
+    if ticks == 0.0 { 0.0 } else { ticks * quantum }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn validate_modal_coefficient_and_texture_semantics(
+    modes: &[ModeRecord],
+    evidence: &SolverEvidence,
+    algorithm: &Algorithm,
+    plate: &Value,
+    provenance: &Value,
+    displacement: &Ktx2Array,
+    nodal: &Ktx2Array,
+    sand: &Ktx2Array,
+) -> Result<f64, String> {
+    let levels = nested_value(plate, &["solverRequest", "meshLevels"])?
+        .as_array()
+        .ok_or_else(|| "plate finite-strip levels are not an array".to_owned())?;
+    let fine = levels
+        .last()
+        .and_then(|level| level.get("analysisFiniteStrip"))
+        .ok_or_else(|| "fine finite-strip analysis request is missing".to_owned())?;
+    let radial_elements = nested_usize(fine, &["radialElementCount"])?;
+    let maximum_fourier_order = nested_usize(fine, &["maximumFourierOrder"])?;
+    let angular_samples = nested_usize(fine, &["angularQuadratureSamples"])?;
+    let basis = build_basis(radial_elements, maximum_fourier_order)?;
+    if evidence.coefficients.len() != modes.len()
+        || evidence
+            .coefficients
+            .iter()
+            .any(|row| row.len() != basis.len())
+    {
+        return Err("solver evidence does not match the fine finite-strip basis".to_owned());
+    }
+
+    let radius = nested_number(plate, &["geometry", "radiusM"])?;
+    let hub = nested_number(plate, &["geometry", "hub", "radiusM"])?;
+    let actuator_x = nested_number(plate, &["actuator", "positionM", "x"])?;
+    let actuator_y = nested_number(plate, &["actuator", "positionM", "y"])?;
+    let actuator_radius = nested_number(plate, &["actuator", "footprintRadiusM"])?;
+    let actuator_raw = evidence
+        .coefficients
+        .iter()
+        .map(|row| {
+            probe_average(
+                algorithm,
+                row,
+                &basis,
+                actuator_x,
+                actuator_y,
+                actuator_radius,
+                hub,
+                radius,
+            )
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+    let actuator_scale = actuator_raw
+        .iter()
+        .map(|value| value.abs())
+        .fold(0.0, f64::max);
+    if actuator_scale <= 0.0 {
+        return Err("solver evidence actuator scale is zero".to_owned());
+    }
+    let summaries = provenance
+        .get("modes")
+        .and_then(Value::as_array)
+        .ok_or_else(|| "provenance modal summaries are missing".to_owned())?;
+    if summaries.len() != modes.len() {
+        return Err("provenance modal summary count is incompatible".to_owned());
+    }
+    for (index, (((mode, summary), coefficients), raw)) in modes
+        .iter()
+        .zip(summaries)
+        .zip(&evidence.coefficients)
+        .zip(&actuator_raw)
+        .enumerate()
+    {
+        let (sign_valid, expected_sign) = if mode.sign_code == 0 {
+            (*raw > algorithm.sign_epsilon, "actuator-positive")
+        } else {
+            let first = first_analysis_node_value(
+                algorithm,
+                coefficients,
+                &basis,
+                radial_elements,
+                angular_samples,
+                hub,
+                radius,
+            )?;
+            (
+                raw.abs() <= algorithm.sign_epsilon && first > algorithm.sign_epsilon,
+                "first-nonzero-node-positive",
+            )
+        };
+        let expected_coupling =
+            quantize_runtime_scalar(raw / actuator_scale, algorithm.runtime_coupling_quantum);
+        if !sign_valid
+            || summary.get("signReference").and_then(Value::as_str) != Some(expected_sign)
+            || mode.actuator_coupling.to_bits() != expected_coupling.to_bits()
+        {
+            return Err(format!(
+                "mode {index} sign/coupling does not match finite-strip coefficients"
+            ));
+        }
+    }
+
+    let width = displacement.width;
+    let height = displacement.height;
+    let layer_pixels = width
+        .checked_mul(height)
+        .ok_or_else(|| "texture dimensions overflow".to_owned())?;
+    if displacement.layers != modes.len()
+        || nodal.layers != modes.len()
+        || sand.layers != modes.len()
+        || nodal.width != width
+        || nodal.height != height
+        || sand.width != width
+        || sand.height != height
+    {
+        return Err("scientific texture layers are not mode-aligned".to_owned());
+    }
+    let step_x = 2.0 * radius / width as f64;
+    let step_y = 2.0 * radius / height as f64;
+    let sample_stride = (width.min(height) / 16).max(1);
+    let nodal_quantization_margin = 1.0 / 127.5;
+    let mut minimum_correlation = 1.0_f64;
+    for (layer, coefficients) in evidence.coefficients.iter().enumerate() {
+        let start = layer * layer_pixels;
+        let end = start + layer_pixels;
+        let displacement_layer = &displacement.image_data[start..end];
+        let nodal_layer = &nodal.image_data[start..end];
+        let sand_layer = &sand.image_data[start..end];
+        let extreme_index = (0..layer_pixels)
+            .max_by(|left, right| {
+                let left_value = (displacement_layer[*left] as f64 / 127.5 - 1.0).abs();
+                let right_value = (displacement_layer[*right] as f64 / 127.5 - 1.0).abs();
+                left_value.total_cmp(&right_value)
+            })
+            .ok_or_else(|| "texture layer is empty".to_owned())?;
+        let mut raw_samples = Vec::new();
+        let mut encoded_samples = Vec::new();
+        let mut nodal_count = 0_usize;
+        for pixel in 0..layer_pixels {
+            let y = pixel / width;
+            let x = pixel % width;
+            let x_m = -radius + (x as f64 + 0.5) * step_x;
+            let y_m = -radius + (y as f64 + 0.5) * step_y;
+            let radial = x_m.hypot(y_m);
+            let encoded = displacement_layer[pixel] as f64 / 127.5 - 1.0;
+            let absolute = encoded.abs();
+            let nodal_value = nodal_layer[pixel];
+            let sand_value = sand_layer[pixel];
+            if !(hub < radial && radial <= radius) {
+                if displacement_layer[pixel] != 128 || nodal_value != 0 || sand_value != 0 {
+                    return Err(format!(
+                        "texture layer {layer} leaks outside the plate domain"
+                    ));
+                }
+                continue;
+            }
+            if nodal_value >= 250 {
+                nodal_count += 1;
+                if absolute > algorithm.nodal_threshold + nodal_quantization_margin {
+                    return Err(format!("texture layer {layer} nodal mask is displaced"));
+                }
+            } else if absolute < algorithm.nodal_threshold - nodal_quantization_margin {
+                return Err(format!(
+                    "texture layer {layer} omits a resolved nodal pixel"
+                ));
+            }
+            let expected_sand =
+                (255.0 * (-((absolute / algorithm.sand_scale).powi(2))).exp()).round_ties_even();
+            if (f64::from(sand_value) - expected_sand).abs() > 10.0 {
+                return Err(format!(
+                    "texture layer {layer} sand density is not displacement-derived"
+                ));
+            }
+            if (x.is_multiple_of(sample_stride) && y.is_multiple_of(sample_stride))
+                || pixel == extreme_index
+            {
+                raw_samples.push(evaluate_mode(coefficients, &basis, x_m, y_m, hub, radius)?);
+                encoded_samples.push(encoded);
+            }
+        }
+        if nodal_count <= 5 {
+            return Err(format!(
+                "texture layer {layer} lacks resolved nodal evidence"
+            ));
+        }
+        let cross = raw_samples
+            .iter()
+            .zip(&encoded_samples)
+            .map(|(raw, encoded)| raw * encoded)
+            .sum::<f64>();
+        let raw_norm = raw_samples.iter().map(|value| value * value).sum::<f64>();
+        let encoded_norm = encoded_samples
+            .iter()
+            .map(|value| value * value)
+            .sum::<f64>();
+        let correlation = cross / (raw_norm * encoded_norm).max(1e-300).sqrt();
+        minimum_correlation = minimum_correlation.min(correlation);
+        if correlation < 0.995 {
+            return Err(format!(
+                "texture layer {layer} displacement sign/shape differs from the finite-strip eigenvector"
+            ));
+        }
+    }
+    Ok(minimum_correlation)
+}
+
+fn read_required(root: &Path, relative: &str) -> Result<Vec<u8>, String> {
     let path = root.join(relative);
     fs::read(&path).map_err(|error| format!("unable to read {}: {error}", path.display()))
 }
@@ -588,6 +944,135 @@ fn validate_asset_descriptor(root: &Path, descriptor: &Value) -> Result<String, 
     Ok(relative.to_owned())
 }
 
+fn append_exact_payload(
+    root: &Path,
+    relative: &str,
+    exact_hasher: &mut Sha256,
+    payloads: &mut Vec<PayloadDigest>,
+) -> Result<Vec<u8>, String> {
+    let path = safe_relative_path(root, relative)?;
+    let bytes =
+        fs::read(&path).map_err(|error| format!("unable to read {}: {error}", path.display()))?;
+    let file_digest = digest(&bytes);
+    exact_hasher.update(relative.as_bytes());
+    exact_hasher.update(&[0]);
+    exact_hasher.update(&(bytes.len() as u64).to_le_bytes());
+    exact_hasher.update(&bytes);
+    payloads.push(PayloadDigest {
+        path: relative.to_owned(),
+        byte_length: bytes.len(),
+        sha256: hex(&file_digest),
+    });
+    Ok(bytes)
+}
+
+fn decode_manifest_texture_shards(
+    root: &Path,
+    manifest: &Value,
+    modes: &[ModeRecord],
+    algorithm: &Algorithm,
+    exact_hasher: &mut Sha256,
+    payloads: &mut Vec<PayloadDigest>,
+) -> Result<(BTreeMap<String, Ktx2Array>, usize), String> {
+    let descriptors = manifest
+        .get("files")
+        .and_then(|value| value.get("textures"))
+        .and_then(Value::as_array)
+        .ok_or_else(|| "manifest texture descriptors are missing".to_owned())?;
+    let versioned = manifest.get("algorithmRevision").is_some();
+    let expected_mode_ids = modes
+        .iter()
+        .map(|mode| mode.mode_id.as_str())
+        .collect::<Vec<_>>();
+    let mut textures = BTreeMap::new();
+    for (kind, channels) in [
+        ("signed-displacement", 1_usize),
+        ("normal", 2_usize),
+        ("nodal-mask", 1_usize),
+        ("sand-density", 1_usize),
+    ] {
+        let kind_descriptors = descriptors
+            .iter()
+            .filter(|descriptor| descriptor.get("kind").and_then(Value::as_str) == Some(kind))
+            .collect::<Vec<_>>();
+        if kind_descriptors.is_empty() {
+            return Err(format!("manifest texture kind {kind:?} is missing"));
+        }
+        let mut width = 0_usize;
+        let mut height = 0_usize;
+        let mut supercompression_scheme = 0_u32;
+        let mut cursor = 0_usize;
+        let mut image_data = Vec::new();
+        for descriptor in kind_descriptors {
+            validate_asset_descriptor(root, descriptor)?;
+            let relative = json_text(descriptor, "path", "texture")?;
+            let descriptor_mode_ids = descriptor
+                .get("modeIds")
+                .and_then(Value::as_array)
+                .ok_or_else(|| format!("{relative} modeIds are missing"))?;
+            let shard_layers = descriptor_mode_ids.len();
+            if shard_layers == 0 || cursor + shard_layers > expected_mode_ids.len() {
+                return Err(format!("{relative} texture shard layer range is invalid"));
+            }
+            let expected_path = format!(
+                "textures/{kind}-{cursor:02}-{:02}.ktx2",
+                cursor + shard_layers - 1
+            );
+            if (versioned
+                && (shard_layers != algorithm.texture_layers_per_shard
+                    || relative != expected_path))
+                || descriptor_mode_ids
+                    .iter()
+                    .enumerate()
+                    .any(|(offset, actual)| {
+                        actual.as_str() != Some(expected_mode_ids[cursor + offset])
+                    })
+            {
+                return Err(format!("{relative} texture shard order is incompatible"));
+            }
+            let bytes = append_exact_payload(root, relative, exact_hasher, payloads)?;
+            let decoded = validate_ktx2(&bytes, kind)?;
+            if decoded.layers != shard_layers
+                || decoded.channels != channels
+                || descriptor.get("widthPx").and_then(Value::as_u64) != Some(decoded.width as u64)
+                || descriptor.get("heightPx").and_then(Value::as_u64) != Some(decoded.height as u64)
+                || descriptor.get("layers").and_then(Value::as_u64) != Some(decoded.layers as u64)
+                || (versioned
+                    && (decoded.supercompression_scheme != 3
+                        || descriptor
+                            .get("supercompressionScheme")
+                            .and_then(Value::as_u64)
+                            != Some(3)))
+                || (cursor > 0 && (decoded.width != width || decoded.height != height))
+            {
+                return Err(format!("{relative} texture shard metadata is inconsistent"));
+            }
+            if cursor == 0 {
+                width = decoded.width;
+                height = decoded.height;
+                supercompression_scheme = decoded.supercompression_scheme;
+            }
+            image_data.extend_from_slice(&decoded.image_data);
+            cursor += shard_layers;
+        }
+        if cursor != modes.len() {
+            return Err(format!("{kind} texture shards do not cover every mode"));
+        }
+        textures.insert(
+            kind.to_owned(),
+            Ktx2Array {
+                width,
+                height,
+                layers: cursor,
+                channels,
+                supercompression_scheme,
+                image_data,
+            },
+        );
+    }
+    Ok((textures, descriptors.len()))
+}
+
 fn inventory_dataset(root: &Path) -> Result<HashSet<String>, String> {
     fn visit(root: &Path, directory: &Path, inventory: &mut HashSet<String>) -> Result<(), String> {
         for entry in fs::read_dir(directory)
@@ -620,6 +1105,98 @@ fn inventory_dataset(root: &Path) -> Result<HashSet<String>, String> {
     Ok(inventory)
 }
 
+fn validate_mesh_evidence_contract(root: &Path, convergence: &Value) -> Result<(), String> {
+    let plate = read_json(root, "plate-spec.json")?;
+    let evidence = read_json(root, "mesh/mesh-evidence.json")?;
+    let quality = evidence
+        .get("qualityPolicy")
+        .ok_or_else(|| "mesh quality policy is missing".to_owned())?;
+    let requested = plate
+        .get("solverRequest")
+        .and_then(|value| value.get("meshQuality"))
+        .ok_or_else(|| "plate mesh quality request is missing".to_owned())?;
+    let levels = evidence
+        .get("levels")
+        .and_then(Value::as_array)
+        .ok_or_else(|| "mesh evidence levels are missing".to_owned())?;
+    let requests = plate
+        .get("solverRequest")
+        .and_then(|value| value.get("meshLevels"))
+        .and_then(Value::as_array)
+        .ok_or_else(|| "plate mesh levels are missing".to_owned())?;
+    for key in [
+        "minimumEdgeM",
+        "minimumSignedAreaM2",
+        "maximumAspectRatio",
+        "requiredConnectedComponentCount",
+        "maximumInvertedTriangleCount",
+    ] {
+        if quality.get(key) != requested.get(key) {
+            return Err(format!("mesh quality policy differs at {key}"));
+        }
+    }
+    if evidence.get("schemaVersion").and_then(Value::as_str) != Some("mandelhowl.mesh-evidence.v1")
+        || levels.len() != requests.len()
+        || quality.get("negativeAreaAllowed").and_then(Value::as_bool) != Some(false)
+        || quality
+            .get("disconnectedComponentsAllowed")
+            .and_then(Value::as_bool)
+            != Some(false)
+        || quality.get("accepted").and_then(Value::as_bool) != Some(true)
+        || convergence.get("meshEvidence") != evidence.get("levels")
+    {
+        return Err("mesh evidence does not bind canonical quality thresholds".to_owned());
+    }
+    let minimum_edge = requested
+        .get("minimumEdgeM")
+        .and_then(Value::as_f64)
+        .ok_or_else(|| "minimumEdgeM is invalid".to_owned())?;
+    let minimum_area = requested
+        .get("minimumSignedAreaM2")
+        .and_then(Value::as_f64)
+        .ok_or_else(|| "minimumSignedAreaM2 is invalid".to_owned())?;
+    let maximum_aspect = requested
+        .get("maximumAspectRatio")
+        .and_then(Value::as_f64)
+        .ok_or_else(|| "maximumAspectRatio is invalid".to_owned())?;
+    let required_components = requested
+        .get("requiredConnectedComponentCount")
+        .and_then(Value::as_u64)
+        .ok_or_else(|| "requiredConnectedComponentCount is invalid".to_owned())?;
+    let maximum_inverted = requested
+        .get("maximumInvertedTriangleCount")
+        .and_then(Value::as_u64)
+        .ok_or_else(|| "maximumInvertedTriangleCount is invalid".to_owned())?;
+    for (index, (level, request)) in levels.iter().zip(requests).enumerate() {
+        if level.get("levelName").and_then(Value::as_str)
+            != request.get("name").and_then(Value::as_str)
+            || level
+                .get("minimumEdgeM")
+                .and_then(Value::as_f64)
+                .is_none_or(|value| value < minimum_edge)
+            || level
+                .get("minimumSignedAreaM2")
+                .and_then(Value::as_f64)
+                .is_none_or(|value| value < minimum_area)
+            || level
+                .get("maximumAspectRatio")
+                .and_then(Value::as_f64)
+                .is_none_or(|value| value > maximum_aspect)
+            || level.get("connectedComponentCount").and_then(Value::as_u64)
+                != Some(required_components)
+            || level
+                .get("invertedTriangleCount")
+                .and_then(Value::as_u64)
+                .is_none_or(|value| value > maximum_inverted)
+        {
+            return Err(format!(
+                "mesh evidence level {index} failed canonical quality thresholds"
+            ));
+        }
+    }
+    Ok(())
+}
+
 fn validate_package_integrity(
     root: &Path,
     modes: &[ModeRecord],
@@ -631,12 +1208,227 @@ fn validate_package_integrity(
         return Err("manifest schema version is incompatible".to_owned());
     }
     let algorithm = Algorithm::load()?;
-    if manifest
-        .get("algorithmRevision")
-        .and_then(Value::as_str)
-        .is_some_and(|revision| revision != algorithm.revision)
-    {
+    let manifest_revision = manifest.get("algorithmRevision").and_then(Value::as_str);
+    if manifest_revision.is_some_and(|revision| revision != algorithm.revision) {
         return Err("manifest algorithm revision is incompatible".to_owned());
+    }
+    let versioned = manifest_revision.is_some();
+    if versioned {
+        let algorithm_bytes = read_required(root, "science/baker-algorithm.v1.json")?;
+        if hex(&digest(&algorithm_bytes)) != algorithm.contract_sha256 {
+            return Err("packaged algorithm contract differs from the active revision".to_owned());
+        }
+        let packaged_algorithm = crate::json::from_str(
+            std::str::from_utf8(&algorithm_bytes)
+                .map_err(|error| format!("algorithm evidence is not UTF-8: {error}"))?,
+        )
+        .map_err(|error| format!("algorithm evidence is invalid JSON: {error}"))?;
+        if packaged_algorithm
+            .get("algorithmRevision")
+            .and_then(Value::as_str)
+            != Some(algorithm.revision.as_str())
+        {
+            return Err("packaged algorithm revision is inconsistent".to_owned());
+        }
+        let provenance = read_json(root, "provenance.json")?;
+        let generator = provenance
+            .get("generator")
+            .ok_or_else(|| "versioned provenance generator is missing".to_owned())?;
+        let solver_options = provenance
+            .get("solver")
+            .and_then(|value| value.get("options"))
+            .ok_or_else(|| "versioned provenance solver options are missing".to_owned())?;
+        if generator.get("algorithmRevision").and_then(Value::as_str)
+            != Some(algorithm.revision.as_str())
+            || generator
+                .get("algorithmContractSha256")
+                .and_then(Value::as_str)
+                != Some(algorithm.contract_sha256.as_str())
+            || solver_options
+                .get("algorithmRevision")
+                .and_then(Value::as_str)
+                != Some(algorithm.revision.as_str())
+            || solver_options
+                .get("algorithmContractSha256")
+                .and_then(Value::as_str)
+                != Some(algorithm.contract_sha256.as_str())
+        {
+            return Err("versioned provenance does not bind the algorithm contract".to_owned());
+        }
+        let solver = provenance
+            .get("solver")
+            .ok_or_else(|| "versioned solver provenance is missing".to_owned())?;
+        let manifest_solver = manifest
+            .get("solverProvenance")
+            .ok_or_else(|| "manifest solver provenance is missing".to_owned())?;
+        let execution_kind = solver
+            .get("executionKind")
+            .and_then(Value::as_str)
+            .ok_or_else(|| "solver execution kind is missing".to_owned())?;
+        if solver.get("name") != manifest_solver.get("solverName")
+            || solver.get("version") != manifest_solver.get("solverVersion")
+            || solver.get("executionKind") != manifest_solver.get("executionKind")
+            || solver.get("containerImageDigest") != manifest_solver.get("containerImageDigest")
+            || solver.get("optionsSha256") != manifest_solver.get("optionsSha256")
+        {
+            return Err("manifest and detailed solver provenance differ".to_owned());
+        }
+        match execution_kind {
+            "native-process" => {
+                if solver.get("containerized").and_then(Value::as_bool) != Some(false)
+                    || !matches!(solver.get("containerImageDigest"), Some(Value::Null))
+                    || solver
+                        .get("containerRunnerAttestation")
+                        .and_then(Value::as_str)
+                        != Some("not-applicable-native-process")
+                {
+                    return Err("native execution provenance claims a container image".to_owned());
+                }
+            }
+            "oci-container" => {
+                let digest = solver
+                    .get("containerImageDigest")
+                    .and_then(Value::as_str)
+                    .unwrap_or_default();
+                let digest_valid = digest.len() == 71
+                    && digest.starts_with("sha256:")
+                    && digest[7..]
+                        .bytes()
+                        .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte));
+                if solver.get("containerized").and_then(Value::as_bool) != Some(true)
+                    || !digest_valid
+                    || !matches!(
+                        solver
+                            .get("containerRunnerAttestation")
+                            .and_then(Value::as_str),
+                        Some("trusted-runner-attested" | "environment-declared-development-only")
+                    )
+                {
+                    return Err("container execution provenance is incomplete".to_owned());
+                }
+            }
+            _ => return Err("solver execution provenance kind is unsupported".to_owned()),
+        }
+        let derived = provenance
+            .get("derivedRuntimeFields")
+            .ok_or_else(|| "derived runtime field provenance is missing".to_owned())?;
+        let surface = derived
+            .get("surfaceKinematics")
+            .ok_or_else(|| "surface kinematics provenance is missing".to_owned())?;
+        let emissive = derived
+            .get("emissiveTexture")
+            .ok_or_else(|| "emissive derivation provenance is missing".to_owned())?;
+        if surface.get("basisTextureKind").and_then(Value::as_str) != Some("signed-displacement")
+            || surface.get("velocityFormula").and_then(Value::as_str)
+                != Some("v(x,t)=sum_i(qDot_i(t)*D_i(x))")
+            || surface.get("accelerationFormula").and_then(Value::as_str)
+                != Some("a(x,t)=sum_i(qDoubleDot_i(t)*D_i(x))")
+            || emissive.get("basisTextureKind").and_then(Value::as_str) != Some("nodal-mask")
+            || emissive.get("basisAliasPolicy").and_then(Value::as_str)
+                != Some("byte-identical-basis-reuse")
+            || emissive
+                .get("fullScreenFlashAllowed")
+                .and_then(Value::as_bool)
+                != Some(false)
+        {
+            return Err("derived runtime field provenance is incompatible".to_owned());
+        }
+        let convergence = read_json(root, "convergence-report.json")?;
+        validate_mesh_evidence_contract(root, &convergence)?;
+        let method = convergence
+            .get("methodConformance")
+            .ok_or_else(|| "versioned method conformance evidence is missing".to_owned())?;
+        if convergence.get("accepted").and_then(Value::as_bool) != Some(true)
+            || convergence
+                .get("finiteElementMeshConvergenceAccepted")
+                .and_then(Value::as_bool)
+                != Some(true)
+            || convergence
+                .get("surfaceMeshQualityAccepted")
+                .and_then(Value::as_bool)
+                != Some(true)
+            || convergence
+                .get("independentCrossValidation")
+                .and_then(|value| value.get("accepted"))
+                .and_then(Value::as_bool)
+                != Some(true)
+            || method
+                .get("thinPlateEigenanalysisSupported")
+                .and_then(Value::as_bool)
+                != Some(true)
+            || method
+                .get("surfaceMeshQualityValidated")
+                .and_then(Value::as_bool)
+                != Some(true)
+            || method
+                .get("finiteElementAssemblyUsed")
+                .and_then(Value::as_bool)
+                != Some(true)
+            || method
+                .get("analysisSurfaceElementMeshCoupledToEigenproblem")
+                .and_then(Value::as_bool)
+                != Some(true)
+            || method
+                .get("surfaceTriangleArchiveCoupledToEigenproblem")
+                .and_then(Value::as_bool)
+                != Some(false)
+            || method
+                .get("strictLiteralSection10_3Conformance")
+                .and_then(Value::as_bool)
+                != Some(true)
+            || method.get("deviationCode").is_some()
+            || method.get("operationalDisposition").and_then(Value::as_str)
+                != Some("strict-thin-plate-finite-element-adapter")
+        {
+            return Err(
+                "versioned solver evidence does not prove strict Section 10.3/B1 finite-strip finite-element conformance"
+                    .to_owned(),
+            );
+        }
+        let generation = read_json(root, "generation-report.json")?;
+        let deviations = generation
+            .get("knownContractDeviations")
+            .and_then(Value::as_array)
+            .ok_or_else(|| "generation report method deviations are missing".to_owned())?;
+        if generation
+            .get("handoffFullConformance")
+            .and_then(Value::as_bool)
+            != Some(true)
+            || generation
+                .get("handoffOperationalDisposition")
+                .and_then(Value::as_str)
+                != Some("strict-thin-plate-finite-element-adapter")
+            || !deviations.is_empty()
+        {
+            return Err(
+                "generation report does not prove strict Section 10.3/B1 finite-element conformance"
+                    .to_owned(),
+            );
+        }
+        let on_grid = |value: f64, quantum: f64| {
+            let ticks = (value / quantum).round_ties_even();
+            let quantized = if ticks == 0.0 { 0.0 } else { ticks * quantum };
+            value.to_bits() == quantized.to_bits()
+        };
+        for mode in modes {
+            if !on_grid(
+                mode.natural_frequency_hz,
+                algorithm.runtime_frequency_quantum_hz,
+            ) || mode.angular_frequency_rad_per_s.to_bits()
+                != (mode.natural_frequency_hz * std::f64::consts::TAU).to_bits()
+                || !on_grid(mode.actuator_coupling, algorithm.runtime_coupling_quantum)
+                || !on_grid(mode.microphone_coupling, algorithm.runtime_coupling_quantum)
+                || !on_grid(
+                    mode.radiation_efficiency,
+                    algorithm.runtime_coupling_quantum,
+                )
+            {
+                return Err(format!(
+                    "{} is outside the versioned runtime modal output grid",
+                    mode.mode_id
+                ));
+            }
+        }
     }
     let ownership = manifest
         .get("ownership")
@@ -708,38 +1500,86 @@ fn validate_package_integrity(
         .get("textures")
         .and_then(Value::as_array)
         .ok_or_else(|| "manifest texture descriptors are missing".to_owned())?;
-    if texture_descriptors.len() != textures.len() {
-        return Err("manifest texture descriptor count is invalid".to_owned());
-    }
     let mode_ids = modes
         .iter()
         .map(|mode| mode.mode_id.as_str())
         .collect::<Vec<_>>();
-    for descriptor in texture_descriptors {
-        validate_asset_descriptor(root, descriptor)?;
-        let kind = json_text(descriptor, "kind", "texture")?;
-        let (_, texture) = textures
+    let mut descriptor_count = 0_usize;
+    for (kind, texture) in textures {
+        let kind_descriptors = texture_descriptors
             .iter()
-            .find(|(candidate, _)| *candidate == kind)
-            .ok_or_else(|| format!("manifest texture kind {kind:?} is unsupported"))?;
-        let descriptor_mode_ids = descriptor
-            .get("modeIds")
-            .and_then(Value::as_array)
-            .ok_or_else(|| format!("{kind} modeIds are missing"))?;
-        if descriptor.get("widthPx").and_then(Value::as_u64) != Some(texture.width as u64)
-            || descriptor.get("heightPx").and_then(Value::as_u64) != Some(texture.height as u64)
-            || descriptor.get("layers").and_then(Value::as_u64) != Some(texture.layers as u64)
-            || descriptor_mode_ids.len() != mode_ids.len()
-            || descriptor_mode_ids
-                .iter()
-                .zip(&mode_ids)
-                .any(|(actual, expected)| actual.as_str() != Some(expected))
-        {
-            return Err(format!("{kind} manifest metadata is inconsistent"));
+            .filter(|descriptor| descriptor.get("kind").and_then(Value::as_str) == Some(*kind))
+            .collect::<Vec<_>>();
+        if kind_descriptors.is_empty() {
+            return Err(format!("manifest texture kind {kind:?} is missing"));
         }
+        let mut cursor = 0_usize;
+        for descriptor in kind_descriptors {
+            descriptor_count += 1;
+            validate_asset_descriptor(root, descriptor)?;
+            let descriptor_mode_ids = descriptor
+                .get("modeIds")
+                .and_then(Value::as_array)
+                .ok_or_else(|| format!("{kind} modeIds are missing"))?;
+            let shard_layers = descriptor_mode_ids.len();
+            if shard_layers == 0 || cursor + shard_layers > mode_ids.len() {
+                return Err(format!("{kind} manifest shard range is invalid"));
+            }
+            if descriptor.get("widthPx").and_then(Value::as_u64) != Some(texture.width as u64)
+                || descriptor.get("heightPx").and_then(Value::as_u64) != Some(texture.height as u64)
+                || descriptor.get("layers").and_then(Value::as_u64) != Some(shard_layers as u64)
+                || (versioned
+                    && descriptor
+                        .get("supercompressionScheme")
+                        .and_then(Value::as_u64)
+                        != Some(u64::from(texture.supercompression_scheme)))
+                || (versioned && texture.supercompression_scheme != 3)
+                || (versioned && shard_layers != algorithm.texture_layers_per_shard)
+                || descriptor_mode_ids
+                    .iter()
+                    .enumerate()
+                    .any(|(offset, actual)| actual.as_str() != Some(mode_ids[cursor + offset]))
+            {
+                return Err(format!("{kind} manifest metadata is inconsistent"));
+            }
+            cursor += shard_layers;
+        }
+        if cursor != mode_ids.len() {
+            return Err(format!("{kind} manifest shards do not cover every mode"));
+        }
+    }
+    if descriptor_count != texture_descriptors.len() || textures.len() != 4 {
+        return Err("manifest texture descriptor count is invalid".to_owned());
     }
     if manifest.get("modeCount").and_then(Value::as_u64) != Some(modes.len() as u64) {
         return Err("manifest mode count is inconsistent".to_owned());
+    }
+    if versioned {
+        let generation = read_json(root, "generation-report.json")?;
+        let coverage = read_json(root, "coverage-report.json")?;
+        let runtime_replay = coverage.get("verificationStatus").and_then(Value::as_str)
+            == Some("runtime-replay-verified");
+        if generation.get("releaseBake").and_then(Value::as_bool) == Some(true) || runtime_replay {
+            let modes_sha = manifest
+                .get("files")
+                .and_then(|value| value.get("modes"))
+                .and_then(|value| value.get("sha256"))
+                .and_then(Value::as_str)
+                .ok_or_else(|| "manifest modes digest is missing".to_owned())?;
+            crate::packaging::validate_external_coverage(
+                &coverage,
+                true,
+                &format!("sha256:{modes_sha}"),
+            )?;
+        } else if generation.get("releaseBake").and_then(Value::as_bool) != Some(false)
+            || generation.get("coverageSource").and_then(Value::as_str)
+                != Some("baker-physical-search-foundation")
+            || coverage.get("verificationStatus").and_then(Value::as_str)
+                != Some("physics-foundation-only")
+            || coverage.get("releaseEligible").and_then(Value::as_bool) != Some(false)
+        {
+            return Err("development coverage foundation is inconsistent".to_owned());
+        }
     }
     let frequency_range = manifest
         .get("frequencyRange")
@@ -801,32 +1641,24 @@ pub fn validate_dataset_semantics(root: &Path) -> Result<DatasetSemanticReport, 
     if !root.is_dir() {
         return Err("dataset root is not a directory".to_owned());
     }
+    let manifest_bytes = read_required(&root, "manifest.json")?;
+    let manifest = crate::json::from_str(
+        std::str::from_utf8(&manifest_bytes)
+            .map_err(|error| format!("manifest.json is not UTF-8: {error}"))?,
+    )
+    .map_err(|error| format!("manifest.json is invalid JSON: {error}"))?;
     let requested = [
         "field/mandelbrot-field.bin",
         "modes.bin",
         "response.bin",
         "science/solver-evidence.bin",
-        "textures/signed-displacement.ktx2",
-        "textures/normal.ktx2",
-        "textures/nodal-mask.ktx2",
-        "textures/sand-density.ktx2",
     ];
     let mut payload_bytes = Vec::with_capacity(requested.len());
-    let mut payloads = Vec::with_capacity(requested.len());
+    let mut payloads = Vec::new();
     let mut exact_hasher = Sha256::new();
     exact_hasher.update(b"mandelhowl.exact-scientific-payload.v1\0");
     for relative in requested {
-        let bytes = read_required(&root, relative)?;
-        let file_digest = digest(&bytes);
-        exact_hasher.update(relative.as_bytes());
-        exact_hasher.update(&[0]);
-        exact_hasher.update(&(bytes.len() as u64).to_le_bytes());
-        exact_hasher.update(&bytes);
-        payloads.push(PayloadDigest {
-            path: relative,
-            byte_length: bytes.len(),
-            sha256: hex(&file_digest),
-        });
+        let bytes = append_exact_payload(&root, relative, &mut exact_hasher, &mut payloads)?;
         payload_bytes.push(bytes);
     }
 
@@ -836,29 +1668,55 @@ pub fn validate_dataset_semantics(root: &Path) -> Result<DatasetSemanticReport, 
     let algorithm = Algorithm::load()?;
     let (normalization, maximum_response_error) =
         validate_response_against_modes(&modes, &response, algorithm.normalization_floor)?;
-    let (diagonal_error, off_diagonal) = validate_solver_evidence(&payload_bytes[3], modes.len())?;
-    let displacement = validate_ktx2(&payload_bytes[4], "signed-displacement")?;
-    let normal = validate_ktx2(&payload_bytes[5], "normal")?;
-    let nodal = validate_ktx2(&payload_bytes[6], "nodal-mask")?;
-    let sand = validate_ktx2(&payload_bytes[7], "sand-density")?;
-    let sand_contrast = validate_texture_alignment(&modes, &displacement, &normal, &nodal, &sand)?;
+    let (solver_evidence, diagonal_error, off_diagonal) =
+        validate_solver_evidence(&payload_bytes[3], modes.len())?;
+    let (textures, texture_descriptor_count) = decode_manifest_texture_shards(
+        &root,
+        &manifest,
+        &modes,
+        &algorithm,
+        &mut exact_hasher,
+        &mut payloads,
+    )?;
+    let displacement = textures
+        .get("signed-displacement")
+        .ok_or_else(|| "signed-displacement texture is missing".to_owned())?;
+    let normal = textures
+        .get("normal")
+        .ok_or_else(|| "normal texture is missing".to_owned())?;
+    let nodal = textures
+        .get("nodal-mask")
+        .ok_or_else(|| "nodal-mask texture is missing".to_owned())?;
+    let sand = textures
+        .get("sand-density")
+        .ok_or_else(|| "sand-density texture is missing".to_owned())?;
+    let sand_contrast = validate_texture_alignment(&modes, displacement, normal, nodal, sand)?;
     validate_package_integrity(
         &root,
         &modes,
         &response,
         &[
-            ("signed-displacement", &displacement),
-            ("normal", &normal),
-            ("nodal-mask", &nodal),
-            ("sand-density", &sand),
+            ("signed-displacement", displacement),
+            ("normal", normal),
+            ("nodal-mask", nodal),
+            ("sand-density", sand),
         ],
     )?;
-    let manifest_bytes = read_required(&root, "manifest.json")?;
-    let manifest = crate::json::from_str(
-        std::str::from_utf8(&manifest_bytes)
-            .map_err(|error| format!("manifest.json is not UTF-8: {error}"))?,
-    )
-    .map_err(|error| format!("manifest.json is invalid JSON: {error}"))?;
+    let plate = read_json(&root, "plate-spec.json")?;
+    let provenance = read_json(&root, "provenance.json")?;
+    if manifest.get("algorithmRevision").is_some() {
+        validate_material_section_profile(&payload_bytes[0], &manifest, &plate, &algorithm)?;
+    }
+    let minimum_eigenvector_texture_correlation = validate_modal_coefficient_and_texture_semantics(
+        &modes,
+        &solver_evidence,
+        &algorithm,
+        &plate,
+        &provenance,
+        displacement,
+        nodal,
+        sand,
+    )?;
     let dataset_id = manifest
         .get("datasetId")
         .and_then(Value::as_str)
@@ -882,7 +1740,7 @@ pub fn validate_dataset_semantics(root: &Path) -> Result<DatasetSemanticReport, 
         manifest_sha256,
         mode_count: modes.len(),
         response_sample_count: response.len(),
-        texture_count: 4,
+        texture_count: texture_descriptor_count,
         first_mode_id: first_mode.mode_id.clone(),
         last_mode_id: last_mode.mode_id.clone(),
         minimum_mode_frequency_hz: first_mode.natural_frequency_hz,
@@ -893,6 +1751,7 @@ pub fn validate_dataset_semantics(root: &Path) -> Result<DatasetSemanticReport, 
         maximum_response_component_error: maximum_response_error,
         maximum_modal_mass_diagonal_error: diagonal_error,
         maximum_modal_mass_off_diagonal: off_diagonal,
+        minimum_eigenvector_texture_correlation,
         minimum_sand_low_minus_high_mean: sand_contrast,
         field_resolution,
         texture_width: displacement.width,

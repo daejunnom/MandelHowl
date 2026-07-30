@@ -173,33 +173,97 @@ function readSolverEvidence(datasetRoot) {
   return { basisCount, modeCount, values };
 }
 
-function readKtx2(datasetRoot, kind) {
-  const buffer = readFileSync(
-    path.join(datasetRoot, "textures", `${kind}.ktx2`),
-  );
-  assertMagic(buffer, KTX2_IDENTIFIER, `${kind} KTX2`);
-  assertRange(buffer, 0, 104, `${kind} KTX2 header`);
+function decodeKtx2(buffer, label) {
+  assertMagic(buffer, KTX2_IDENTIFIER, `${label} KTX2`);
+  assertRange(buffer, 0, 104, `${label} KTX2 header`);
   const format = buffer.readUInt32LE(12);
   const width = buffer.readUInt32LE(20);
   const height = buffer.readUInt32LE(24);
   const layers = buffer.readUInt32LE(32);
+  const supercompressionScheme = buffer.readUInt32LE(44);
   const levelOffset = Number(buffer.readBigUInt64LE(80));
   const levelLength = Number(buffer.readBigUInt64LE(88));
+  const uncompressedLength = Number(buffer.readBigUInt64LE(96));
   const channels = format === 9 ? 1 : format === 16 ? 2 : 0;
+  const expectedLength = width * height * layers * channels;
   if (
     channels === 0 ||
-    levelLength !== width * height * layers * channels
+    ![0, 3].includes(supercompressionScheme) ||
+    uncompressedLength !== expectedLength ||
+    (supercompressionScheme === 0 && levelLength !== expectedLength) ||
+    (supercompressionScheme === 3 && levelLength >= expectedLength)
   ) {
-    throw new Error(`${kind} KTX2 dimensions are invalid`);
+    throw new Error(`${label} KTX2 dimensions are invalid`);
   }
-  assertRange(buffer, levelOffset, levelLength, `${kind} KTX2 level`);
+  assertRange(buffer, levelOffset, levelLength, `${label} KTX2 level`);
+  const encoded = buffer.subarray(levelOffset, levelOffset + levelLength);
+  const pixels =
+    supercompressionScheme === 3 ? inflateSync(encoded) : encoded;
+  if (pixels.length !== expectedLength) {
+    throw new Error(`${label} decoded KTX2 level length is invalid`);
+  }
   return {
     format,
     width,
     height,
     layers,
     channels,
-    pixels: buffer.subarray(levelOffset, levelOffset + levelLength),
+    supercompressionScheme,
+    pixels,
+  };
+}
+
+function readKtx2(datasetRoot, kind) {
+  const manifest = JSON.parse(
+    readFileSync(path.join(datasetRoot, "manifest.json"), "utf8"),
+  );
+  const descriptors = manifest?.files?.textures?.filter(
+    (descriptor) => descriptor.kind === kind,
+  );
+  if (!Array.isArray(descriptors) || descriptors.length === 0) {
+    throw new Error(`${kind} texture descriptors are missing`);
+  }
+  let aggregate = null;
+  const pixels = [];
+  const modeIds = [];
+  const paths = [];
+  for (const descriptor of descriptors) {
+    const relative = descriptor.path;
+    const decoded = decodeKtx2(
+      readFileSync(path.join(datasetRoot, relative)),
+      relative,
+    );
+    if (
+      decoded.width !== descriptor.widthPx ||
+      decoded.height !== descriptor.heightPx ||
+      decoded.layers !== descriptor.layers ||
+      !Array.isArray(descriptor.modeIds) ||
+      descriptor.modeIds.length !== decoded.layers ||
+      (aggregate &&
+        (decoded.format !== aggregate.format ||
+          decoded.width !== aggregate.width ||
+          decoded.height !== aggregate.height ||
+          decoded.channels !== aggregate.channels ||
+          decoded.supercompressionScheme !==
+            aggregate.supercompressionScheme))
+    ) {
+      throw new Error(`${relative} texture shard metadata is invalid`);
+    }
+    aggregate ??= decoded;
+    pixels.push(decoded.pixels);
+    modeIds.push(...descriptor.modeIds);
+    paths.push(relative);
+  }
+  if (modeIds.length !== manifest.modeCount) {
+    throw new Error(`${kind} texture shards do not cover every mode`);
+  }
+  return {
+    ...aggregate,
+    layers: modeIds.length,
+    shardCount: descriptors.length,
+    paths,
+    modeIds,
+    pixels: Buffer.concat(pixels),
   };
 }
 
@@ -310,12 +374,39 @@ function readFiniteJson(datasetRoot, relative) {
   return value;
 }
 
+function scientificProvenance(datasetRoot) {
+  const provenance = readFiniteJson(datasetRoot, "provenance.json");
+  const solver = provenance.solver ?? {};
+  return {
+    canonicalInput: provenance.canonicalInput ?? null,
+    solver: {
+      name: solver.name ?? null,
+      options: solver.options ?? null,
+      canonicalRequest: solver.canonicalRequest ?? null,
+      executedMethod: solver.executedMethod ?? null,
+      methodRequestMismatchRecorded:
+        solver.methodRequestMismatchRecorded ?? null,
+      normalization: solver.normalization ?? null,
+      signRule: solver.signRule ?? null,
+    },
+    manufacturing: provenance.manufacturing ?? null,
+    response: provenance.response ?? null,
+    textures: provenance.textures ?? null,
+    derivedRuntimeFields: provenance.derivedRuntimeFields ?? null,
+    renderingCoordinateTransform:
+      provenance.renderingCoordinateTransform ?? null,
+    modes: provenance.modes ?? null,
+    scientificScope: provenance.scientificScope ?? null,
+  };
+}
+
 function compareJsonTree({
   left,
   right,
   jsonPath,
   absoluteTolerance,
   relativeTolerance,
+  toleranceForPath = null,
   addMismatch,
 }) {
   let maximumAbsolute = 0;
@@ -326,16 +417,18 @@ function compareJsonTree({
       assertFinite(rightValue, `${currentPath}.right`);
       const absolute = Math.abs(leftValue - rightValue);
       const relative = relativeDifference(leftValue, rightValue, 1e-30);
+      const selectedTolerance =
+        toleranceForPath?.(currentPath) ?? {
+          absolute: absoluteTolerance,
+          relative: relativeTolerance,
+        };
       maximumAbsolute = Math.max(maximumAbsolute, absolute);
       maximumRelative = Math.max(maximumRelative, relative);
       if (
-        absolute > absoluteTolerance &&
-        relative > relativeTolerance
+        absolute > selectedTolerance.absolute &&
+        relative > selectedTolerance.relative
       ) {
-        addMismatch(currentPath, leftValue, rightValue, {
-          absolute: absoluteTolerance,
-          relative: relativeTolerance,
-        });
+        addMismatch(currentPath, leftValue, rightValue, selectedTolerance);
       }
       return;
     }
@@ -392,6 +485,91 @@ function relativeDifference(left, right, floor = Number.MIN_VALUE) {
   return Math.abs(left - right) / Math.max(Math.abs(left), Math.abs(right), floor);
 }
 
+function compensatedDot(left, right) {
+  let sum = 0;
+  let compensation = 0;
+  const count = Math.min(left.length, right.length);
+  for (let index = 0; index < count; index += 1) {
+    const product = left[index] * right[index];
+    const corrected = product - compensation;
+    const next = sum + corrected;
+    compensation = (next - sum) - corrected;
+    sum = next;
+  }
+  return sum;
+}
+
+function euclideanRelativeDifference(left, right) {
+  const difference = new Float64Array(Math.min(left.length, right.length));
+  for (let index = 0; index < difference.length; index += 1) {
+    difference[index] = left[index] - right[index];
+  }
+  const differenceNorm = Math.sqrt(compensatedDot(difference, difference));
+  const leftNorm = Math.sqrt(compensatedDot(left, left));
+  const rightNorm = Math.sqrt(compensatedDot(right, right));
+  return differenceNorm / Math.max(leftNorm, rightNorm, 1e-300);
+}
+
+function averageMassBilinear(left, right, leftMass, rightMass, basisCount) {
+  let sum = 0;
+  let compensation = 0;
+  for (let row = 0; row < basisCount; row += 1) {
+    let weighted = 0;
+    let weightedCompensation = 0;
+    const rowOffset = row * basisCount;
+    for (let column = 0; column < basisCount; column += 1) {
+      const averageMass =
+        0.5 * (leftMass[rowOffset + column] + rightMass[rowOffset + column]);
+      const product = averageMass * right[column];
+      const corrected = product - weightedCompensation;
+      const next = weighted + corrected;
+      weightedCompensation = (next - weighted) - corrected;
+      weighted = next;
+    }
+    const product = left[row] * weighted;
+    const corrected = product - compensation;
+    const next = sum + corrected;
+    compensation = (next - sum) - corrected;
+    sum = next;
+  }
+  return sum;
+}
+
+function modalAssuranceCriterion(
+  left,
+  right,
+  leftMass,
+  rightMass,
+  basisCount,
+) {
+  const cross = averageMassBilinear(
+    left,
+    right,
+    leftMass,
+    rightMass,
+    basisCount,
+  );
+  const leftNorm = averageMassBilinear(
+    left,
+    left,
+    leftMass,
+    rightMass,
+    basisCount,
+  );
+  const rightNorm = averageMassBilinear(
+    right,
+    right,
+    leftMass,
+    rightMass,
+    basisCount,
+  );
+  const denominator = leftNorm * rightNorm;
+  if (!(denominator > 0) || !Number.isFinite(denominator)) {
+    return Number.NaN;
+  }
+  return Math.min(1, Math.max(0, (cross * cross) / denominator));
+}
+
 function compareByteArrays(left, right) {
   if (left.length !== right.length) {
     return {
@@ -438,6 +616,8 @@ function manifestMetadata(datasetRoot) {
     algorithmRevision: manifest.algorithmRevision ?? null,
     generator: manifest.ownership?.generator ?? null,
     datasetId: manifest.datasetId ?? null,
+    materialSectionProfile:
+      manifest.plate?.materialSectionProfile ?? null,
     manifestSha256: createHash("sha256")
       .update(manifestBytes)
       .digest("hex"),
@@ -527,6 +707,38 @@ export function compareDatasets({
       "exact",
     );
   }
+  for (const [label, revision, profile] of [
+    [
+      "left",
+      leftRevision,
+      leftManifest.materialSectionProfile,
+    ],
+    [
+      "right",
+      rightRevision,
+      rightManifest.materialSectionProfile,
+    ],
+  ]) {
+    if (
+      revision === algorithm.algorithmRevision &&
+      profile === null
+    ) {
+      addMismatch(
+        `${label}.manifest.plate.materialSectionProfile`,
+        null,
+        "required for versioned datasets",
+        "exact",
+      );
+    }
+  }
+  const materialSectionProfileReport = compareJsonTree({
+    left: leftManifest.materialSectionProfile,
+    right: rightManifest.materialSectionProfile,
+    jsonPath: "manifest.plate.materialSectionProfile",
+    absoluteTolerance: 0,
+    relativeTolerance: 0,
+    addMismatch,
+  });
   for (const [label, digest] of [
     ["left", algorithmEvidenceDigest(leftRoot)],
     ["right", algorithmEvidenceDigest(rightRoot)],
@@ -544,6 +756,28 @@ export function compareDatasets({
     }
   }
 
+  const leftModesBytes = readFileSync(path.join(leftRoot, "modes.bin"));
+  const rightModesBytes = readFileSync(path.join(rightRoot, "modes.bin"));
+  const modesByteIdentical = leftModesBytes.equals(rightModesBytes);
+  const leftModesSha256 = createHash("sha256")
+    .update(leftModesBytes)
+    .digest("hex");
+  const rightModesSha256 = createHash("sha256")
+    .update(rightModesBytes)
+    .digest("hex");
+  if (
+    algorithm.runtimeModalOutput &&
+    leftRevision === algorithm.algorithmRevision &&
+    rightRevision === algorithm.algorithmRevision &&
+    !modesByteIdentical
+  ) {
+    addMismatch(
+      "modes.binarySha256",
+      leftModesSha256,
+      rightModesSha256,
+      "exact-versioned-runtime-modal-output",
+    );
+  }
   const leftModes = readModes(leftRoot);
   const rightModes = readModes(rightRoot);
   if (leftModes.length !== rightModes.length) {
@@ -699,6 +933,21 @@ export function compareDatasets({
     relativeTolerance: tolerance.reportScalarRelative,
     addMismatch,
   });
+  const scientificProvenanceReport = compareJsonTree({
+    left: scientificProvenance(leftRoot),
+    right: scientificProvenance(rightRoot),
+    jsonPath: "provenance.scientific",
+    absoluteTolerance: tolerance.reportScalarAbsolute,
+    relativeTolerance: tolerance.reportScalarRelative,
+    toleranceForPath: (currentPath) =>
+      currentPath.includes(".adjacentFrequencySpacingHz.")
+        ? {
+            absolute: tolerance.adjacentFrequencySpacingAbsoluteHz,
+            relative: tolerance.reportScalarRelative,
+          }
+        : null,
+    addMismatch,
+  });
 
   const leftEvidence = readSolverEvidence(leftRoot);
   const rightEvidence = readSolverEvidence(rightRoot);
@@ -852,6 +1101,7 @@ export function compareDatasets({
     }
   }
   let maximumSolverEvidenceRelative = 0;
+  let maximumSolverEvidenceAbsolute = 0;
   const evidenceCount = Math.min(
     leftEvidence.values.length,
     rightEvidence.values.length,
@@ -864,6 +1114,10 @@ export function compareDatasets({
       leftEvidence.values[index],
       rightEvidence.values[index],
       1e-30,
+    );
+    maximumSolverEvidenceAbsolute = Math.max(
+      maximumSolverEvidenceAbsolute,
+      absoluteDifference,
     );
     maximumSolverEvidenceRelative = Math.max(
       maximumSolverEvidenceRelative,
@@ -885,6 +1139,71 @@ export function compareDatasets({
     }
   }
 
+  let maximumSolverModeCoefficientL2Relative = 0;
+  let minimumSolverModeModalAssuranceCriterion = 1;
+  if (
+    leftEvidence.basisCount === rightEvidence.basisCount &&
+    leftEvidence.modeCount === rightEvidence.modeCount
+  ) {
+    const basisCount = leftEvidence.basisCount;
+    const massValueCount = basisCount * basisCount;
+    const leftMass = leftEvidence.values.subarray(0, massValueCount);
+    const rightMass = rightEvidence.values.subarray(0, massValueCount);
+    for (let modeIndex = 0; modeIndex < leftEvidence.modeCount; modeIndex += 1) {
+      const start = massValueCount + modeIndex * basisCount;
+      const end = start + basisCount;
+      const leftCoefficients = leftEvidence.values.subarray(start, end);
+      const rightCoefficients = rightEvidence.values.subarray(start, end);
+      const l2Relative = euclideanRelativeDifference(
+        leftCoefficients,
+        rightCoefficients,
+      );
+      const mac = modalAssuranceCriterion(
+        leftCoefficients,
+        rightCoefficients,
+        leftMass,
+        rightMass,
+        basisCount,
+      );
+      maximumSolverModeCoefficientL2Relative = Math.max(
+        maximumSolverModeCoefficientL2Relative,
+        l2Relative,
+      );
+      minimumSolverModeModalAssuranceCriterion = Math.min(
+        minimumSolverModeModalAssuranceCriterion,
+        mac,
+      );
+      if (
+        !Number.isFinite(l2Relative) ||
+        l2Relative > tolerance.solverModeCoefficientL2Relative
+      ) {
+        addMismatch(
+          `solverEvidence.modes[${modeIndex}].coefficientL2Relative`,
+          l2Relative,
+          0,
+          tolerance.solverModeCoefficientL2Relative,
+        );
+      }
+      if (
+        !Number.isFinite(mac) ||
+        mac < tolerance.solverModeMinimumModalAssuranceCriterion
+      ) {
+        addMismatch(
+          `solverEvidence.modes[${modeIndex}].modalAssuranceCriterion`,
+          mac,
+          1,
+          {
+            minimum:
+              tolerance.solverModeMinimumModalAssuranceCriterion,
+            massMetric: "average-of-left-and-right-mass-matrices",
+          },
+        );
+      }
+    }
+  } else {
+    minimumSolverModeModalAssuranceCriterion = 0;
+  }
+
   const textureMetrics = {};
   for (const kind of [
     "signed-displacement",
@@ -894,8 +1213,26 @@ export function compareDatasets({
   ]) {
     const left = readKtx2(leftRoot, kind);
     const right = readKtx2(rightRoot, kind);
-    for (const key of ["format", "width", "height", "layers", "channels"]) {
+    for (const key of [
+      "format",
+      "width",
+      "height",
+      "layers",
+      "channels",
+      "supercompressionScheme",
+      "shardCount",
+    ]) {
       if (left[key] !== right[key]) {
+        addMismatch(
+          `textures.${kind}.${key}`,
+          left[key],
+          right[key],
+          "exact",
+        );
+      }
+    }
+    for (const key of ["paths", "modeIds"]) {
+      if (JSON.stringify(left[key]) !== JSON.stringify(right[key])) {
         addMismatch(
           `textures.${kind}.${key}`,
           left[key],
@@ -944,12 +1281,18 @@ export function compareDatasets({
     },
     metrics: {
       modeCount,
+      modesByteIdentical,
+      leftModesSha256,
+      rightModesSha256,
       responseSampleCount: responseCount,
       maximumModeFrequencyRelative,
       maximumModeScalarAbsolute,
       maximumResponseFrequencyRelative,
       maximumResponseComponentAbsolute,
       maximumSolverEvidenceRelative,
+      maximumSolverEvidenceAbsolute,
+      maximumSolverModeCoefficientL2Relative,
+      minimumSolverModeModalAssuranceCriterion,
       maximumMeshEvidenceRelative,
       maximumMeshEvidenceAbsolute,
       maximumMeshNodeAbsoluteM,
@@ -960,9 +1303,11 @@ export function compareDatasets({
       ),
       meshEvidenceFingerprintsEqual,
       meshPolicy: meshPolicyReport,
+      materialSectionProfile: materialSectionProfileReport,
       plateSpec: plateReport,
       convergenceReport,
       coverageReport,
+      scientificProvenance: scientificProvenanceReport,
       field: fieldDifference,
       textures: textureMetrics,
     },

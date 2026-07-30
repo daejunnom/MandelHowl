@@ -54,6 +54,9 @@ export function decodeModesBinaryV1(
     input instanceof Uint8Array ? input : new Uint8Array(input);
   const view = assertHeader(bytes, MODES_BINARY_V1);
   const count = view.getUint32(12, true);
+  if (count === 0) {
+    throw new RangeError("Modes binary must contain at least one mode");
+  }
   const expectedBytes =
     MODES_BINARY_V1.headerBytes + count * MODES_BINARY_V1.recordBytes;
   if (bytes.byteLength !== expectedBytes) {
@@ -86,9 +89,15 @@ export function decodeModesBinaryV1(
     const signCode = view.getUint8(base + 88);
     if (
       ids.has(modeId) ||
+      view.getUint32(base + 24, true) !== index + 1 ||
       naturalFrequencyHz <= previousFrequency ||
       naturalFrequencyHz <= 0 ||
-      dampingRatio < 0 ||
+      dampingRatio <= 0 ||
+      dampingRatio > 0.2 ||
+      Math.abs(view.getFloat64(base + 56, true)) > 1 ||
+      Math.abs(view.getFloat64(base + 64, true)) > 1 ||
+      view.getFloat64(base + 72, true) < 0 ||
+      view.getFloat64(base + 72, true) > 1 ||
       signCode > 1
     ) {
       throw new TypeError(`Mode record ${modeId} violates ordering or bounds`);
@@ -143,6 +152,9 @@ export function decodeResponseBinaryV1(
     input instanceof Uint8Array ? input : new Uint8Array(input);
   const view = assertHeader(bytes, RESPONSE_BINARY_V1);
   const sampleCount = view.getUint32(12, true);
+  if (sampleCount < 2) {
+    throw new RangeError("Response binary must contain at least two samples");
+  }
   const expectedBytes =
     RESPONSE_BINARY_V1.headerBytes +
     sampleCount * RESPONSE_BINARY_V1.recordBytes;

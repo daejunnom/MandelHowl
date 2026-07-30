@@ -249,6 +249,17 @@ function sameIdentity(
   );
 }
 
+function isViewDialCommand(command: DialCommand): boolean {
+  return (
+    command.type === "pointer-start" ||
+    command.type === "pointer-move" ||
+    command.type === "pointer-end" ||
+    command.type === "pointer-cancel" ||
+    command.type === "keyboard" ||
+    command.type === "wheel"
+  );
+}
+
 /**
  * Svelte-primary/React-standby supervisor over one canonical runtime.
  *
@@ -853,8 +864,23 @@ export class UiNVersionSupervisor {
       this.reportRejectedInput(attempt, "stale-generation");
       return false;
     }
+    if (!isViewDialCommand(command)) {
+      this.reportRejectedInput(attempt, "forbidden-command");
+      return false;
+    }
     if (!this.consumeInputId("dial", inputEventId)) {
       this.reportRejectedInput(attempt, "duplicate-input");
+      return false;
+    }
+    if (
+      attempt.pointerGestureActive &&
+      (command.type === "keyboard" || command.type === "wheel")
+    ) {
+      // A captured pointer owns the one conceptual dial until its matching
+      // end/cancel. Letting another adapter nudge the domain state here would
+      // silently end DialState.dragging while the supervisor and DOM still
+      // retained pointer ownership, producing a stuck or split gesture.
+      this.reportRejectedInput(attempt, "conflicting-input");
       return false;
     }
     this.runtime.dispatchDial(command);
@@ -880,6 +906,10 @@ export class UiNVersionSupervisor {
   ): boolean {
     if (!this.isCurrent(attempt)) {
       this.reportRejectedInput(attempt, "stale-generation");
+      return false;
+    }
+    if (dragging !== attempt.pointerGestureActive) {
+      this.reportRejectedInput(attempt, "inconsistent-dragging");
       return false;
     }
     if (!this.consumeInputId("dragging", inputEventId)) {
@@ -922,7 +952,13 @@ export class UiNVersionSupervisor {
 
   private reportRejectedInput(
     attempt: ActivationAttempt,
-    reason: "stale-generation" | "duplicate-input" | "stale-view",
+    reason:
+      | "stale-generation"
+      | "duplicate-input"
+      | "stale-view"
+      | "forbidden-command"
+      | "inconsistent-dragging"
+      | "conflicting-input",
   ): void {
     const signature = `${attempt.generation}:${reason}`;
     if (this.emittedInputDiagnostics.has(signature)) return;
@@ -931,7 +967,13 @@ export class UiNVersionSupervisor {
       diagnostic(
         reason === "duplicate-input"
           ? "MH-UI-DUPLICATE-INPUT-REJECTED"
-          : "MH-UI-STALE-INPUT-REJECTED",
+          : reason === "forbidden-command"
+            ? "MH-UI-FORBIDDEN-COMMAND-REJECTED"
+            : reason === "inconsistent-dragging"
+              ? "MH-UI-INCONSISTENT-DRAGGING-REJECTED"
+              : reason === "conflicting-input"
+                ? "MH-UI-CONFLICTING-INPUT-REJECTED"
+                : "MH-UI-STALE-INPUT-REJECTED",
         "info",
         "ui.inputRejected",
         [
@@ -964,7 +1006,7 @@ export class UiNVersionSupervisor {
       !Number.isInteger(sequence) ||
       sequence < 0 ||
       (attempt.lastHeartbeatSequence !== null &&
-        sequence < attempt.lastHeartbeatSequence)
+        sequence <= attempt.lastHeartbeatSequence)
     ) {
       return;
     }

@@ -22,6 +22,17 @@ sourceMapping:
   maximumOutputGainLinear: 0.1
   exponent: 0.72
 
+# One drive voice plus a fixed, preallocated bank containing the strongest
+# canonical modal states. Voice weights always sum to at most one.
+modalTimbre:
+  maximumVoices: 8
+  minimumEnergyNormalized: 0.000001
+  driveToneWeight: 0.18
+  modalVoiceWeight: 0.82
+  frequencySmoothingSeconds: 0.025
+  gainAttackSeconds: 0.035
+  gainReleaseSeconds: 0.08
+
 chain:
   - dc-blocker
   - band-limiter

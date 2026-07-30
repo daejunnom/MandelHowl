@@ -1,6 +1,7 @@
 const DEFAULT_SAMPLE_COUNT = 40;
 const MINIMUM_SHAPE_PEAK = 1e-6;
 const AUTO_RANGE_DISPLAY_PEAK = 0.78;
+const DISPLAY_SAMPLE_DECIMALS = 12;
 
 export interface OscilloscopePresentationInput {
   readonly recentSamples: readonly number[];
@@ -72,7 +73,13 @@ export function presentOscilloscope(
   let displayPeak = 0;
 
   const displaySamples = sanitizedSamples.map((sample) => {
-    const displaySample = clamp(sample * autoGain, -1, 1);
+    // The view model crosses SSR and browser JS engines. Their transcendental
+    // inputs can differ by one final binary digit, so quantize display-only
+    // geometry before it becomes a CSS custom property. Physical RMS/peak and
+    // the canonical runtime signal remain untouched.
+    const displaySample = Number(
+      clamp(sample * autoGain, -1, 1).toFixed(DISPLAY_SAMPLE_DECIMALS),
+    );
     displayPeak = Math.max(displayPeak, Math.abs(displaySample));
     return displaySample;
   });

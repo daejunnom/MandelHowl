@@ -14,6 +14,23 @@ import {
 } from "./prototype-dataset";
 
 const TAU = Math.PI * 2;
+export const RUNTIME_FEEDBACK_ALGORITHM_REVISION =
+  "fixed-step-modal-feedback-v3" as const;
+
+function assertSupportedFeedbackAlgorithmRevision(
+  revision: string,
+): asserts revision is typeof RUNTIME_FEEDBACK_ALGORITHM_REVISION {
+  if (revision !== RUNTIME_FEEDBACK_ALGORITHM_REVISION) {
+    throw new Error(
+      `Unsupported feedback algorithm revision: ${revision}`,
+    );
+  }
+}
+
+assertSupportedFeedbackAlgorithmRevision(
+  GENERATED_FEEDBACK_SPEC.algorithmRevision,
+);
+
 const FIXED_STEP_SECONDS =
   GENERATED_FEEDBACK_SPEC.simulation.fixedStepSeconds;
 const MAX_ADVANCE_SECONDS =
@@ -24,6 +41,16 @@ const PAUSED_GAP_RESET_SECONDS =
   GENERATED_FEEDBACK_SPEC.simulation.pausedGapResetSeconds;
 const CRITICAL_LOOP_MARGIN_HALF_WIDTH =
   GENERATED_FEEDBACK_SPEC.regimeThresholds.criticalLoopMarginHalfWidth;
+const MAXIMUM_ACTIVE_MODES = Math.max(
+  1,
+  Math.floor(
+    GENERATED_FEEDBACK_SPEC.modalSelection.maximumActiveModes,
+  ),
+);
+const ACTIVATION_BANDWIDTH_RATIO =
+  GENERATED_FEEDBACK_SPEC.modalSelection.activationBandwidthRatio;
+const RESIDUAL_ENERGY_THRESHOLD =
+  GENERATED_FEEDBACK_SPEC.modalSelection.residualEnergyThreshold;
 const CALIBRATION = GENERATED_FEEDBACK_SPEC.calibration;
 const MEASUREMENT_TOTAL_SECONDS =
   GENERATED_VOLUME_MAP_SPEC.measurement.minimumObservationSeconds +
@@ -103,6 +130,22 @@ export interface ResonanceState {
   drivePhaseRadians: number;
   modeEnergy: Float64Array;
   modePhaseRadians: Float64Array;
+  /** Preallocated modal-selection scratch; never exposed to consumers. */
+  modeResponseScratch: Float64Array;
+  modeDriveScoreScratch: Float64Array;
+  modeLoopScoreScratch: Float64Array;
+  /** Stable frequency ordering and hot-path active/residual update buffers. */
+  frequencySortedModeIndices: Int32Array;
+  modeUpdateIndices: Int32Array;
+  modeUpdateMarks: Uint32Array;
+  modeUpdateMarkGeneration: number;
+  modeUpdateCount: number;
+  nonzeroModeIndices: Int32Array;
+  nextNonzeroModeIndices: Int32Array;
+  nonzeroModeCount: number;
+  activeModeIndices: Int32Array;
+  activeModePriorityScratch: Float64Array;
+  activeModeCount: number;
   loopEnergyEnvelope: number;
   feedbackEnvelope: number;
   feedbackLoopSignal: number;
@@ -456,6 +499,35 @@ function responseAtFrequency(
   return 1 / (1 + normalizedDetuning * normalizedDetuning);
 }
 
+function modeIsInsideActivationBandwidth(
+  frequencyHz: number,
+  modeFrequencyHz: number,
+): boolean {
+  return (
+    Math.abs(frequencyHz - modeFrequencyHz) /
+      Math.max(Number.EPSILON, modeFrequencyHz) <=
+    ACTIVATION_BANDWIDTH_RATIO
+  );
+}
+
+function feedbackPhaseAlignment(
+  frequencyHz: number,
+  modePhaseOffsetRadians: number,
+): number {
+  const loopPhase =
+    -TAU * frequencyHz * GENERATED_FEEDBACK_SPEC.loop.delaySeconds +
+    GENERATED_FEEDBACK_SPEC.loop.phaseOffsetRad +
+    modePhaseOffsetRadians;
+  // The actuator basis is sign-normalized before packaging, so the encoded
+  // actuator × microphone sign is the physical return polarity rather than
+  // an arbitrary eigenvector sign. Only a positive real loop component can
+  // contribute to self-excited growth; anti-aligned return remains damping.
+  return Math.max(
+    0,
+    Math.cos(loopPhase) * GENERATED_FEEDBACK_SPEC.loop.polarity,
+  );
+}
+
 export function estimateOpenLoopMarginAtFrequency(
   dataset: RuntimeModalDataset,
   frequencyHz: number,
@@ -467,31 +539,69 @@ export function estimateOpenLoopMarginAtFrequency(
     dataset.frequencyRangeHz[0],
     dataset.frequencyRangeHz[1],
   );
+  const filterMagnitude = bandPassMagnitude(frequency);
+  let previousScore = Number.POSITIVE_INFINITY;
+  let previousIndex = -1;
   let strongestScore = 0;
   let responseSum = 0;
-  for (let index = 0; index < dataset.modes.length; index += 1) {
-    const mode = dataset.modes[index];
-    const response = responseAtFrequency(
-      frequency,
-      mode.frequencyHz,
-      mode.dampingRatio,
-    );
-    const directionalPhase =
-      direction === 0
-        ? 1
-        : 1 +
-          direction *
-            Math.sin(mode.phaseOffsetRadians) *
-            CALIBRATION.modalResponse.directionalPhaseScale;
-    const score =
-      response *
-      Math.abs(mode.driveCoupling * mode.microphoneCoupling) /
-      dataset.maximumModalCoupling *
-      directionalPhase;
-    responseSum += score;
-    if (score > strongestScore) {
-      strongestScore = score;
+  const maximumSelected = Math.min(
+    MAXIMUM_ACTIVE_MODES,
+    dataset.modes.length,
+  );
+  for (let rank = 0; rank < maximumSelected; rank += 1) {
+    let selectedIndex = -1;
+    let selectedScore = Number.NEGATIVE_INFINITY;
+    for (let index = 0; index < dataset.modes.length; index += 1) {
+      const mode = dataset.modes[index];
+      if (
+        !modeIsInsideActivationBandwidth(
+          frequency,
+          mode.frequencyHz,
+        )
+      ) {
+        continue;
+      }
+      const response = responseAtFrequency(
+        frequency,
+        mode.frequencyHz,
+        mode.dampingRatio,
+      );
+      const directionalPhase =
+        direction === 0
+          ? 1
+          : 1 +
+            direction *
+              Math.sin(mode.phaseOffsetRadians) *
+              CALIBRATION.modalResponse.directionalPhaseScale;
+      const driveScore =
+        response *
+        Math.abs(mode.driveCoupling * mode.microphoneCoupling) /
+        dataset.maximumModalCoupling *
+        directionalPhase;
+      const score =
+        driveScore *
+        filterMagnitude *
+        feedbackPhaseAlignment(
+          frequency,
+          mode.phaseOffsetRadians,
+        );
+      const followsPrevious =
+        score < previousScore ||
+        (score === previousScore && index > previousIndex);
+      if (
+        followsPrevious &&
+        (score > selectedScore ||
+          (score === selectedScore && index < selectedIndex))
+      ) {
+        selectedIndex = index;
+        selectedScore = score;
+      }
     }
+    if (selectedIndex < 0 || selectedScore <= 0) break;
+    if (rank === 0) strongestScore = selectedScore;
+    responseSum += selectedScore;
+    previousScore = selectedScore;
+    previousIndex = selectedIndex;
   }
   const adjacentResponse = clamp(responseSum - strongestScore, 0, 1);
   const historyBoost =
@@ -513,12 +623,22 @@ export function estimateOpenLoopMarginAtFrequency(
 
 function bandPassMagnitude(frequencyHz: number): number {
   const filter = GENERATED_FEEDBACK_SPEC.loop.filter;
+  const frequency = Math.max(Number.EPSILON, finiteOr(frequencyHz, 0));
+  const q = Math.max(Number.EPSILON, filter.q);
+  const highRatio = frequency / filter.highPassHz;
   const highPass =
-    frequencyHz /
-    Math.hypot(frequencyHz, filter.highPassHz);
+    (highRatio * highRatio) /
+    Math.sqrt(
+      Math.pow(1 - highRatio * highRatio, 2) +
+        Math.pow(highRatio / q, 2),
+    );
+  const lowRatio = frequency / filter.lowPassHz;
   const lowPass =
-    filter.lowPassHz /
-    Math.hypot(frequencyHz, filter.lowPassHz);
+    1 /
+    Math.sqrt(
+      Math.pow(1 - lowRatio * lowRatio, 2) +
+        Math.pow(lowRatio / q, 2),
+    );
   return clamp(highPass * lowPass, 0, 1);
 }
 
@@ -538,6 +658,7 @@ export function classifyResonanceRegime(
   loopMargin: number,
   envelope: number,
   limiterGainReductionDb = 0,
+  envelopeSlopePerSecond = 0,
 ): ResonanceRegime {
   const thresholds = GENERATED_FEEDBACK_SPEC.regimeThresholds;
   if (
@@ -548,7 +669,11 @@ export function classifyResonanceRegime(
     return "saturated";
   }
   if (loopMargin > thresholds.criticalLoopMarginHalfWidth) {
-    return "growing";
+    return envelopeSlopePerSecond >=
+      thresholds.growingMinimumSlopePerSecond ||
+      envelope > thresholds.decayingMaximumEnvelope
+      ? "growing"
+      : "decaying";
   }
   if (loopMargin >= -thresholds.criticalLoopMarginHalfWidth) {
     return "critical";
@@ -578,8 +703,21 @@ export function createResonanceState(
     1,
     Math.round(
       GENERATED_VOLUME_MAP_SPEC.measurement.rmsWindowSeconds /
-        FIXED_STEP_SECONDS,
+      FIXED_STEP_SECONDS,
     ),
+  );
+  const frequencySortedModeIndices = Int32Array.from(
+    Array.from(
+      { length: dataset.modes.length },
+      (_, modeIndex) => modeIndex,
+    ).sort((leftIndex, rightIndex) => {
+      const frequencyDifference =
+        dataset.modes[leftIndex].frequencyHz -
+        dataset.modes[rightIndex].frequencyHz;
+      return frequencyDifference === 0
+        ? leftIndex - rightIndex
+        : frequencyDifference;
+    }),
   );
 
   return {
@@ -600,6 +738,24 @@ export function createResonanceState(
       dataset.modes,
       (mode) => mode.phaseOffsetRadians,
     ),
+    modeResponseScratch: new Float64Array(dataset.modes.length),
+    modeDriveScoreScratch: new Float64Array(dataset.modes.length),
+    modeLoopScoreScratch: new Float64Array(dataset.modes.length),
+    frequencySortedModeIndices,
+    modeUpdateIndices: new Int32Array(dataset.modes.length),
+    modeUpdateMarks: new Uint32Array(dataset.modes.length),
+    modeUpdateMarkGeneration: 0,
+    modeUpdateCount: 0,
+    nonzeroModeIndices: new Int32Array(dataset.modes.length),
+    nextNonzeroModeIndices: new Int32Array(dataset.modes.length),
+    nonzeroModeCount: 0,
+    activeModeIndices: new Int32Array(
+      Math.min(MAXIMUM_ACTIVE_MODES, dataset.modes.length),
+    ),
+    activeModePriorityScratch: new Float64Array(
+      Math.min(MAXIMUM_ACTIVE_MODES, dataset.modes.length),
+    ),
+    activeModeCount: 0,
     loopEnergyEnvelope: 0,
     feedbackEnvelope: 0,
     feedbackLoopSignal: 0,
@@ -672,41 +828,314 @@ function pushMeasurementSample(
   );
 }
 
+function lowerBoundModeFrequency(
+  state: ResonanceState,
+  frequencyHz: number,
+): number {
+  let lower = 0;
+  let upper = state.frequencySortedModeIndices.length;
+  while (lower < upper) {
+    const middle = lower + Math.floor((upper - lower) / 2);
+    const modeIndex =
+      state.frequencySortedModeIndices[middle] ?? -1;
+    const modeFrequency =
+      state.dataset.modes[modeIndex]?.frequencyHz ??
+      Number.POSITIVE_INFINITY;
+    if (modeFrequency < frequencyHz) {
+      lower = middle + 1;
+    } else {
+      upper = middle;
+    }
+  }
+  return lower;
+}
+
+function upperBoundModeFrequency(
+  state: ResonanceState,
+  frequencyHz: number,
+): number {
+  let lower = 0;
+  let upper = state.frequencySortedModeIndices.length;
+  while (lower < upper) {
+    const middle = lower + Math.floor((upper - lower) / 2);
+    const modeIndex =
+      state.frequencySortedModeIndices[middle] ?? -1;
+    const modeFrequency =
+      state.dataset.modes[modeIndex]?.frequencyHz ??
+      Number.POSITIVE_INFINITY;
+    if (modeFrequency <= frequencyHz) {
+      lower = middle + 1;
+    } else {
+      upper = middle;
+    }
+  }
+  return lower;
+}
+
+function addModeUpdateIndex(
+  state: ResonanceState,
+  modeIndex: number,
+): void {
+  if (
+    modeIndex < 0 ||
+    modeIndex >= state.dataset.modes.length ||
+    state.modeUpdateMarks[modeIndex] ===
+      state.modeUpdateMarkGeneration
+  ) {
+    return;
+  }
+  state.modeUpdateMarks[modeIndex] =
+    state.modeUpdateMarkGeneration;
+  state.modeUpdateIndices[state.modeUpdateCount] = modeIndex;
+  state.modeUpdateCount += 1;
+}
+
+function collectModeUpdateIndices(
+  state: ResonanceState,
+  frequencyHz: number,
+): void {
+  state.modeUpdateMarkGeneration =
+    (state.modeUpdateMarkGeneration + 1) >>> 0;
+  if (state.modeUpdateMarkGeneration === 0) {
+    state.modeUpdateMarks.fill(0);
+    state.modeUpdateMarkGeneration = 1;
+  }
+  state.modeUpdateCount = 0;
+
+  const ratio = ACTIVATION_BANDWIDTH_RATIO;
+  if (ratio >= 1) {
+    for (
+      let sortedPosition = 0;
+      sortedPosition < state.frequencySortedModeIndices.length;
+      sortedPosition += 1
+    ) {
+      addModeUpdateIndex(
+        state,
+        state.frequencySortedModeIndices[sortedPosition] ?? -1,
+      );
+    }
+  } else {
+    const boundaryEpsilon = Math.max(
+      1e-9,
+      Math.abs(frequencyHz) * 1e-12,
+    );
+    const minimumModeFrequency =
+      frequencyHz / (1 + ratio) - boundaryEpsilon;
+    const maximumModeFrequency =
+      frequencyHz / Math.max(Number.EPSILON, 1 - ratio) +
+      boundaryEpsilon;
+    const first = lowerBoundModeFrequency(
+      state,
+      minimumModeFrequency,
+    );
+    const afterLast = upperBoundModeFrequency(
+      state,
+      maximumModeFrequency,
+    );
+    for (
+      let sortedPosition = first;
+      sortedPosition < afterLast;
+      sortedPosition += 1
+    ) {
+      const modeIndex =
+        state.frequencySortedModeIndices[sortedPosition] ?? -1;
+      const mode = state.dataset.modes[modeIndex];
+      if (
+        mode &&
+        modeIsInsideActivationBandwidth(
+          frequencyHz,
+          mode.frequencyHz,
+        )
+      ) {
+        addModeUpdateIndex(state, modeIndex);
+      }
+    }
+  }
+
+  for (
+    let residualPosition = 0;
+    residualPosition < state.nonzeroModeCount;
+    residualPosition += 1
+  ) {
+    addModeUpdateIndex(
+      state,
+      state.nonzeroModeIndices[residualPosition] ?? -1,
+    );
+  }
+
+  // Preserve the original mode-index accumulation and tie order exactly.
+  for (
+    let updatePosition = 1;
+    updatePosition < state.modeUpdateCount;
+    updatePosition += 1
+  ) {
+    const modeIndex =
+      state.modeUpdateIndices[updatePosition] ?? -1;
+    let insertionPosition = updatePosition;
+    while (
+      insertionPosition > 0 &&
+      (state.modeUpdateIndices[insertionPosition - 1] ?? -1) >
+        modeIndex
+    ) {
+      state.modeUpdateIndices[insertionPosition] =
+        state.modeUpdateIndices[insertionPosition - 1] ?? -1;
+      insertionPosition -= 1;
+    }
+    state.modeUpdateIndices[insertionPosition] = modeIndex;
+  }
+}
+
+function commitNonzeroModeIndices(
+  state: ResonanceState,
+  nextCount: number,
+): void {
+  for (let position = 0; position < nextCount; position += 1) {
+    state.nonzeroModeIndices[position] =
+      state.nextNonzeroModeIndices[position] ?? -1;
+  }
+  state.nonzeroModeCount = nextCount;
+}
+
+function beginActiveModeSelection(state: ResonanceState): void {
+  state.activeModeIndices.fill(-1);
+  state.activeModePriorityScratch.fill(-1);
+  state.activeModeCount = 0;
+}
+
+function insertActiveModeCandidate(
+  state: ResonanceState,
+  modeIndex: number,
+  priority: number,
+): void {
+  const capacity = state.activeModeIndices.length;
+  if (capacity === 0 || !Number.isFinite(priority)) return;
+  let insertion = state.activeModeCount;
+  for (let index = 0; index < state.activeModeCount; index += 1) {
+    const existingPriority =
+      state.activeModePriorityScratch[index] ?? -1;
+    const existingMode = state.activeModeIndices[index] ?? -1;
+    if (
+      priority > existingPriority ||
+      (priority === existingPriority && modeIndex < existingMode)
+    ) {
+      insertion = index;
+      break;
+    }
+  }
+  if (insertion >= capacity) return;
+  const nextCount = Math.min(capacity, state.activeModeCount + 1);
+  for (let index = nextCount - 1; index > insertion; index -= 1) {
+    state.activeModeIndices[index] =
+      state.activeModeIndices[index - 1] ?? -1;
+    state.activeModePriorityScratch[index] =
+      state.activeModePriorityScratch[index - 1] ?? -1;
+  }
+  state.activeModeIndices[insertion] = modeIndex;
+  state.activeModePriorityScratch[insertion] = priority;
+  state.activeModeCount = nextCount;
+}
+
+function isSelectedActiveMode(
+  state: ResonanceState,
+  modeIndex: number,
+): boolean {
+  for (let index = 0; index < state.activeModeCount; index += 1) {
+    if (state.activeModeIndices[index] === modeIndex) return true;
+  }
+  return false;
+}
+
+/**
+ * Residual energy is intentionally allowed to survive a frequency change, but
+ * it must never occupy every bounded update slot and starve the mode currently
+ * being driven. Reserve one slot for the strongest in-band capture while
+ * retaining the remaining residual candidates in their deterministic order.
+ */
+function reserveCaptureModeCandidate(
+  state: ResonanceState,
+  modeIndex: number,
+  priority: number,
+): void {
+  if (
+    modeIndex < 0 ||
+    priority <= 0 ||
+    isSelectedActiveMode(state, modeIndex)
+  ) {
+    return;
+  }
+  const capacity = state.activeModeIndices.length;
+  if (state.activeModeCount < capacity) {
+    insertActiveModeCandidate(state, modeIndex, priority);
+    return;
+  }
+  if (capacity === 0) return;
+
+  let insertion = capacity - 1;
+  state.activeModeIndices[insertion] = modeIndex;
+  state.activeModePriorityScratch[insertion] = priority;
+  while (insertion > 0) {
+    const previousPriority =
+      state.activeModePriorityScratch[insertion - 1] ?? -1;
+    const previousMode =
+      state.activeModeIndices[insertion - 1] ?? -1;
+    if (
+      previousPriority > priority ||
+      (previousPriority === priority && previousMode < modeIndex)
+    ) {
+      break;
+    }
+    state.activeModeIndices[insertion] = previousMode;
+    state.activeModePriorityScratch[insertion] = previousPriority;
+    insertion -= 1;
+    state.activeModeIndices[insertion] = modeIndex;
+    state.activeModePriorityScratch[insertion] = priority;
+  }
+}
+
 function integrateFixedStep(
   state: ResonanceState,
-  drive: ResonanceDrive,
+  driveFrequencyHz: number,
+  driveSweepHzPerSecond?: number,
+  driveDirection?: -1 | 0 | 1,
 ): void {
   const [minimumFrequency, maximumFrequency] =
     state.dataset.frequencyRangeHz;
   const frequencyHz = clamp(
-    finiteOr(drive.frequencyHz, state.driveFrequencyHz),
+    finiteOr(driveFrequencyHz, state.driveFrequencyHz),
     minimumFrequency,
     maximumFrequency,
   );
   const inferredSweep =
     (frequencyHz - state.driveFrequencyHz) / FIXED_STEP_SECONDS;
   const sweepHzPerSecond = clamp(
-    finiteOr(drive.sweepHzPerSecond, inferredSweep),
+    finiteOr(driveSweepHzPerSecond, inferredSweep),
     -50_000,
     50_000,
   );
   const approachDirection =
-    drive.direction === -1 || drive.direction === 0 || drive.direction === 1
-      ? drive.direction
+    driveDirection === -1 ||
+    driveDirection === 0 ||
+    driveDirection === 1
+      ? driveDirection
       : sign(sweepHzPerSecond, 0.1);
   const speedCapture = Math.exp(
     -Math.abs(sweepHzPerSecond) /
       CALIBRATION.modalResponse.captureSpeedHzPerSecond,
   );
 
-  let strongestModeIndex = -1;
-  let strongestScore = 0;
-  let responseSum = 0;
-  let microphoneWeight = 0;
-  let radiationWeight = 0;
-
-  for (let index = 0; index < state.dataset.modes.length; index += 1) {
+  const filterMagnitude = bandPassMagnitude(frequencyHz);
+  collectModeUpdateIndices(state, frequencyHz);
+  beginActiveModeSelection(state);
+  let strongestCaptureModeIndex = -1;
+  let strongestCaptureDriveScore = 0;
+  for (
+    let updatePosition = 0;
+    updatePosition < state.modeUpdateCount;
+    updatePosition += 1
+  ) {
+    const index = state.modeUpdateIndices[updatePosition] ?? -1;
     const mode = state.dataset.modes[index];
+    if (!mode) continue;
     const response = responseAtFrequency(
       frequencyHz,
       mode.frequencyHz,
@@ -723,25 +1152,122 @@ function integrateFixedStep(
           approachDirection *
             Math.sin(mode.phaseOffsetRadians) *
             CALIBRATION.modalResponse.directionalPhaseScale;
-    const score = Math.max(0, coupling * directionalPhase);
-    responseSum += score;
+    const driveScore = Math.max(0, coupling * directionalPhase);
+    const loopScore =
+      driveScore *
+      filterMagnitude *
+      feedbackPhaseAlignment(
+        frequencyHz,
+        mode.phaseOffsetRadians,
+      );
+    state.modeResponseScratch[index] = response;
+    state.modeDriveScoreScratch[index] = driveScore;
+    state.modeLoopScoreScratch[index] = loopScore;
 
-    if (score > strongestScore) {
-      strongestScore = score;
-      strongestModeIndex = index;
+    const insideActivationBandwidth = modeIsInsideActivationBandwidth(
+      frequencyHz,
+      mode.frequencyHz,
+    );
+    if (
+      insideActivationBandwidth &&
+      (driveScore > strongestCaptureDriveScore ||
+        (driveScore === strongestCaptureDriveScore &&
+          (strongestCaptureModeIndex < 0 ||
+            index < strongestCaptureModeIndex)))
+    ) {
+      strongestCaptureModeIndex = index;
+      strongestCaptureDriveScore = driveScore;
+    }
+    const residualEnergy = clamp(
+      state.modeEnergy[index] ?? 0,
+      0,
+      1,
+    );
+    if (
+      insideActivationBandwidth ||
+      residualEnergy >= RESIDUAL_ENERGY_THRESHOLD
+    ) {
+      insertActiveModeCandidate(
+        state,
+        index,
+        Math.max(driveScore, residualEnergy),
+      );
+    }
+  }
+  reserveCaptureModeCandidate(
+    state,
+    strongestCaptureModeIndex,
+    strongestCaptureDriveScore,
+  );
+
+  let strongestModeIndex = -1;
+  let strongestDriveScore = 0;
+  let strongestLoopScore = 0;
+  let loopResponseSum = 0;
+  let microphoneWeight = 0;
+  let radiationWeight = 0;
+  const retainedDrive =
+    CALIBRATION.modalEnergy.retainedDriveBase +
+    speedCapture *
+      (1 - CALIBRATION.modalEnergy.retainedDriveBase);
+  const feedbackDrive =
+    CALIBRATION.modalEnergy.feedbackDriveBase +
+    state.feedbackEnvelope *
+      CALIBRATION.modalEnergy.feedbackEnvelopeMultiplier +
+    Math.abs(state.feedbackLoopSignal) *
+      CALIBRATION.modalEnergy.feedbackSignalMultiplier;
+
+  let nextNonzeroModeCount = 0;
+  for (
+    let updatePosition = 0;
+    updatePosition < state.modeUpdateCount;
+    updatePosition += 1
+  ) {
+    const index = state.modeUpdateIndices[updatePosition] ?? -1;
+    const mode = state.dataset.modes[index];
+    if (!mode) continue;
+    const oldEnergy = clamp(state.modeEnergy[index] ?? 0, 0, 1);
+    if (!isSelectedActiveMode(state, index)) {
+      if (oldEnergy > 0) {
+        const releaseRate =
+          CALIBRATION.modalEnergy.releaseBasePerSecond +
+          mode.dampingRatio *
+            CALIBRATION.modalEnergy
+              .releaseDampingMultiplierPerSecond;
+        const decayedEnergy =
+          oldEnergy * Math.exp(-releaseRate * FIXED_STEP_SECONDS);
+        state.modeEnergy[index] =
+          decayedEnergy >= RESIDUAL_ENERGY_THRESHOLD
+            ? decayedEnergy
+            : 0;
+        if (state.modeEnergy[index] > 0) {
+          state.modePhaseRadians[index] = wrapPhase(
+            (state.modePhaseRadians[index] ??
+              mode.phaseOffsetRadians) +
+              TAU *
+                (mode.frequencyHz - frequencyHz) *
+                FIXED_STEP_SECONDS *
+                CALIBRATION.modalEnergy.phaseDriftScale,
+          );
+          state.nextNonzeroModeIndices[nextNonzeroModeCount] =
+            index;
+          nextNonzeroModeCount += 1;
+        }
+      }
+      continue;
     }
 
-    const oldEnergy = clamp(state.modeEnergy[index] ?? 0, 0, 1);
-    const retainedDrive =
-      CALIBRATION.modalEnergy.retainedDriveBase +
-      speedCapture *
-        (1 - CALIBRATION.modalEnergy.retainedDriveBase);
-    const feedbackDrive =
-      CALIBRATION.modalEnergy.feedbackDriveBase +
-      state.feedbackEnvelope *
-        CALIBRATION.modalEnergy.feedbackEnvelopeMultiplier +
-      Math.abs(state.feedbackLoopSignal) *
-        CALIBRATION.modalEnergy.feedbackSignalMultiplier;
+    const response = state.modeResponseScratch[index] ?? 0;
+    const score = state.modeDriveScoreScratch[index] ?? 0;
+    const loopScore = state.modeLoopScoreScratch[index] ?? 0;
+    loopResponseSum += loopScore;
+    if (loopScore > strongestLoopScore) {
+      strongestLoopScore = loopScore;
+    }
+    if (score > strongestDriveScore) {
+      strongestDriveScore = score;
+      strongestModeIndex = index;
+    }
     const targetEnergy = clamp(
       score * retainedDrive * feedbackDrive,
       0,
@@ -780,22 +1306,30 @@ function integrateFixedStep(
         Math.sin(state.modePhaseRadians[index]) *
           CALIBRATION.microphone.modePhaseWeight);
     radiationWeight += amplitude * mode.radiationEfficiency;
+    if (state.modeEnergy[index] > 0) {
+      state.nextNonzeroModeIndices[nextNonzeroModeCount] = index;
+      nextNonzeroModeCount += 1;
+    }
   }
+  commitNonzeroModeIndices(state, nextNonzeroModeCount);
 
-  const adjacentResponse = clamp(responseSum - strongestScore, 0, 1);
+  const adjacentResponse = clamp(
+    loopResponseSum - strongestLoopScore,
+    0,
+    1,
+  );
   const phaseA =
     strongestModeIndex >= 0
       ? state.modePhaseRadians[strongestModeIndex]
       : 0;
+  const secondaryModeIndex =
+    state.activeModeCount > 1
+      ? (state.activeModeIndices[1] ?? -1)
+      : -1;
   const phaseB =
-    strongestModeIndex >= 0
-      ? state.modePhaseRadians[
-          Math.min(
-            strongestModeIndex + 1,
-            state.modePhaseRadians.length - 1,
-          )
-        ]
-      : 0;
+    secondaryModeIndex >= 0
+      ? state.modePhaseRadians[secondaryModeIndex]
+      : phaseA;
   const beat = 0.5 + 0.5 * Math.sin(phaseA - phaseB);
   const historyBoost =
     CALIBRATION.loopMargin.residualHistoryGainMaximum *
@@ -807,7 +1341,7 @@ function integrateFixedStep(
       1,
     );
   const loopGain =
-    strongestScore * GENERATED_FEEDBACK_SPEC.loop.gainLinear +
+    strongestLoopScore * GENERATED_FEEDBACK_SPEC.loop.gainLinear +
     adjacentResponse * CALIBRATION.loopMargin.adjacentModeGainLinear +
     historyBoost;
   const loopMargin = loopGain - 1;
@@ -861,7 +1395,8 @@ function integrateFixedStep(
   const gateSpec = GENERATED_FEEDBACK_SPEC.noiseGate;
   const gateDetector =
     Math.abs(filtered) +
-    strongestScore * GENERATED_FEEDBACK_SPEC.drive.amplitudeNormalized;
+    strongestDriveScore *
+      GENERATED_FEEDBACK_SPEC.drive.amplitudeNormalized;
   if (!state.gateOpen && gateDetector >= gateSpec.openThresholdNormalized) {
     state.gateOpen = true;
   } else if (
@@ -878,8 +1413,12 @@ function integrateFixedStep(
     FIXED_STEP_SECONDS,
   );
 
+  const coherentModalReturn =
+    state.loopEnergyEnvelope *
+    strongestLoopScore *
+    Math.sin(state.drivePhaseRadians + phaseA);
   const preClip =
-    filtered *
+    (filtered + coherentModalReturn) *
     GENERATED_FEEDBACK_SPEC.loop.gainLinear *
     state.gateGain;
   const clipped = normalizedTanh(
@@ -987,6 +1526,7 @@ function integrateFixedStep(
   }
   state.loopEnergyEnvelope = clamp(loopEnergy, 0, 1);
   const follower = GENERATED_FEEDBACK_SPEC.envelopeFollower;
+  const previousFeedbackEnvelope = state.feedbackEnvelope;
   state.feedbackEnvelope = clamp(
     exponentialFollow(
       state.feedbackEnvelope,
@@ -1031,10 +1571,14 @@ function integrateFixedStep(
   state.regime = classifyResonanceRegime(
     loopMargin,
     state.feedbackEnvelope,
-    state.limiterGainReductionDb,
+    absoluteClipped > limiterSpec.thresholdNormalized
+      ? state.limiterGainReductionDb
+      : 0,
+    (state.feedbackEnvelope - previousFeedbackEnvelope) /
+      FIXED_STEP_SECONDS,
   );
   state.activeModeIndex =
-    strongestScore >=
+    strongestDriveScore >=
         CALIBRATION.modalEnergy.activeModeScoreMinimum &&
       strongestModeIndex >= 0
       ? strongestModeIndex
@@ -1156,6 +1700,22 @@ export function advanceResonance(
   deltaSeconds: number,
   drive: ResonanceDrive = { frequencyHz: state.driveFrequencyHz },
 ): ResonanceState {
+  return advanceResonanceScalars(
+    state,
+    deltaSeconds,
+    drive.frequencyHz,
+    drive.sweepHzPerSecond,
+    drive.direction,
+  );
+}
+
+export function advanceResonanceScalars(
+  state: ResonanceState,
+  deltaSeconds: number,
+  frequencyHz: number,
+  sweepHzPerSecond?: number,
+  direction?: -1 | 0 | 1,
+): ResonanceState {
   const rawDelta = finiteOr(deltaSeconds, 0);
   if (rawDelta > PAUSED_GAP_RESET_SECONDS) {
     return resetResonanceAfterPausedGap(state);
@@ -1167,7 +1727,12 @@ export function advanceResonance(
     state.accumulatorSeconds + 1e-12 >= FIXED_STEP_SECONDS &&
     steps < MAXIMUM_STEPS_PER_FRAME
   ) {
-    integrateFixedStep(state, drive);
+    integrateFixedStep(
+      state,
+      frequencyHz,
+      sweepHzPerSecond,
+      direction,
+    );
     state.accumulatorSeconds -= FIXED_STEP_SECONDS;
     steps += 1;
   }

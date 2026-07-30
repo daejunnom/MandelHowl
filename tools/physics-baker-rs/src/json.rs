@@ -223,7 +223,7 @@ fn write_value(
             } else if value.fract() == 0.0 && value.abs() <= 9_007_199_254_740_991.0 {
                 output.push_str(&format!("{value:.0}"));
             } else {
-                output.push_str(&value.to_string());
+                output.push_str(&python_compatible_float(*value)?);
             }
         }
         Value::String(value) => write_string(value, output),
@@ -274,6 +274,78 @@ fn write_value(
         }
     }
     Ok(())
+}
+
+/// Render a binary64 value with the same fixed/scientific cut-over used by
+/// CPython's shortest-round-trip `repr(float)`.
+///
+/// Rust and Python use equivalent shortest-round-trip digits, but Rust keeps
+/// `1e-8` in fixed notation while Python writes `1e-08`.  The plate spec is
+/// independently parsed and canonicalized by both bakers, so that cosmetic
+/// difference would otherwise give semantically identical specs different
+/// byte identities.  Normalizing here keeps the N-version evidence literal
+/// without weakening the exact canonical-input comparison.
+fn python_compatible_float(value: f64) -> Result<String, String> {
+    let shortest = value.to_string();
+    let negative = shortest.starts_with('-');
+    let unsigned = shortest.strip_prefix('-').unwrap_or(&shortest);
+    let (coefficient, explicit_exponent) = match unsigned.split_once(['e', 'E']) {
+        Some((coefficient, exponent)) => (
+            coefficient,
+            exponent
+                .parse::<i32>()
+                .map_err(|_| format!("invalid finite float exponent: {shortest}"))?,
+        ),
+        None => (unsigned, 0),
+    };
+    let (integer, fraction) = coefficient
+        .split_once('.')
+        .map_or((coefficient, ""), |parts| parts);
+    let mut digits = format!("{integer}{fraction}");
+    let leading_zero_count = digits.bytes().take_while(|byte| *byte == b'0').count();
+    digits.drain(..leading_zero_count);
+    if digits.is_empty() {
+        return Ok(if negative {
+            "-0.0".to_owned()
+        } else {
+            "0.0".to_owned()
+        });
+    }
+    let integer_digit_count = integer.len() as i32;
+    let decimal_exponent = explicit_exponent + integer_digit_count - leading_zero_count as i32 - 1;
+    while digits.ends_with('0') {
+        digits.pop();
+    }
+    let sign = if negative { "-" } else { "" };
+    if !(-4..16).contains(&decimal_exponent) {
+        let mut mantissa = digits[..1].to_owned();
+        if digits.len() > 1 {
+            mantissa.push('.');
+            mantissa.push_str(&digits[1..]);
+        }
+        let exponent_sign = if decimal_exponent >= 0 { '+' } else { '-' };
+        return Ok(format!(
+            "{sign}{mantissa}e{exponent_sign}{:02}",
+            decimal_exponent.abs()
+        ));
+    }
+    let decimal_position = decimal_exponent + 1;
+    let body = if decimal_position <= 0 {
+        format!("0.{}{}", "0".repeat((-decimal_position) as usize), digits)
+    } else if decimal_position as usize >= digits.len() {
+        format!(
+            "{}{}",
+            digits,
+            "0".repeat(decimal_position as usize - digits.len())
+        )
+    } else {
+        format!(
+            "{}.{}",
+            &digits[..decimal_position as usize],
+            &digits[decimal_position as usize..]
+        )
+    };
+    Ok(format!("{sign}{body}"))
 }
 
 fn write_string(value: &str, output: &mut String) {
@@ -690,5 +762,22 @@ mod tests {
                 .and_then(Value::as_u64),
             Some(2)
         );
+    }
+
+    #[test]
+    fn canonical_float_notation_matches_python_cut_over() {
+        for (value, expected) in [
+            (0.00014, "0.00014"),
+            (0.00001, "1e-05"),
+            (0.00000001, "1e-08"),
+            (-0.00000001, "-1e-08"),
+            (12.345, "12.345"),
+        ] {
+            assert_eq!(
+                String::from_utf8(to_vec(&Value::Number(value)).expect("serialize"))
+                    .expect("UTF-8"),
+                expected
+            );
+        }
     }
 }

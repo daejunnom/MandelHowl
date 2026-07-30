@@ -1,5 +1,12 @@
 import type { DiagnosticRecord } from "../../contracts/src/diagnostic-record";
 import type { RuntimeSnapshot } from "../../contracts/src/runtime-snapshot";
+import {
+  GENERATED_MOTION_SAFETY_SPEC,
+  GENERATED_RENDER_QUALITY_TIERS_SPEC,
+  type PlateMaterialSectionProfile,
+  type RenderQualityTier as RenderQualityTierSpec,
+} from "../../contracts/src";
+import type { RenderDegradationStage } from "./render-quality-governor";
 
 export type RenderQualityTier = "high" | "balanced" | "reduced" | "canvas";
 export type PlateRendererKind = "webgl2" | "canvas2d" | "static";
@@ -7,14 +14,74 @@ export type PlateRendererKind = "webgl2" | "canvas2d" | "static";
 export type PlateTextureKind =
   "signed-displacement" | "normal" | "nodal-mask" | "sand-density";
 
-export function expectedPlateTextureChannels(
-  kind: PlateTextureKind,
-): 1 | 2 {
+function requireGeneratedQualityTier(
+  id: RenderQualityTierSpec["id"],
+): RenderQualityTierSpec {
+  const tier = GENERATED_RENDER_QUALITY_TIERS_SPEC.tiers.find(
+    (candidate) => candidate.id === id,
+  );
+  if (!tier) {
+    throw new Error(`Canonical render quality tier ${id} is missing.`);
+  }
+  return tier;
+}
+
+const RUNTIME_QUALITY_CONFIG = Object.freeze({
+  high: requireGeneratedQualityTier("webgl-full"),
+  balanced: requireGeneratedQualityTier("webgl-safe"),
+  reduced: requireGeneratedQualityTier("webgl-reduced"),
+  canvas: requireGeneratedQualityTier("canvas-data"),
+});
+
+export function renderQualityConfiguration(
+  quality: RenderQualityTier,
+): RenderQualityTierSpec {
+  return RUNTIME_QUALITY_CONFIG[quality];
+}
+
+export function oscilloscopeSampleCountForQuality(
+  quality: RenderQualityTier,
+  degradationStage: number,
+): number {
+  return degradationStage >= 4 && quality !== "canvas"
+    ? RUNTIME_QUALITY_CONFIG.canvas.oscilloscopeSamples
+    : RUNTIME_QUALITY_CONFIG[quality].oscilloscopeSamples;
+}
+
+export function plateDisplacementScale(reducedMotion: boolean): number {
+  return reducedMotion
+    ? GENERATED_MOTION_SAFETY_SPEC.reducedMotion.plateDisplacementScale
+    : 1;
+}
+
+export function expectedPlateTextureChannels(kind: PlateTextureKind): 1 | 2 {
   return kind === "normal" ? 2 : 1;
 }
 
 export const SAND_VISIBILITY_EXPONENT = 0.55;
 export const SAND_MAX_OPACITY = 0.95;
+export const MATERIAL_SECTION_PROFILE_SAMPLE_COUNT = 64;
+/** Fixed session component required by the handoff's deterministic grain seed. */
+export const RENDER_SESSION_FIXED_SEED = 0x4d_48_4f_57;
+
+/**
+ * Derives one stable uint32 from the immutable dataset identity and the fixed
+ * session seed. This is presentation-only; it never enters modal physics.
+ */
+export function renderSeedFromDatasetId(datasetId: string | null): number {
+  const identity = datasetId ?? "analytical-fallback";
+  let hash = (0x81_1c_9d_c5 ^ RENDER_SESSION_FIXED_SEED) >>> 0;
+  for (let index = 0; index < identity.length; index += 1) {
+    const codeUnit = identity.charCodeAt(index);
+    hash = Math.imul(hash ^ (codeUnit & 0xff), 0x01_00_01_93) >>> 0;
+    hash = Math.imul(hash ^ (codeUnit >>> 8), 0x01_00_01_93) >>> 0;
+  }
+  hash ^= hash >>> 16;
+  hash = Math.imul(hash, 0x7f_eb_35_2d) >>> 0;
+  hash ^= hash >>> 15;
+  hash = Math.imul(hash, 0x84_6c_a6_8b) >>> 0;
+  return (hash ^ (hash >>> 16)) >>> 0;
+}
 
 /**
  * Presentation-only transfer curve for the already blended sand density.
@@ -26,9 +93,63 @@ export const SAND_MAX_OPACITY = 0.95;
 export function sandVisibilityFromPresence(presence: number): number {
   if (!Number.isFinite(presence) || presence <= 0) return 0;
   return (
-    SAND_MAX_OPACITY *
-    Math.pow(Math.min(1, presence), SAND_VISIBILITY_EXPONENT)
+    SAND_MAX_OPACITY * Math.pow(Math.min(1, presence), SAND_VISIBILITY_EXPONENT)
   );
+}
+
+/**
+ * Provenance-pinned local emissive envelope. The nodal basis remains spatial;
+ * this scalar only enables its bounded luminance response at saturation.
+ */
+export function localSaturationEnvelope(
+  regime: RuntimeSnapshot["regime"],
+  envelopeNormalized: number,
+): number {
+  if (regime !== "saturated" || !Number.isFinite(envelopeNormalized)) {
+    return 0;
+  }
+  return Math.min(1, Math.max(0, envelopeNormalized));
+}
+
+/**
+ * Fail-closed projection of the verified manifest profile into a fixed GPU /
+ * Canvas buffer. This is presentation decoding only: all field sampling and
+ * quantization happened in the attested offline baker.
+ */
+export function normalizeMaterialSectionProfile(
+  profile: PlateMaterialSectionProfile | null | undefined,
+): Float32Array | null {
+  if (
+    profile?.schemaVersion !== "mandelhowl.material-section-profile.v1" ||
+    profile.axis !== "x-at-y-zero" ||
+    profile.sampleCount !== MATERIAL_SECTION_PROFILE_SAMPLE_COUNT ||
+    !Number.isFinite(profile.minimumThicknessM) ||
+    profile.minimumThicknessM <= 0 ||
+    !Number.isFinite(profile.maximumThicknessM) ||
+    profile.maximumThicknessM <= profile.minimumThicknessM ||
+    !Array.isArray(profile.thicknessUnorm8) ||
+    profile.thicknessUnorm8.length !== MATERIAL_SECTION_PROFILE_SAMPLE_COUNT
+  ) {
+    return null;
+  }
+  const normalized = new Float32Array(MATERIAL_SECTION_PROFILE_SAMPLE_COUNT);
+  for (
+    let index = 0;
+    index < MATERIAL_SECTION_PROFILE_SAMPLE_COUNT;
+    index += 1
+  ) {
+    const sample = profile.thicknessUnorm8[index];
+    if (
+      typeof sample !== "number" ||
+      !Number.isInteger(sample) ||
+      sample < 0 ||
+      sample > 255
+    ) {
+      return null;
+    }
+    normalized[index] = sample / 255;
+  }
+  return normalized;
 }
 
 export interface PlateTextureAtlasSource {
@@ -41,6 +162,21 @@ export interface PlateTextureAtlasSource {
   readonly layers: number;
   /** Integrity-verified bytes from asset-runtime; preferred over refetching. */
   readonly bytes?: Uint8Array;
+  /**
+   * Deferred integrity boundary for a versioned mode shard. It must perform
+   * immutable fetch, byte-length, SHA-256, and KTX2 descriptor validation.
+   */
+  readonly loadBytes?: (signal?: AbortSignal) => Promise<Uint8Array>;
+}
+
+export interface PlateModePresentationMetadata {
+  readonly modeId: string;
+  readonly radialNodeIndex: number;
+  readonly radialElementCount: number;
+  readonly radialDof: "value" | "slope";
+  readonly angularOrder: number;
+  readonly symmetry: "axisymmetric" | "cosine" | "sine";
+  readonly hubRadiusRatio: number;
 }
 
 /**
@@ -50,7 +186,47 @@ export interface PlateTextureAtlasSource {
  */
 export interface PlateTextureSource {
   readonly datasetId: string;
+  readonly materialSectionProfile?: PlateMaterialSectionProfile;
+  /** Verified provenance projection used only while a texture shard is pending. */
+  readonly presentationModes?: readonly PlateModePresentationMetadata[];
+  readonly loadingPolicy?: "eager-verified" | "mode-sharded-lazy-verified";
   readonly atlases: readonly PlateTextureAtlasSource[];
+}
+
+export function evaluateDominantBasisFallback(
+  mode: PlateModePresentationMetadata,
+  x: number,
+  y: number,
+): number {
+  const radius = Math.hypot(x, y);
+  if (radius <= mode.hubRadiusRatio || radius > 1) return 0;
+  const normalizedRadius =
+    (radius - mode.hubRadiusRatio) / (1 - mode.hubRadiusRatio);
+  const scaled = Math.min(
+    mode.radialElementCount - Number.EPSILON,
+    normalizedRadius * mode.radialElementCount,
+  );
+  const elementIndex = Math.floor(scaled);
+  const xi = scaled - elementIndex;
+  const xi2 = xi * xi;
+  const xi3 = xi2 * xi;
+  let radial = 0;
+  if (mode.radialNodeIndex === elementIndex) {
+    radial =
+      mode.radialDof === "value"
+        ? 1 - 3 * xi2 + 2 * xi3
+        : (xi - 2 * xi2 + xi3) * 6;
+  } else if (mode.radialNodeIndex === elementIndex + 1) {
+    radial = mode.radialDof === "value" ? 3 * xi2 - 2 * xi3 : (-xi2 + xi3) * 6;
+  }
+  const angle = Math.atan2(y, x);
+  const angular =
+    mode.symmetry === "axisymmetric"
+      ? 1
+      : mode.symmetry === "cosine"
+        ? Math.cos(angle * mode.angularOrder)
+        : Math.sin(angle * mode.angularOrder);
+  return Math.max(-1, Math.min(1, radial * angular));
 }
 
 export interface RenderPreferences {
@@ -62,10 +238,46 @@ export interface RenderPreferences {
 export interface PlateRendererStatus {
   readonly kind: PlateRendererKind;
   readonly quality: RenderQualityTier;
+  readonly degradationStage: RenderDegradationStage;
   readonly datasetId: string | null;
   readonly textureReady: boolean;
+  /** Exact pre-baked plate-thickness profile is decoded and renderable. */
+  readonly materialSectionReady: boolean;
   readonly contextLost: boolean;
   readonly framesRendered: number;
+  /** Last canonical snapshot consumed by the visible renderer. */
+  readonly lastSnapshotSequence: number | null;
+}
+
+type MutablePlateRendererStatus = {
+  -readonly [Key in keyof PlateRendererStatus]: PlateRendererStatus[Key];
+};
+
+/**
+ * Reuses renderer telemetry on the RAF path. `view` is an ephemeral live
+ * view for synchronous health reads; `update` returns an owned frozen copy
+ * only for low-frequency status observers such as React/Svelte presenters.
+ */
+export class PlateRendererStatusTracker {
+  private readonly output: MutablePlateRendererStatus;
+
+  constructor(initial: PlateRendererStatus) {
+    this.output = { ...initial };
+  }
+
+  get view(): PlateRendererStatus {
+    return this.output;
+  }
+
+  recordFrame(snapshotSequence: number): void {
+    this.output.framesRendered += 1;
+    this.output.lastSnapshotSequence = snapshotSequence;
+  }
+
+  update(patch: Partial<PlateRendererStatus>): Readonly<PlateRendererStatus> {
+    Object.assign(this.output, patch);
+    return Object.freeze({ ...this.output });
+  }
 }
 
 export interface PlateRendererOptions {
@@ -82,11 +294,43 @@ export interface PlateRendererOptions {
   readonly onStatus?: (status: PlateRendererStatus) => void;
 }
 
+/**
+ * Renderer observers belong to the presentation shell and must never become
+ * part of the rendering control flow. In particular, a broken status sink
+ * must not turn a healthy WebGL renderer into a false Canvas failover.
+ */
+export function reportPlateRendererDiagnostic(
+  options: PlateRendererOptions,
+  diagnostic: DiagnosticRecord,
+): void {
+  try {
+    options.onDiagnostic?.(diagnostic);
+  } catch {
+    // The renderer remains authoritative; presentation observers are isolated.
+  }
+}
+
+export function reportPlateRendererStatus(
+  options: PlateRendererOptions,
+  status: PlateRendererStatus,
+): void {
+  try {
+    options.onStatus?.(status);
+  } catch {
+    // The renderer remains authoritative; presentation observers are isolated.
+  }
+}
+
 export interface PlateRenderer {
   readonly canvas: HTMLCanvasElement;
   readonly status: PlateRendererStatus;
   setTextureSource(source: PlateTextureSource | null): Promise<void>;
   render(snapshot: RuntimeSnapshot): void;
+  /**
+   * Reports whole-frame work to the presentation-only quality governor.
+   * Implementations must never use this telemetry to modify core state.
+   */
+  recordFrameTiming(frameWorkMs: number): void;
   resize(): void;
   dispose(): void;
 }
@@ -186,6 +430,7 @@ export class ModalBlendTracker {
   private selectedIndices: Int32Array;
   private selectedScores: Float32Array;
   private lastSimulationTimeSeconds: number | null = null;
+  private releaseSeconds = VISUAL_RELEASE_SECONDS;
   private readonly outputModeIds: (string | null)[];
   private readonly outputSandWeights: Float32Array;
   private readonly outputDisplacementWeights: Float32Array;
@@ -210,10 +455,17 @@ export class ModalBlendTracker {
   }
 
   update(snapshot: RuntimeSnapshot): ModalBlendSelection {
-    const layoutChanged =
+    let layoutChanged =
       snapshot.datasetId !== this.datasetId ||
-      snapshot.modes.length !== this.modeIds.length ||
-      snapshot.modes.some((mode, index) => mode.modeId !== this.modeIds[index]);
+      snapshot.modes.length !== this.modeIds.length;
+    if (!layoutChanged) {
+      for (let index = 0; index < snapshot.modes.length; index += 1) {
+        if (snapshot.modes[index]?.modeId !== this.modeIds[index]) {
+          layoutChanged = true;
+          break;
+        }
+      }
+    }
     const timeReset =
       this.lastSimulationTimeSeconds !== null &&
       snapshot.simulationTimeSeconds < this.lastSimulationTimeSeconds;
@@ -238,7 +490,7 @@ export class ModalBlendTracker {
       : 1 - Math.exp(-elapsedSeconds / VISUAL_ATTACK_SECONDS);
     const release = isFirstFrame
       ? 1
-      : 1 - Math.exp(-elapsedSeconds / VISUAL_RELEASE_SECONDS);
+      : 1 - Math.exp(-elapsedSeconds / this.releaseSeconds);
     let activeIndex = -1;
 
     for (let index = 0; index < snapshot.modes.length; index += 1) {
@@ -269,6 +521,18 @@ export class ModalBlendTracker {
     this.residualWeights = new Float32Array(0);
     this.lastSimulationTimeSeconds = null;
     this.clearOutput();
+  }
+
+  /**
+   * Presentation-only residual control used by the first runtime degradation
+   * step. It cannot alter modal energy or any canonical snapshot field.
+   */
+  setReleaseSeconds(seconds: number): void {
+    if (!Number.isFinite(seconds) || seconds <= 0) return;
+    this.releaseSeconds = Math.max(
+      0.08,
+      Math.min(VISUAL_RELEASE_SECONDS, seconds),
+    );
   }
 
   private resetLayout(snapshot: RuntimeSnapshot): void {

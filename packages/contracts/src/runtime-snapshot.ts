@@ -21,6 +21,10 @@ export interface DialSnapshot {
 
 export interface ModalSnapshot {
   readonly modeId: string;
+  /** Verified modal eigenfrequency used by the audible modal voice bank. */
+  readonly naturalFrequencyHz: number;
+  /** Signed virtual-microphone/radiation projection for audible summation. */
+  readonly audibleWeightNormalized: number;
   readonly amplitudeNormalized: number;
   readonly phaseRad: number;
   readonly energyNormalized: number;

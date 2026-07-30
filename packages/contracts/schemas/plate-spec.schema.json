@@ -418,6 +418,7 @@
         "normalization",
         "signReference",
         "meshLevels",
+        "meshQuality",
         "convergence"
       ],
       "properties": {
@@ -460,7 +461,8 @@
             "additionalProperties": false,
             "required": [
               "name",
-              "targetElementSizeM"
+              "targetElementSizeM",
+              "analysisFiniteStrip"
             ],
             "properties": {
               "name": {
@@ -470,7 +472,61 @@
               "targetElementSizeM": {
                 "type": "number",
                 "exclusiveMinimum": 0
+              },
+              "analysisFiniteStrip": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "radialElementCount",
+                  "maximumFourierOrder",
+                  "angularQuadratureSamples"
+                ],
+                "properties": {
+                  "radialElementCount": {
+                    "type": "integer",
+                    "minimum": 2
+                  },
+                  "maximumFourierOrder": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "angularQuadratureSamples": {
+                    "type": "integer",
+                    "minimum": 16
+                  }
+                }
               }
+            }
+          }
+        },
+        "meshQuality": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "minimumEdgeM",
+            "minimumSignedAreaM2",
+            "maximumAspectRatio",
+            "requiredConnectedComponentCount",
+            "maximumInvertedTriangleCount"
+          ],
+          "properties": {
+            "minimumEdgeM": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "minimumSignedAreaM2": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "maximumAspectRatio": {
+              "type": "number",
+              "minimum": 1
+            },
+            "requiredConnectedComponentCount": {
+              "const": 1
+            },
+            "maximumInvertedTriangleCount": {
+              "const": 0
             }
           }
         },

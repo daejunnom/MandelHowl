@@ -1,24 +1,56 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { decodeModesBinaryV1 } from "../../packages/asset-runtime/src";
+import {
+  GENERATED_DATASET_RELEASE_SPEC,
+  GENERATED_SCENE_SPEC,
+  GENERATED_VOLUME_MAP_SPEC,
+} from "../../packages/contracts/src";
 import {
   MandelHowlScene,
   type MandelHowlSceneProps,
 } from "../../app/mandelhowl-scene";
 
 const noOp = () => undefined;
+const PINNED_MODES = decodeModesBinaryV1(
+  readFileSync(
+    resolve(
+      process.cwd(),
+      GENERATED_DATASET_RELEASE_SPEC.sourceDirectory,
+      "modes.bin",
+    ),
+  ),
+);
+const PRESENTATION_MODE_INDEX = Math.round(
+  (PINNED_MODES.length - 1) * 0.75,
+);
+const PRESENTATION_FREQUENCY =
+  PINNED_MODES[PRESENTATION_MODE_INDEX]?.naturalFrequencyHz;
+if (PRESENTATION_FREQUENCY === undefined) {
+  throw new Error("The pinned presentation fixture mode is unavailable.");
+}
+
+function formatExpectedFrequency(frequency: number): string {
+  if (frequency >= 1000) {
+    return `${(frequency / 1000).toFixed(frequency < 10_000 ? 2 : 1)} kHz`;
+  }
+  return `${frequency.toFixed(frequency < 100 ? 1 : 0)} Hz`;
+}
 
 function renderScene(
   overrides: Partial<MandelHowlSceneProps> = {},
 ): string {
   return renderToStaticMarkup(
     createElement(MandelHowlScene, {
-      frequency: 4_629.35,
+      frequency: PRESENTATION_FREQUENCY,
       angle: 0,
       volume: 50,
       regime: "critical",
       envelope: 0.48,
-      activeMode: 44,
+      activeMode: PRESENTATION_MODE_INDEX,
       measurementProgress: 1,
       measurementStatus: "settled",
       microphoneRms: 0.31,
@@ -49,7 +81,7 @@ describe("instrument presentation", () => {
     expect(html).toContain("--scope-magnitude:0.78");
     expect(html).toContain("AUTO ×39");
     expect(html).toContain('data-polarity="negative"');
-    expect(html.match(/class="mh-scope-sample"/g)).toHaveLength(40);
+    expect(html.match(/class="mh-scope-sample"/g)).toHaveLength(20);
     expect(html).toContain(
       'aria-label="Microphone waveform; RMS 31 percent, peak 50 percent"',
     );
@@ -58,7 +90,92 @@ describe("instrument presentation", () => {
   it("keeps the dial frequency unobstructed by decorative center markup", () => {
     const html = renderScene();
 
-    expect(html).toContain("4.63 kHz");
+    expect(html).toContain(formatExpectedFrequency(PRESENTATION_FREQUENCY));
     expect(html).not.toContain("mh-dial-cap");
+  });
+
+  it("claims the precomputed material cutaway only when the renderer has it", () => {
+    const unavailable = renderScene({
+      datasetStatus: "verified",
+      materialSectionReady: false,
+    });
+    expect(unavailable).toContain(
+      "verified modal dataset without an available material thickness cutaway",
+    );
+    expect(unavailable).not.toContain(
+      "precomputed Mandelbrot material thickness cutaway visible",
+    );
+
+    const ready = renderScene({
+      datasetStatus: "verified",
+      materialSectionReady: true,
+    });
+    expect(ready).toContain(
+      "precomputed Mandelbrot material thickness cutaway visible at the lower plate edge",
+    );
+  });
+
+  it("uses one microphone scope with a read-only critical phase emphasis", () => {
+    const html = renderScene();
+    const instrumentation = html.match(
+      /<div class="mh-instrumentation"[^>]*>([\s\S]*?)<div class="mh-measurement"/,
+    )?.[1];
+
+    expect(instrumentation).toBeDefined();
+    expect(instrumentation?.match(/role="img"/g)).toHaveLength(1);
+    expect(instrumentation).toContain("mh-oscilloscope");
+    expect(instrumentation).toContain("mh-scope-phase-emphasis");
+    expect(instrumentation).not.toContain("mh-phase-meter");
+    expect(html).toContain("--microphone-level:0.31");
+    expect(html).toContain("--feedback-level:0.48");
+  });
+
+  it("projects the canonical scene read order and apparatus coordinates", () => {
+    const html = renderScene();
+    expect(html).toContain(
+      `data-scene-read-order="${GENERATED_SCENE_SPEC.readOrder.join(">").replaceAll("&", "&amp;").replaceAll(">", "&gt;")}"`,
+    );
+    expect(html).toContain(
+      `data-conceptual-input-count="${GENERATED_SCENE_SPEC.inputCount}"`,
+    );
+    expect(html).toContain(
+      `data-conceptual-output-count="${GENERATED_SCENE_SPEC.outputCount}"`,
+    );
+    expect(html).toContain(
+      `data-camera-projection="${GENERATED_SCENE_SPEC.camera.projection}"`,
+    );
+    expect(html).toContain(
+      `data-camera-fov="${GENERATED_SCENE_SPEC.camera.fieldOfViewDegrees}"`,
+    );
+    expect(html).toContain(
+      `data-camera-clip="${GENERATED_SCENE_SPEC.camera.near},${GENERATED_SCENE_SPEC.camera.far}"`,
+    );
+    for (const position of [
+      GENERATED_SCENE_SPEC.apparatus.speaker.position,
+      GENERATED_SCENE_SPEC.apparatus.plate.position,
+      GENERATED_SCENE_SPEC.apparatus.microphone.position,
+    ]) {
+      expect(html).toContain(
+        `data-apparatus-position="${position.join(",")}"`,
+      );
+    }
+    expect(html).toContain(
+      `data-signal-direction="${GENERATED_SCENE_SPEC.apparatus.cable.direction}"`,
+    );
+  });
+
+  it("uses the canonical integer width and measuring label", () => {
+    const html = renderScene({
+      volume: 7,
+      measurementStatus: "measuring",
+    });
+    const expectedVolume = "7".padStart(
+      GENERATED_VOLUME_MAP_SPEC.display.widthDigits,
+      "0",
+    );
+    expect(html).toContain(`<strong>${expectedVolume}</strong>`);
+    expect(html).toContain(
+      GENERATED_VOLUME_MAP_SPEC.display.measuringLabel,
+    );
   });
 });

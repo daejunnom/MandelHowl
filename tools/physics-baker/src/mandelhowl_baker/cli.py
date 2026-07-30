@@ -18,7 +18,8 @@ from .mesh import build_mesh_evidence
 from .packaging import package_dataset
 from .postprocess import postprocess
 from .schema_validation import validate as validate_schema
-from .solver import build_basis, convergence_report, solve_modes
+from .solver import build_basis, convergence_report, hermite_shapes, solve_modes
+from .spec_validation import validate_plate_spec_contract
 from .validation import validate_dataset
 from .yaml_min import load as load_yaml
 
@@ -64,6 +65,8 @@ def generate(args: argparse.Namespace) -> int:
         ).read_text(encoding="utf-8")
     )
     validate_schema(spec, plate_schema)
+    validate_plate_spec_contract(spec)
+    _validate_release_overrides(args, spec)
     spec_sha256 = sha256_bytes(canonical_json_bytes(spec))
     field_resolution = (
         args.field_resolution
@@ -84,29 +87,35 @@ def generate(args: argparse.Namespace) -> int:
     ):
         raise ValueError("the v1 baker requires square texture atlases")
     field = generate_material_field(spec, size=field_resolution)
+    mesh_levels = spec["solverRequest"]["meshLevels"]
     meshes = [
         build_mesh_evidence(spec, level)
-        for level in spec["solverRequest"]["meshLevels"]
+        for level in mesh_levels
     ]
-    coarse = solve_modes(
+    solved_levels = []
+    for level in mesh_levels:
+        analysis = level["analysisFiniteStrip"]
+        solved_levels.append(
+            solve_modes(
+                spec,
+                field,
+                radial_element_count=int(analysis["radialElementCount"]),
+                maximum_fourier_order=int(
+                    analysis["maximumFourierOrder"]
+                ),
+                angular_samples=int(
+                    analysis["angularQuadratureSamples"]
+                ),
+            )
+        )
+    coarse, medium, fine = solved_levels
+    convergence = convergence_report(
         spec,
         field,
-        radial_samples=args.coarse_radial,
-        angular_samples=args.coarse_angular,
+        coarse,
+        medium,
+        fine,
     )
-    medium = solve_modes(
-        spec,
-        field,
-        radial_samples=args.medium_radial,
-        angular_samples=args.medium_angular,
-    )
-    fine = solve_modes(
-        spec,
-        field,
-        radial_samples=args.fine_radial,
-        angular_samples=args.fine_angular,
-    )
-    convergence = convergence_report(spec, coarse, medium, fine)
     processed = postprocess(spec, field, fine, texture_size=texture_size)
     dataset = package_dataset(
         output_root=output_root,
@@ -136,6 +145,32 @@ def generate(args: argparse.Namespace) -> int:
         )
     )
     return 0
+
+
+def _validate_release_overrides(
+    args: argparse.Namespace,
+    spec: dict[str, object],
+) -> None:
+    """Prevent release-only CLI tuning from escaping canonical spec identity."""
+
+    if not args.release:
+        return
+    expected = {
+        "field_resolution": spec["mandelbrotField"]["sampleResolution"]["widthPx"],  # type: ignore[index]
+        "texture_size": spec["textureRequest"]["widthPx"],  # type: ignore[index]
+    }
+    mismatches = [
+        f"--{name.replace('_', '-')}={getattr(args, name)} (spec={canonical})"
+        for name, canonical in expected.items()
+        if getattr(args, name, None) is not None
+        and int(getattr(args, name)) != int(canonical)
+    ]
+    if mismatches:
+        raise ValueError(
+            "release generation forbids analysis overrides outside the "
+            "content-addressed plate spec: "
+            + ", ".join(mismatches)
+        )
 
 
 def validate(args: argparse.Namespace) -> int:
@@ -176,15 +211,28 @@ def contract(_args: argparse.Namespace) -> int:
 
 
 def self_test(_args: argparse.Namespace) -> int:
-    if len(build_basis()) != 64:
-        raise ValueError("basis contract does not contain 64 functions")
+    if [len(build_basis(e, m)) for e, m in ((3, 7), (4, 8), (5, 9))] != [
+        90,
+        136,
+        190,
+    ]:
+        raise ValueError("finite-strip basis dimensions are incompatible")
+    start = hermite_shapes(0.0, 0.03)
+    end = hermite_shapes(1.0, 0.03)
+    if (
+        [row[0] for row in start] != [1.0, 0.0, 0.0, 0.0]
+        or [row[0] for row in end] != [0.0, 0.0, 1.0, 0.0]
+        or [row[1] for row in start] != [0.0, 1.0, 0.0, 0.0]
+        or [row[1] for row in end] != [0.0, 0.0, 0.0, 1.0]
+    ):
+        raise ValueError("finite-strip Hermite endpoint identities failed")
     print(
         json.dumps(
             {
                 "schemaVersion": "mandelhowl.python-self-test.v1",
                 **_protocol_identity(),
                 "status": "pass",
-                "checks": 2,
+                "checks": 5,
             },
             separators=(",", ":"),
         )
@@ -219,12 +267,6 @@ def build_parser() -> argparse.ArgumentParser:
     )
     generate_parser.add_argument("--field-resolution", type=int)
     generate_parser.add_argument("--texture-size", type=int)
-    generate_parser.add_argument("--coarse-radial", type=int, default=24)
-    generate_parser.add_argument("--coarse-angular", type=int, default=64)
-    generate_parser.add_argument("--medium-radial", type=int, default=32)
-    generate_parser.add_argument("--medium-angular", type=int, default=80)
-    generate_parser.add_argument("--fine-radial", type=int, default=40)
-    generate_parser.add_argument("--fine-angular", type=int, default=96)
     generate_parser.set_defaults(function=generate)
 
     validate_parser = subcommands.add_parser(

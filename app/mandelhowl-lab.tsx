@@ -32,8 +32,9 @@ import {
   type PlateRendererStatus,
   type PlateTextureSource,
 } from "@/packages/render-engine/src";
+import { SettledRenderAttestationTracker } from "@/packages/presentation-model/src";
 import {
-  advanceMandelHowlRuntime,
+  advanceMandelHowlRuntimeInPlace,
   createMandelHowlRuntime,
   createRuntimeSnapshotWriter,
   dispatchRuntimeDial,
@@ -64,6 +65,7 @@ interface ViewState {
 }
 
 interface ViewPlateRenderer {
+  readonly canvas: HTMLCanvasElement;
   readonly renderer: PlateRenderer;
   readonly resizeObserver: ResizeObserver | null;
   readonly reportAvailabilityFailure: (error: unknown) => void;
@@ -122,26 +124,68 @@ export function activeMode(snapshot: RuntimeSnapshot): {
   };
 }
 
+export function shouldPublishSettledVolumeImmediately(
+  previous: Pick<RuntimeSnapshot["volume"], "status" | "value">,
+  current: Pick<RuntimeSnapshot["volume"], "status" | "value">,
+): boolean {
+  if (current.status !== "settled") return false;
+  return (
+    previous.status !== "settled" ||
+    previous.value !== current.value
+  );
+}
+
 function plateTextureSource(
   result: Extract<ResonanceDatasetLoadResult, { status: "ready" }>,
 ): PlateTextureSource {
+  const deferredByPath = new Map(
+    Object.values(result.textureAssets)
+      .flat()
+      .map((texture) => [texture.path, texture] as const),
+  );
   return Object.freeze({
     datasetId: result.manifest.datasetId,
+    loadingPolicy:
+      result.manifest.algorithmRevision === undefined
+        ? "eager-verified"
+        : "mode-sharded-lazy-verified",
+    materialSectionProfile:
+      result.manifest.plate.materialSectionProfile,
+    presentationModes: result.presentationModes,
     atlases: Object.freeze(
-      result.manifest.files.textures.map((texture) =>
-        Object.freeze({
+      result.manifest.files.textures.map((texture) => {
+        const deferred = deferredByPath.get(texture.path);
+        return Object.freeze({
           kind: texture.kind,
-          url: result.assetUrls.byPath[texture.path],
+          url: deferred?.url ?? result.assetUrls.byPath[texture.path],
           mediaType: texture.mediaType,
           modeIds: texture.modeIds,
           width: texture.widthPx,
           height: texture.heightPx,
           layers: texture.layers,
           bytes: result.assets.get(texture.path),
-        }),
-      ),
+          loadBytes: deferred?.loadBytes,
+        });
+      }),
     ),
   });
+}
+
+function rendererRejectedTextureSource(
+  status: PlateRendererStatus,
+  source: PlateTextureSource,
+): boolean {
+  return (
+    status.contextLost ||
+    status.datasetId !== source.datasetId ||
+    // Canvas is the fail-operational presentation boundary. A verified
+    // provider may still fail to decode/upload there; the shared presentation
+    // gate keeps the UI in streaming/analytical-fallback state without
+    // needlessly replacing an otherwise healthy framework view.
+    (status.kind !== "canvas2d" &&
+      source.loadingPolicy !== "mode-sharded-lazy-verified" &&
+      !status.textureReady)
+  );
 }
 
 interface PlateTexturePreviewQueue {
@@ -249,6 +293,9 @@ export function MandelHowlLab() {
   const challengeTargetRef = useRef<number | null>(null);
   const lastReportedResultRef = useRef<string | null>(null);
   const [audioEngine] = useState(() => new SafeAudioEngine());
+  const [settledRenderAttestation] = useState(
+    () => new SettledRenderAttestationTracker(),
+  );
 
   const initialSnapshot = getRuntimeSnapshot(initialRuntime);
   const [runtimeSnapshots] = useState(
@@ -389,8 +436,11 @@ export function MandelHowlLab() {
             if (
               current?.kind === status.kind &&
               current.quality === status.quality &&
+              current.degradationStage === status.degradationStage &&
               current.datasetId === status.datasetId &&
               current.textureReady === status.textureReady &&
+              current.materialSectionReady ===
+                status.materialSectionReady &&
               current.contextLost === status.contextLost
             ) {
               return current;
@@ -404,13 +454,14 @@ export function MandelHowlLab() {
           ? new ResizeObserver(() => renderer.resize())
           : null;
       candidate = Object.freeze({
+        canvas,
         renderer,
         resizeObserver,
         reportAvailabilityFailure,
       });
       viewRenderersRef.current = [...viewRenderersRef.current, candidate];
       rendererStatusRef.current = renderer.status;
-      setRendererStatus(renderer.status);
+      setRendererStatus(Object.freeze({ ...renderer.status }));
       resizeObserver?.observe(canvas);
       const textureSource = secondaryTextureSourceRef.current;
       if (textureSource) {
@@ -420,9 +471,7 @@ export function MandelHowlLab() {
             const status = renderer.status;
             if (
               status.kind !== "static" &&
-              (status.contextLost ||
-                !status.textureReady ||
-                status.datasetId !== textureSource.datasetId)
+              rendererRejectedTextureSource(status, textureSource)
             ) {
               reportAvailabilityFailure(
                 new Error(
@@ -484,6 +533,10 @@ export function MandelHowlLab() {
           attached = false;
           availabilityFailureConsumers.clear();
           resizeObserver?.disconnect();
+          settledRenderAttestation.clear(canvas);
+          if (renderer.canvas !== canvas) {
+            settledRenderAttestation.clear(renderer.canvas);
+          }
           viewRenderersRef.current = viewRenderersRef.current.filter(
             (entry) => entry !== candidate,
           );
@@ -493,11 +546,15 @@ export function MandelHowlLab() {
             rendererRef.current?.status ??
             null;
           rendererStatusRef.current = fallbackStatus;
-          setRendererStatus(fallbackStatus);
+          setRendererStatus(
+            fallbackStatus
+              ? Object.freeze({ ...fallbackStatus })
+              : null,
+          );
         },
       });
     },
-    [pushDiagnostic],
+    [pushDiagnostic, settledRenderAttestation],
   );
 
   const uiPort = useMemo<MandelHowlBrowserRuntimePort>(
@@ -565,8 +622,11 @@ export function MandelHowlLab() {
           if (
             current?.kind === status.kind &&
             current.quality === status.quality &&
+            current.degradationStage === status.degradationStage &&
             current.datasetId === status.datasetId &&
             current.textureReady === status.textureReady &&
+            current.materialSectionReady ===
+              status.materialSectionReady &&
             current.contextLost === status.contextLost
           ) {
             return current;
@@ -577,7 +637,7 @@ export function MandelHowlLab() {
     });
     rendererRef.current = renderer;
     rendererStatusRef.current = renderer.status;
-    setRendererStatus(renderer.status);
+    setRendererStatus(Object.freeze({ ...renderer.status }));
     const texturePreviewQueue = createPlateTexturePreviewQueue(renderer);
     const datasetAbortController = new AbortController();
 
@@ -629,21 +689,40 @@ export function MandelHowlLab() {
           const activeView = viewRenderersRef.current.at(-1);
           if (!activeView) {
             renderer.render(snapshot);
+            const visibleCanvas = renderer.canvas;
+            if (visibleCanvas !== canvas) {
+              settledRenderAttestation.clear(canvas);
+            }
+            settledRenderAttestation.record(visibleCanvas, snapshot);
             return;
           }
           try {
             activeView.renderer.render(snapshot);
+            const visibleCanvas = activeView.renderer.canvas;
+            if (visibleCanvas !== activeView.canvas) {
+              settledRenderAttestation.clear(activeView.canvas);
+            }
+            settledRenderAttestation.record(visibleCanvas, snapshot);
           } catch (error) {
             // View-local GPU failure must not remove the shared render lane.
             // Quarantine it and resume on the next view or parking canvas.
             activeView.reportAvailabilityFailure(error);
             activeView.resizeObserver?.disconnect();
+            settledRenderAttestation.clear(activeView.canvas);
+            if (activeView.renderer.canvas !== activeView.canvas) {
+              settledRenderAttestation.clear(activeView.renderer.canvas);
+            }
             viewRenderersRef.current = viewRenderersRef.current.filter(
               (entry) => entry !== activeView,
             );
             activeView.renderer.dispose();
             const nextView = viewRenderersRef.current.at(-1);
-            (nextView?.renderer ?? renderer).render(snapshot);
+            const recoveryRenderer = nextView?.renderer ?? renderer;
+            recoveryRenderer.render(snapshot);
+            settledRenderAttestation.record(
+              recoveryRenderer.canvas,
+              snapshot,
+            );
           }
         },
         (snapshot) => audioEngine.applyRuntimeSnapshot(snapshot),
@@ -693,6 +772,13 @@ export function MandelHowlLab() {
       runtimeRef.current.resonance.simulationTimeSeconds;
     let lastPresentationDatasetId =
       runtimeRef.current.resonance.dataset.datasetId;
+    const lastObservedHotVolume: {
+      status: RuntimeSnapshot["volume"]["status"];
+      value: number | null;
+    } = {
+      status: initialSnapshot.volume.status,
+      value: initialSnapshot.volume.value,
+    };
     const publishPresentationFrame = (force = false) => {
       const runtime = runtimeRef.current;
       const simulationTimeSeconds =
@@ -762,9 +848,7 @@ export function MandelHowlLab() {
               const status = viewRenderer.renderer.status;
               if (
                 status.kind !== "static" &&
-                (status.contextLost ||
-                  !status.textureReady ||
-                  status.datasetId !== result.manifest.datasetId)
+                rendererRejectedTextureSource(status, textureSource)
               ) {
                 throw new Error(
                   status.contextLost
@@ -787,9 +871,10 @@ export function MandelHowlLab() {
         const textureStatus = renderer.status;
         const productionTextureFailed =
           textureStatus.kind !== "static" &&
-          (textureStatus.contextLost ||
-            !textureStatus.textureReady ||
-            textureStatus.datasetId !== result.manifest.datasetId);
+          rendererRejectedTextureSource(
+            textureStatus,
+            textureSource,
+          );
         if (productionTextureFailed) {
           secondaryTextureSourceRef.current = null;
           try {
@@ -848,7 +933,7 @@ export function MandelHowlLab() {
         );
       }
     };
-    void loadDataset().catch(async () => {
+    void loadDataset().catch(async (error: unknown) => {
       await texturePreviewQueue.waitForIdle();
       texturePreviewQueue.dispose();
       if (disposed) return;
@@ -864,7 +949,34 @@ export function MandelHowlLab() {
         // Unexpected loader and renderer failures still leave the prototype
         // runtime in place and prevent a VERIFIED presentation.
       }
-      if (!disposed) setDatasetStatus("error");
+      if (!disposed) {
+        setDatasetStatus("error");
+        setDiagnostics((current) =>
+          mergeDiagnostics(
+            current.filter(
+              (diagnostic) =>
+                diagnostic.code !== "MH-DATASET-PENDING",
+            ),
+            [
+              createDiagnostic({
+                code: "MH-DATASET-INTEGRITY",
+                severity: "warning",
+                messageKey: "dataset.unexpectedLoadFailure",
+                evidence: [
+                  {
+                    key: "errorKind",
+                    value:
+                      error instanceof Error
+                        ? error.name
+                        : typeof error,
+                    source: "asset-runtime",
+                  },
+                ],
+              }),
+            ],
+          ),
+        );
+      }
     });
 
     const tick = (time: number) => {
@@ -874,13 +986,24 @@ export function MandelHowlLab() {
       previousTime = time;
       longestFrameDeltaMs = Math.max(longestFrameDeltaMs, elapsedMilliseconds);
       animationFrames += 1;
-      runtimeRef.current = advanceMandelHowlRuntime(
+      runtimeRef.current = advanceMandelHowlRuntimeInPlace(
         runtimeRef.current,
         Math.min(0.1, elapsedMilliseconds / 1000),
       );
-      hotPathFanout.publish(snapshotWriter.write(runtimeRef.current));
-      publishPresentationFrame();
+      const hotSnapshot = snapshotWriter.write(runtimeRef.current);
+      hotPathFanout.publish(hotSnapshot);
+      const settledVolumeChanged =
+        shouldPublishSettledVolumeImmediately(
+          lastObservedHotVolume,
+          hotSnapshot.volume,
+        );
+      lastObservedHotVolume.status = hotSnapshot.volume.status;
+      lastObservedHotVolume.value = hotSnapshot.volume.value;
+      publishPresentationFrame(settledVolumeChanged);
       const frameWorkMs = performance.now() - frameWorkStartedAt;
+      (
+        viewRenderersRef.current.at(-1)?.renderer ?? renderer
+      ).recordFrameTiming(frameWorkMs);
       longestFrameWorkMs = Math.max(longestFrameWorkMs, frameWorkMs);
       frameWorkDurations[frameWorkWriteIndex] = frameWorkMs;
       frameWorkWriteIndex =
@@ -992,17 +1115,32 @@ export function MandelHowlLab() {
       challengeRef.current = null;
       for (const unsubscribe of presentationUnsubscribers) unsubscribe();
       hotPathFanout.dispose();
+      settledRenderAttestation.clear(canvas);
+      if (renderer.canvas !== canvas) {
+        settledRenderAttestation.clear(renderer.canvas);
+      }
       renderer.dispose();
       rendererRef.current = null;
       for (const viewRenderer of viewRenderersRef.current) {
         viewRenderer.resizeObserver?.disconnect();
+        settledRenderAttestation.clear(viewRenderer.canvas);
+        if (viewRenderer.renderer.canvas !== viewRenderer.canvas) {
+          settledRenderAttestation.clear(viewRenderer.renderer.canvas);
+        }
         viewRenderer.renderer.dispose();
       }
       viewRenderersRef.current = [];
       secondaryTextureSourceRef.current = null;
       void audioEngine.dispose();
     };
-  }, [audioEngine, pushDiagnostic, runtimeSnapshots]);
+  }, [
+    audioEngine,
+    initialSnapshot.volume.status,
+    initialSnapshot.volume.value,
+    pushDiagnostic,
+    runtimeSnapshots,
+    settledRenderAttestation,
+  ]);
 
   const snapshot = viewState.snapshot;
   const visibleDiagnostics = diagnostics.filter(

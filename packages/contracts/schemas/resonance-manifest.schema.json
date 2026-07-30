@@ -87,6 +87,9 @@
         },
         "specSha256": {
           "$ref": "#/$defs/sha256"
+        },
+        "materialSectionProfile": {
+          "$ref": "#/$defs/materialSectionProfile"
         }
       }
     },
@@ -157,8 +160,21 @@
           "type": "string",
           "minLength": 1
         },
+        "executionKind": {
+          "enum": [
+            "native-process",
+            "oci-container"
+          ]
+        },
         "containerImageDigest": {
-          "$ref": "#/$defs/contentId"
+          "oneOf": [
+            {
+              "$ref": "#/$defs/contentId"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "optionsSha256": {
           "$ref": "#/$defs/sha256"
@@ -191,7 +207,6 @@
         "textures": {
           "type": "array",
           "minItems": 4,
-          "maxItems": 4,
           "items": {
             "$ref": "#/$defs/textureAtlas"
           }
@@ -211,6 +226,23 @@
       }
     }
   },
+  "allOf": [
+    {
+      "if": {
+        "required": ["algorithmRevision"]
+      },
+      "then": {
+        "properties": {
+          "plate": {
+            "required": ["materialSectionProfile"]
+          },
+          "solverProvenance": {
+            "required": ["executionKind"]
+          }
+        }
+      }
+    }
+  ],
   "$defs": {
     "sha256": {
       "type": "string",
@@ -219,6 +251,47 @@
     "contentId": {
       "type": "string",
       "pattern": "^sha256:[a-f0-9]{64}$"
+    },
+    "materialSectionProfile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schemaVersion",
+        "axis",
+        "sampleCount",
+        "minimumThicknessM",
+        "maximumThicknessM",
+        "thicknessUnorm8"
+      ],
+      "properties": {
+        "schemaVersion": {
+          "const": "mandelhowl.material-section-profile.v1"
+        },
+        "axis": {
+          "const": "x-at-y-zero"
+        },
+        "sampleCount": {
+          "const": 64
+        },
+        "minimumThicknessM": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "maximumThicknessM": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "thicknessUnorm8": {
+          "type": "array",
+          "minItems": 64,
+          "maxItems": 64,
+          "items": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 255
+          }
+        }
+      }
     },
     "semver": {
       "type": "string",
@@ -307,6 +380,9 @@
         "layers": {
           "type": "integer",
           "minimum": 1
+        },
+        "supercompressionScheme": {
+          "const": 3
         },
         "uvOrigin": {
           "const": "negative-x-negative-y"

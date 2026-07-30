@@ -1,0 +1,399 @@
+{
+  "accepted": true,
+  "analysisDiscretization": {
+    "angularInterpolation": "normalized-real-fourier",
+    "coupledToEigenproblemAssembly": true,
+    "innerBoundary": "value-and-radial-slope-dofs-eliminated",
+    "outerBoundary": "natural-free-edge",
+    "radialInterpolation": "cubic-hermite-c1",
+    "refinementOwner": "solverRequest.meshLevels[*].analysisFiniteStrip",
+    "surfaceTriangleArchiveRole": "manufacturing, coordinate, and provenance evidence only",
+    "type": "c1-cubic-hermite-annular-finite-strip"
+  },
+  "comparisons": [
+    {
+      "coarseFrequencyHz": 97.65890965332639,
+      "coarseMatchedModeId": "mode-001",
+      "coarseToFineModalAssuranceCriterion": 0.9999813621969491,
+      "fineFrequencyHz": 96.21622967604769,
+      "frequencyConverged": true,
+      "mediumFrequencyHz": 96.67098672335263,
+      "mediumMatchedModeId": "mode-001",
+      "mediumToFineModalAssuranceCriterion": 0.9999961737803916,
+      "mediumToFineRelativeChange": 0.004726406852940175,
+      "modeId": "mode-001",
+      "shapeConverged": true
+    },
+    {
+      "coarseFrequencyHz": 98.77386418069324,
+      "coarseMatchedModeId": "mode-002",
+      "coarseToFineModalAssuranceCriterion": 0.9999629490995372,
+      "fineFrequencyHz": 97.5713262739288,
+      "frequencyConverged": true,
+      "mediumFrequencyHz": 98.05102344151334,
+      "mediumMatchedModeId": "mode-002",
+      "mediumToFineModalAssuranceCriterion": 0.9999081551978559,
+      "mediumToFineRelativeChange": 0.004916374368406105,
+      "modeId": "mode-002",
+      "shapeConverged": true
+    },
+    {
+      "coarseFrequencyHz": 129.2045450121619,
+      "coarseMatchedModeId": "mode-003",
+      "coarseToFineModalAssuranceCriterion": 0.9999371542441258,
+      "fineFrequencyHz": 127.75903057243309,
+      "frequencyConverged": true,
+      "mediumFrequencyHz": 128.18440496304106,
+      "mediumMatchedModeId": "mode-003",
+      "mediumToFineModalAssuranceCriterion": 0.9998677537994803,
+      "mediumToFineRelativeChange": 0.003329505465891933,
+      "modeId": "mode-003",
+      "shapeConverged": true
+    },
+    {
+      "coarseFrequencyHz": 140.3285895078483,
+      "coarseMatchedModeId": "mode-004",
+      "coarseToFineModalAssuranceCriterion": 0.9999751170559362,
+      "fineFrequencyHz": 139.1908389891656,
+      "frequencyConverged": true,
+      "mediumFrequencyHz": 139.74094964191923,
+      "mediumMatchedModeId": "mode-004",
+      "mediumToFineModalAssuranceCriterion": 0.9999945656302586,
+      "mediumToFineRelativeChange": 0.00395220444641799,
+      "modeId": "mode-004",
+      "shapeConverged": true
+    },
+    {
+      "coarseFrequencyHz": 149.50253304950814,
+      "coarseMatchedModeId": "mode-005",
+      "coarseToFineModalAssuranceCriterion": 0.9999654048685616,
+      "fineFrequencyHz": 147.76825885994944,
+      "frequencyConverged": true,
+      "mediumFrequencyHz": 148.5566749460475,
+      "mediumMatchedModeId": "mode-005",
+      "mediumToFineModalAssuranceCriterion": 0.9999358400584809,
+      "mediumToFineRelativeChange": 0.005335490126098769,
+      "modeId": "mode-005",
+      "shapeConverged": true
+    },
+    {
+      "coarseFrequencyHz": 226.15828809657273,
+      "coarseMatchedModeId": "mode-006",
+      "coarseToFineModalAssuranceCriterion": 0.9999125094631381,
+      "fineFrequencyHz": 224.63077546402815,
+      "frequencyConverged": true,
+      "mediumFrequencyHz": 225.32529265785692,
+      "mediumMatchedModeId": "mode-006",
+      "mediumToFineModalAssuranceCriterion": 0.9999737074726256,
+      "mediumToFineRelativeChange": 0.0030918167485914734,
+      "modeId": "mode-006",
+      "shapeConverged": true
+    },
+    {
+      "coarseFrequencyHz": 228.88026822072484,
+      "coarseMatchedModeId": "mode-007",
+      "coarseToFineModalAssuranceCriterion": 0.9999503867540352,
+      "fineFrequencyHz": 228.25835458759232,
+      "frequencyConverged": true,
+      "mediumFrequencyHz": 228.7843728705271,
+      "mediumMatchedModeId": "mode-007",
+      "mediumToFineModalAssuranceCriterion": 0.9999650215073184,
+      "mediumToFineRelativeChange": 0.002304486439872807,
+      "modeId": "mode-007",
+      "shapeConverged": true
+    },
+    {
+      "coarseFrequencyHz": 360.16867249977025,
+      "coarseMatchedModeId": "mode-008",
+      "coarseToFineModalAssuranceCriterion": 0.9997706169512915,
+      "fineFrequencyHz": 358.36899094871035,
+      "frequencyConverged": true,
+      "mediumFrequencyHz": 359.1819553278163,
+      "mediumMatchedModeId": "mode-008",
+      "mediumToFineModalAssuranceCriterion": 0.9999341371853793,
+      "mediumToFineRelativeChange": 0.0022685120633729734,
+      "modeId": "mode-008",
+      "shapeConverged": true
+    },
+    {
+      "coarseFrequencyHz": 361.3353930298114,
+      "coarseMatchedModeId": "mode-009",
+      "coarseToFineModalAssuranceCriterion": 0.9997878349614922,
+      "fineFrequencyHz": 359.79173674549315,
+      "frequencyConverged": true,
+      "mediumFrequencyHz": 360.60650898934637,
+      "mediumMatchedModeId": "mode-009",
+      "mediumToFineModalAssuranceCriterion": 0.9999523993346922,
+      "mediumToFineRelativeChange": 0.002264566305005388,
+      "modeId": "mode-009",
+      "shapeConverged": true
+    },
+    {
+      "coarseFrequencyHz": 509.89640922987894,
+      "coarseMatchedModeId": "mode-010",
+      "coarseToFineModalAssuranceCriterion": 0.946509808458187,
+      "fineFrequencyHz": 501.0559192705858,
+      "frequencyConverged": true,
+      "mediumFrequencyHz": 503.9186206860965,
+      "mediumMatchedModeId": "mode-010",
+      "mediumToFineModalAssuranceCriterion": 0.9980798808546811,
+      "mediumToFineRelativeChange": 0.005713337185354743,
+      "modeId": "mode-010",
+      "shapeConverged": true
+    },
+    {
+      "coarseFrequencyHz": 521.1758411456159,
+      "coarseMatchedModeId": "mode-011",
+      "coarseToFineModalAssuranceCriterion": 0.9966955291814873,
+      "fineFrequencyHz": 518.0344607705215,
+      "frequencyConverged": true,
+      "mediumFrequencyHz": 519.2531783185992,
+      "mediumMatchedModeId": "mode-011",
+      "mediumToFineModalAssuranceCriterion": 0.9998258926532838,
+      "mediumToFineRelativeChange": 0.002352580070184946,
+      "modeId": "mode-011",
+      "shapeConverged": true
+    },
+    {
+      "coarseFrequencyHz": 523.6540245251118,
+      "coarseMatchedModeId": "mode-012",
+      "coarseToFineModalAssuranceCriterion": 0.9466759679539712,
+      "fineFrequencyHz": 519.0765657430557,
+      "frequencyConverged": true,
+      "mediumFrequencyHz": 521.0039690946727,
+      "mediumMatchedModeId": "mode-012",
+      "mediumToFineModalAssuranceCriterion": 0.99801153077003,
+      "mediumToFineRelativeChange": 0.003713138829255326,
+      "modeId": "mode-012",
+      "shapeConverged": true
+    },
+    {
+      "coarseFrequencyHz": 551.2395033888304,
+      "coarseMatchedModeId": "mode-013",
+      "coarseToFineModalAssuranceCriterion": 0.9970515693414574,
+      "fineFrequencyHz": 542.9177685637529,
+      "frequencyConverged": true,
+      "mediumFrequencyHz": 545.4025365284081,
+      "mediumMatchedModeId": "mode-013",
+      "mediumToFineModalAssuranceCriterion": 0.9998244638060522,
+      "mediumToFineRelativeChange": 0.004576693025222579,
+      "modeId": "mode-013",
+      "shapeConverged": true
+    },
+    {
+      "coarseFrequencyHz": 618.6637837101644,
+      "coarseMatchedModeId": "mode-014",
+      "coarseToFineModalAssuranceCriterion": 0.9948254802279956,
+      "fineFrequencyHz": 610.675138242973,
+      "frequencyConverged": true,
+      "mediumFrequencyHz": 615.6290963880656,
+      "mediumMatchedModeId": "mode-014",
+      "mediumToFineModalAssuranceCriterion": 0.9980179106486066,
+      "mediumToFineRelativeChange": 0.008112264336396615,
+      "modeId": "mode-014",
+      "shapeConverged": true
+    },
+    {
+      "coarseFrequencyHz": 698.1361304724239,
+      "coarseMatchedModeId": "mode-015",
+      "coarseToFineModalAssuranceCriterion": 0.9927121226942429,
+      "fineFrequencyHz": 689.2129018628746,
+      "frequencyConverged": true,
+      "mediumFrequencyHz": 694.4570420478505,
+      "mediumMatchedModeId": "mode-015",
+      "mediumToFineModalAssuranceCriterion": 0.9907708241351955,
+      "mediumToFineRelativeChange": 0.007608882786148513,
+      "modeId": "mode-015",
+      "shapeConverged": true
+    },
+    {
+      "coarseFrequencyHz": 700.0422141571111,
+      "coarseMatchedModeId": "mode-016",
+      "coarseToFineModalAssuranceCriterion": 0.9914857815539174,
+      "fineFrequencyHz": 698.1751950047206,
+      "frequencyConverged": true,
+      "mediumFrequencyHz": 700.7819436883237,
+      "mediumMatchedModeId": "mode-016",
+      "mediumToFineModalAssuranceCriterion": 0.9875036741494908,
+      "mediumToFineRelativeChange": 0.003733659835316065,
+      "modeId": "mode-016",
+      "shapeConverged": true
+    }
+  ],
+  "criteria": {
+    "maximumRelativeFrequencyChange": 0.02,
+    "minimumModalAssuranceCriterion": 0.95
+  },
+  "finiteElementMeshConvergenceAccepted": true,
+  "independentCrossValidation": {
+    "accepted": true,
+    "criterion": {
+      "maximumRelativeFrequencyDifference": 0.15
+    },
+    "frequencyChecks": [
+      {
+        "finiteDifferenceRayleighFrequencyHz": 100.5164434931802,
+        "finiteStripFrequencyHz": 96.21622967604769,
+        "modeId": "mode-001",
+        "relativeDifference": 0.044693227240466496
+      },
+      {
+        "finiteDifferenceRayleighFrequencyHz": 376.0782309290921,
+        "finiteStripFrequencyHz": 358.36899094871035,
+        "modeId": "mode-008",
+        "relativeDifference": 0.04941621743974022
+      },
+      {
+        "finiteDifferenceRayleighFrequencyHz": 730.2684535298595,
+        "finiteStripFrequencyHz": 698.1751950047206,
+        "modeId": "mode-016",
+        "relativeDifference": 0.04596734280272135
+      },
+      {
+        "finiteDifferenceRayleighFrequencyHz": 1603.661672580839,
+        "finiteStripFrequencyHz": 1545.4155248936797,
+        "modeId": "mode-032",
+        "relativeDifference": 0.03768963540803462
+      },
+      {
+        "finiteDifferenceRayleighFrequencyHz": 2966.75508168923,
+        "finiteStripFrequencyHz": 2888.2766744411333,
+        "modeId": "mode-048",
+        "relativeDifference": 0.027171360674192246
+      }
+    ],
+    "independentReferenceMethod": "nine-point finite-difference Hessian Kirchhoff-Love Rayleigh quotient on the rasterized finite-strip mode; independent operator/discretization check, not a second certified solver",
+    "sandDensityMeanContrastLowMinusHighVelocity": 0.816443531540186,
+    "textureCoordinateAlignment": {
+      "allAtlasesShareDimensions": true,
+      "allAtlasesShareLayerOrder": true,
+      "physicalPixel00M": [
+        -0.17859375,
+        -0.17859375
+      ],
+      "xDirection": "increasing-column",
+      "yDirection": "increasing-row"
+    }
+  },
+  "levels": [
+    {
+      "analysisFiniteStrip": {
+        "angularQuadratureSamples": 64,
+        "maximumFourierOrder": 7,
+        "radialElementCount": 3
+      },
+      "angularSamples": 64,
+      "boundaryConditions": "inner-value-and-slope-eliminated;outer-natural-free",
+      "dofCount": 90,
+      "maximumFourierOrder": 7,
+      "minimumMappingJacobianM": 0.027,
+      "name": "coarse",
+      "pointCount": 960,
+      "radialElementCount": 3,
+      "radialGaussOrder": 5,
+      "targetElementSizeM": 0.006
+    },
+    {
+      "analysisFiniteStrip": {
+        "angularQuadratureSamples": 80,
+        "maximumFourierOrder": 8,
+        "radialElementCount": 4
+      },
+      "angularSamples": 80,
+      "boundaryConditions": "inner-value-and-slope-eliminated;outer-natural-free",
+      "dofCount": 136,
+      "maximumFourierOrder": 8,
+      "minimumMappingJacobianM": 0.02025,
+      "name": "medium",
+      "pointCount": 1600,
+      "radialElementCount": 4,
+      "radialGaussOrder": 5,
+      "targetElementSizeM": 0.003
+    },
+    {
+      "analysisFiniteStrip": {
+        "angularQuadratureSamples": 96,
+        "maximumFourierOrder": 9,
+        "radialElementCount": 5
+      },
+      "angularSamples": 96,
+      "boundaryConditions": "inner-value-and-slope-eliminated;outer-natural-free",
+      "dofCount": 190,
+      "maximumFourierOrder": 9,
+      "minimumMappingJacobianM": 0.0162,
+      "name": "fine",
+      "pointCount": 2400,
+      "radialElementCount": 5,
+      "radialGaussOrder": 5,
+      "targetElementSizeM": 0.0015
+    }
+  ],
+  "meshEvidence": [
+    {
+      "angularDivisions": 189,
+      "connectedComponentCount": 1,
+      "fingerprintSha256": "baf758d8f82d3eeefae72d8b64ade36ff42eedb4fb3a365a4fc5bc01ebc97632",
+      "invertedTriangleCount": 0,
+      "levelName": "coarse",
+      "maximumAspectRatio": 2.0335591094475207,
+      "minimumEdgeM": 0.0005983710451101258,
+      "minimumSignedAreaM2": 1.8006660030121778e-07,
+      "nodeCount": 13419,
+      "radialDivisions": 70,
+      "targetElementSizeM": 0.006,
+      "triangleCount": 26460
+    },
+    {
+      "angularDivisions": 377,
+      "connectedComponentCount": 1,
+      "fingerprintSha256": "6ee3233ced3b163563abb357144bf78217235394e36c3ae24d793d66b2c3ace0",
+      "invertedTriangleCount": 0,
+      "levelName": "medium",
+      "maximumAspectRatio": 2.0167410864227135,
+      "minimumEdgeM": 0.00029998946047348965,
+      "minimumSignedAreaM2": 4.509583196960298e-08,
+      "nodeCount": 52780,
+      "radialDivisions": 139,
+      "targetElementSizeM": 0.003,
+      "triangleCount": 104806
+    },
+    {
+      "angularDivisions": 754,
+      "connectedComponentCount": 1,
+      "fingerprintSha256": "7d7d2c9a2c5f1e353ef5e69f43406c2abe79f0bdd6de2a75d76d1751cc0eb3e6",
+      "invertedTriangleCount": 0,
+      "levelName": "fine",
+      "maximumAspectRatio": 2.0083534095713773,
+      "minimumEdgeM": 0.00014999603222239538,
+      "minimumSignedAreaM2": 1.1268360559369594e-08,
+      "nodeCount": 209612,
+      "radialDivisions": 277,
+      "targetElementSizeM": 0.0015,
+      "triangleCount": 417716
+    }
+  ],
+  "method": "variable-thickness-kirchhoff-love-c1-finite-strip-fem",
+  "methodConformance": {
+    "analysisSurfaceElementMeshCoupledToEigenproblem": true,
+    "canonicalRequestedElementFamily": "kirchhoff-love-thin-plate",
+    "executedElementFamily": "c1-cubic-hermite-annular-finite-strip",
+    "finiteElementAssemblyUsed": true,
+    "handoffThinPlateMethodAllowed": true,
+    "matchesCanonicalElementFamily": true,
+    "note": "C1 cubic-Hermite radial finite elements and normalized Fourier circumferential functions form the coupled Kirchhoff-Love finite-strip eigenproblem. The independent triangle archive remains manufacturing and coordinate evidence only.",
+    "operationalDisposition": "strict-thin-plate-finite-element-adapter",
+    "strictLiteralSection10_3Conformance": true,
+    "surfaceMeshQualityValidated": true,
+    "surfaceTriangleArchiveCoupledToEigenproblem": false,
+    "thinPlateEigenanalysisSupported": true
+  },
+  "modeMatching": {
+    "candidateModeCountPerCoarserLevel": 24,
+    "method": "deterministic-greedy-physical-mass-MAC-on-fine-grid",
+    "physicalGridPointCount": 2400,
+    "referenceModeCount": 16,
+    "tieBreakOrder": "descending-MAC-then-relative-frequency-then-ordinals"
+  },
+  "schemaVersion": "mandelhowl.convergence-report.v1",
+  "surfaceMeshQualityAccepted": true
+}

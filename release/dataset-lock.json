@@ -1,6 +1,6 @@
 {
   "schemaVersion": "mandelhowl.dataset-lock.v1",
-  "datasetId": "sha256:d31d968f5812deae76626be450446e5d67cd9075515e36e3e57631204a3a8d98",
-  "datasetDirectory": "assets/generated/d31d968f5812deae76626be450446e5d67cd9075515e36e3e57631204a3a8d98",
-  "manifestSha256": "50e0df50dbd64b17324d62197bb53750a2bb9cd7bb69a9d918bb75e75ebc90ad"
+  "datasetId": "sha256:a958193dbe4468f353db6c0973eda5b78181ae878689bfdd4b65afd683a2d9d7",
+  "datasetDirectory": "assets/generated/a958193dbe4468f353db6c0973eda5b78181ae878689bfdd4b65afd683a2d9d7",
+  "manifestSha256": "165da94c3d75b2d204bc0c003838fe7e63adeba50c0f9921da92a6f6f50e336f"
 }

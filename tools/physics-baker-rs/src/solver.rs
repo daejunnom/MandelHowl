@@ -8,7 +8,7 @@ use crate::linear_algebra::{
     Matrix, generalized_to_standard, jacobi_eigen_symmetric, mass_inner,
     solve_upper_from_lower_transpose,
 };
-use crate::spec::PlateSpec;
+use crate::spec::{MeshLevel, PlateSpec};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Symmetry {
@@ -27,11 +27,28 @@ impl Symmetry {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum RadialDof {
+    Value,
+    Slope,
+}
+
+impl RadialDof {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Value => "value",
+            Self::Slope => "slope",
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct BasisFunction {
-    pub radial_order: usize,
+    pub radial_node_index: usize,
+    pub radial_dof: RadialDof,
     pub angular_order: usize,
     pub symmetry: Symmetry,
+    pub radial_element_count: usize,
 }
 
 #[derive(Debug, Clone)]
@@ -45,15 +62,21 @@ pub struct Mode {
     pub microphone_coupling_raw: f64,
     pub radiation_efficiency_raw: f64,
     pub sign_reference: &'static str,
-    pub dominant_radial_order: usize,
+    pub dominant_radial_node_index: usize,
+    pub dominant_radial_dof: RadialDof,
     pub dominant_angular_order: usize,
     pub dominant_symmetry: Symmetry,
 }
 
 #[derive(Debug, Clone)]
 pub struct Quadrature {
-    pub radial_samples: usize,
+    pub radial_element_count: usize,
+    pub maximum_fourier_order: usize,
+    pub radial_gauss_order: usize,
     pub angular_samples: usize,
+    pub dof_count: usize,
+    pub point_count: usize,
+    pub minimum_mapping_jacobian_m: f64,
 }
 
 #[derive(Debug, Clone)]
@@ -73,62 +96,142 @@ pub struct SolveResult {
     pub eigensolver: EigensolverEvidence,
 }
 
-pub fn build_basis(algorithm: &Algorithm) -> Vec<BasisFunction> {
-    let mut basis = Vec::with_capacity(64);
-    for radial in 0..algorithm.axisymmetric_radial_orders {
-        basis.push(BasisFunction {
-            radial_order: radial,
-            angular_order: 0,
-            symmetry: Symmetry::Axisymmetric,
-        });
+fn angular_descriptors(maximum_fourier_order: usize) -> Result<Vec<(usize, Symmetry)>, String> {
+    if maximum_fourier_order == 0 {
+        return Err("finite-strip maximum Fourier order must be positive".to_owned());
     }
-    for angular in algorithm.low_angular_minimum..=algorithm.low_angular_maximum {
-        for radial in 0..algorithm.low_angular_radial_orders {
-            basis.push(BasisFunction {
-                radial_order: radial,
-                angular_order: angular,
-                symmetry: Symmetry::Cosine,
-            });
-            basis.push(BasisFunction {
-                radial_order: radial,
-                angular_order: angular,
-                symmetry: Symmetry::Sine,
-            });
-        }
+    let mut descriptors = Vec::with_capacity(1 + 2 * maximum_fourier_order);
+    descriptors.push((0, Symmetry::Axisymmetric));
+    for angular_order in 1..=maximum_fourier_order {
+        descriptors.push((angular_order, Symmetry::Cosine));
+        descriptors.push((angular_order, Symmetry::Sine));
     }
-    for angular in algorithm.high_angular_minimum..=algorithm.high_angular_maximum {
-        for radial in 0..algorithm.high_angular_radial_orders {
-            basis.push(BasisFunction {
-                radial_order: radial,
-                angular_order: angular,
-                symmetry: Symmetry::Cosine,
-            });
-            basis.push(BasisFunction {
-                radial_order: radial,
-                angular_order: angular,
-                symmetry: Symmetry::Sine,
-            });
-        }
-    }
-    basis
+    Ok(descriptors)
 }
 
-fn legendre(order: usize, value: f64) -> f64 {
-    match order {
-        0 => 1.0,
-        1 => value,
-        _ => {
-            let mut previous = 1.0;
-            let mut current = value;
-            for degree in 2..=order {
-                let next_value = ((2 * degree - 1) as f64 * value * current
-                    - (degree - 1) as f64 * previous)
-                    / degree as f64;
-                (previous, current) = (current, next_value);
-            }
-            current
+pub fn build_basis(
+    radial_element_count: usize,
+    maximum_fourier_order: usize,
+) -> Result<Vec<BasisFunction>, String> {
+    if radial_element_count == 0 {
+        return Err("finite-strip radial element count must be positive".to_owned());
+    }
+    let mut basis = Vec::with_capacity(2 * radial_element_count * (1 + 2 * maximum_fourier_order));
+    for (angular_order, symmetry) in angular_descriptors(maximum_fourier_order)? {
+        for radial_node_index in 1..=radial_element_count {
+            basis.push(BasisFunction {
+                radial_node_index,
+                radial_dof: RadialDof::Value,
+                angular_order,
+                symmetry: symmetry.clone(),
+                radial_element_count,
+            });
+            basis.push(BasisFunction {
+                radial_node_index,
+                radial_dof: RadialDof::Slope,
+                angular_order,
+                symmetry: symmetry.clone(),
+                radial_element_count,
+            });
         }
     }
+    Ok(basis)
+}
+
+pub fn hermite_shapes(xi: f64, element_length_m: f64) -> Result<[[f64; 3]; 4], String> {
+    if element_length_m <= 0.0 || !element_length_m.is_finite() {
+        return Err("finite-strip element length must be finite and positive".to_owned());
+    }
+    let xi2 = xi * xi;
+    let xi3 = xi2 * xi;
+    let inverse_length = 1.0 / element_length_m;
+    let inverse_length_squared = inverse_length * inverse_length;
+    Ok([
+        [
+            1.0 - 3.0 * xi2 + 2.0 * xi3,
+            (-6.0 * xi + 6.0 * xi2) * inverse_length,
+            (-6.0 + 12.0 * xi) * inverse_length_squared,
+        ],
+        [
+            element_length_m * (xi - 2.0 * xi2 + xi3),
+            1.0 - 4.0 * xi + 3.0 * xi2,
+            (-4.0 + 6.0 * xi) * inverse_length,
+        ],
+        [
+            3.0 * xi2 - 2.0 * xi3,
+            (6.0 * xi - 6.0 * xi2) * inverse_length,
+            (6.0 - 12.0 * xi) * inverse_length_squared,
+        ],
+        [
+            element_length_m * (-xi2 + xi3),
+            -2.0 * xi + 3.0 * xi2,
+            (-2.0 + 6.0 * xi) * inverse_length,
+        ],
+    ])
+}
+
+fn angular_shape(
+    angular_order: usize,
+    symmetry: &Symmetry,
+    theta: f64,
+) -> Result<[f64; 3], String> {
+    if angular_order == 0 {
+        if *symmetry != Symmetry::Axisymmetric {
+            return Err("zero angular order must be axisymmetric".to_owned());
+        }
+        return Ok([1.0 / std::f64::consts::TAU.sqrt(), 0.0, 0.0]);
+    }
+    let phase = angular_order as f64 * theta;
+    let normalization = 1.0 / std::f64::consts::PI.sqrt();
+    let (value, first) = match symmetry {
+        Symmetry::Cosine => (
+            phase.cos() * normalization,
+            -(angular_order as f64) * phase.sin() * normalization,
+        ),
+        Symmetry::Sine => (
+            phase.sin() * normalization,
+            angular_order as f64 * phase.cos() * normalization,
+        ),
+        Symmetry::Axisymmetric => {
+            return Err("positive angular order must be cosine or sine".to_owned());
+        }
+    };
+    Ok([
+        value,
+        first,
+        -((angular_order * angular_order) as f64) * value,
+    ])
+}
+
+fn radial_shape_for_descriptor(
+    descriptor: &BasisFunction,
+    radius_m: f64,
+    hub_radius_m: f64,
+    outer_radius_m: f64,
+) -> Result<f64, String> {
+    if radius_m <= hub_radius_m || radius_m > outer_radius_m {
+        return Ok(0.0);
+    }
+    let element_count = descriptor.radial_element_count;
+    let element_length = (outer_radius_m - hub_radius_m) / element_count as f64;
+    let element_index =
+        (((radius_m - hub_radius_m) / element_length) as usize).min(element_count - 1);
+    let xi = (radius_m - (hub_radius_m + element_index as f64 * element_length)) / element_length;
+    let shapes = hermite_shapes(xi, element_length)?;
+    let local_index = if descriptor.radial_node_index == element_index {
+        match descriptor.radial_dof {
+            RadialDof::Value => 0,
+            RadialDof::Slope => 1,
+        }
+    } else if descriptor.radial_node_index == element_index + 1 {
+        match descriptor.radial_dof {
+            RadialDof::Value => 2,
+            RadialDof::Slope => 3,
+        }
+    } else {
+        return Ok(0.0);
+    };
+    Ok(shapes[local_index][0])
 }
 
 pub fn basis_value(
@@ -137,21 +240,18 @@ pub fn basis_value(
     y_m: f64,
     hub_radius_m: f64,
     outer_radius_m: f64,
-) -> f64 {
-    let radius = x_m.hypot(y_m);
-    let normalized = (radius - hub_radius_m) / (outer_radius_m - hub_radius_m);
-    let radial_shape =
-        normalized * normalized * legendre(descriptor.radial_order, 2.0 * normalized - 1.0);
-    if descriptor.angular_order == 0 {
-        return radial_shape;
+) -> Result<f64, String> {
+    let radial =
+        radial_shape_for_descriptor(descriptor, x_m.hypot(y_m), hub_radius_m, outer_radius_m)?;
+    if radial == 0.0 {
+        return Ok(0.0);
     }
-    let phase = descriptor.angular_order as f64 * y_m.atan2(x_m);
-    let angular_shape = match descriptor.symmetry {
-        Symmetry::Cosine => phase.cos(),
-        Symmetry::Sine => phase.sin(),
-        Symmetry::Axisymmetric => 1.0,
-    };
-    radial_shape * angular_shape
+    let angular = angular_shape(
+        descriptor.angular_order,
+        &descriptor.symmetry,
+        y_m.atan2(x_m),
+    )?[0];
+    Ok(radial * angular)
 }
 
 pub fn evaluate_mode(
@@ -161,142 +261,158 @@ pub fn evaluate_mode(
     y_m: f64,
     hub_radius_m: f64,
     outer_radius_m: f64,
-) -> f64 {
-    coefficients
-        .iter()
-        .zip(basis)
-        .map(|(coefficient, descriptor)| {
-            coefficient * basis_value(descriptor, x_m, y_m, hub_radius_m, outer_radius_m)
-        })
-        .sum()
+) -> Result<f64, String> {
+    if coefficients.len() != basis.len() {
+        return Err("mode coefficient and finite-strip basis lengths differ".to_owned());
+    }
+    let mut total = 0.0;
+    for (coefficient, descriptor) in coefficients.iter().zip(basis) {
+        total += coefficient * basis_value(descriptor, x_m, y_m, hub_radius_m, outer_radius_m)?;
+    }
+    Ok(total)
 }
 
-fn basis_hessians(
-    basis: &[BasisFunction],
-    x_m: f64,
-    y_m: f64,
-    hub_radius_m: f64,
-    outer_radius_m: f64,
-    epsilon_m: f64,
-) -> (Vec<f64>, Vec<f64>, Vec<f64>, Vec<f64>) {
-    let mut values = Vec::with_capacity(basis.len());
-    let mut hxx = Vec::with_capacity(basis.len());
-    let mut hyy = Vec::with_capacity(basis.len());
-    let mut hxy = Vec::with_capacity(basis.len());
-    let h2 = epsilon_m * epsilon_m;
-    for descriptor in basis {
-        let centre = basis_value(descriptor, x_m, y_m, hub_radius_m, outer_radius_m);
-        let xp = basis_value(
-            descriptor,
-            x_m + epsilon_m,
-            y_m,
-            hub_radius_m,
-            outer_radius_m,
-        );
-        let xm = basis_value(
-            descriptor,
-            x_m - epsilon_m,
-            y_m,
-            hub_radius_m,
-            outer_radius_m,
-        );
-        let yp = basis_value(
-            descriptor,
-            x_m,
-            y_m + epsilon_m,
-            hub_radius_m,
-            outer_radius_m,
-        );
-        let ym = basis_value(
-            descriptor,
-            x_m,
-            y_m - epsilon_m,
-            hub_radius_m,
-            outer_radius_m,
-        );
-        let xpy = basis_value(
-            descriptor,
-            x_m + epsilon_m,
-            y_m + epsilon_m,
-            hub_radius_m,
-            outer_radius_m,
-        );
-        let xmy = basis_value(
-            descriptor,
-            x_m - epsilon_m,
-            y_m + epsilon_m,
-            hub_radius_m,
-            outer_radius_m,
-        );
-        let xpym = basis_value(
-            descriptor,
-            x_m + epsilon_m,
-            y_m - epsilon_m,
-            hub_radius_m,
-            outer_radius_m,
-        );
-        let xmym = basis_value(
-            descriptor,
-            x_m - epsilon_m,
-            y_m - epsilon_m,
-            hub_radius_m,
-            outer_radius_m,
-        );
-        values.push(centre);
-        hxx.push((xp - 2.0 * centre + xm) / h2);
-        hyy.push((yp - 2.0 * centre + ym) / h2);
-        hxy.push((xpy - xmy - xpym + xmym) / (4.0 * h2));
-    }
-    (values, hxx, hyy, hxy)
+#[derive(Clone, Copy)]
+struct LocalRadialDof {
+    node: usize,
+    kind: RadialDof,
+    value: f64,
+    first: f64,
+    second: f64,
+}
+
+fn local_radial_dofs(
+    element_index: usize,
+    radial_element_count: usize,
+    xi: f64,
+    element_length_m: f64,
+) -> Result<Vec<LocalRadialDof>, String> {
+    let shapes = hermite_shapes(xi, element_length_m)?;
+    let candidates = [
+        LocalRadialDof {
+            node: element_index,
+            kind: RadialDof::Value,
+            value: shapes[0][0],
+            first: shapes[0][1],
+            second: shapes[0][2],
+        },
+        LocalRadialDof {
+            node: element_index,
+            kind: RadialDof::Slope,
+            value: shapes[1][0],
+            first: shapes[1][1],
+            second: shapes[1][2],
+        },
+        LocalRadialDof {
+            node: element_index + 1,
+            kind: RadialDof::Value,
+            value: shapes[2][0],
+            first: shapes[2][1],
+            second: shapes[2][2],
+        },
+        LocalRadialDof {
+            node: element_index + 1,
+            kind: RadialDof::Slope,
+            value: shapes[3][0],
+            first: shapes[3][1],
+            second: shapes[3][2],
+        },
+    ];
+    Ok(candidates
+        .into_iter()
+        .filter(|candidate| candidate.node > 0 && candidate.node <= radial_element_count)
+        .collect())
+}
+
+#[derive(Clone, Copy)]
+struct ActiveBasis {
+    index: usize,
+    value: f64,
+    curvature_rr: f64,
+    curvature_tt: f64,
+    curvature_rt: f64,
 }
 
 fn assemble(
     spec: &PlateSpec,
     algorithm: &Algorithm,
     field: &MaterialField,
-    radial_samples: usize,
+    radial_element_count: usize,
+    maximum_fourier_order: usize,
     angular_samples: usize,
     basis: &[BasisFunction],
 ) -> Result<(Matrix, Matrix), String> {
-    if radial_samples == 0 || angular_samples == 0 {
-        return Err("quadrature dimensions must be positive".to_owned());
-    }
     let count = basis.len();
+    let expected_count = 2 * radial_element_count * (1 + 2 * maximum_fourier_order);
+    if count != expected_count || angular_samples < 4 * maximum_fourier_order + 1 {
+        return Err("finite-strip analysis dimensions are inconsistent".to_owned());
+    }
     let mut mass = vec![vec![0.0; count]; count];
     let mut stiffness = vec![vec![0.0; count]; count];
-    let radius = spec.number(&["geometry", "radiusM"])?;
+    let outer_radius = spec.number(&["geometry", "radiusM"])?;
     let hub_radius = spec.number(&["geometry", "hub", "radiusM"])?;
-    let radial_step = (radius - hub_radius) / radial_samples as f64;
+    let element_length = (outer_radius - hub_radius) / radial_element_count as f64;
     let angular_step = std::f64::consts::TAU / angular_samples as f64;
     let density = spec.number(&["material", "densityKgPerM3"])?;
     let youngs_modulus = spec.number(&["material", "youngsModulusPa"])?;
     let poisson_ratio = spec.number(&["material", "poissonRatio"])?;
-    let epsilon = radius * algorithm.hessian_step_ratio;
+    let harmonics = angular_descriptors(maximum_fourier_order)?;
+    let radial_dofs_per_harmonic = 2 * radial_element_count;
 
-    for radial_index in 0..radial_samples {
-        let radial_position = hub_radius + (radial_index as f64 + 0.5) * radial_step;
-        for angular_index in 0..angular_samples {
-            let theta = (angular_index as f64 + 0.5) * angular_step;
-            let x_m = radial_position * theta.cos();
-            let y_m = radial_position * theta.sin();
-            let area_weight = radial_position * radial_step * angular_step;
-            let thickness = field.at(x_m, y_m, true);
-            let bending_rigidity =
-                youngs_modulus * thickness.powi(3) / (12.0 * (1.0 - poisson_ratio * poisson_ratio));
-            let (values, hxx, hyy, hxy) =
-                basis_hessians(basis, x_m, y_m, hub_radius, radius, epsilon);
-            let mass_weight = density * thickness * area_weight;
-            let stiffness_weight = bending_rigidity * area_weight;
-            for left in 0..count {
-                let mass_left = mass_weight * values[left];
-                for right in left..count {
-                    let mass_value = mass_left * values[right];
-                    let curvature = hxx[left] * hxx[right]
-                        + hyy[left] * hyy[right]
-                        + poisson_ratio * (hxx[left] * hyy[right] + hyy[left] * hxx[right])
-                        + 2.0 * (1.0 - poisson_ratio) * hxy[left] * hxy[right];
-                    mass[left][right] += mass_value;
-                    stiffness[left][right] += stiffness_weight * curvature;
+    for element_index in 0..radial_element_count {
+        let element_start = hub_radius + element_index as f64 * element_length;
+        for gauss_index in 0..algorithm.radial_gauss_nodes.len() {
+            let gauss_node = algorithm.radial_gauss_nodes[gauss_index];
+            let gauss_weight = algorithm.radial_gauss_weights[gauss_index];
+            let xi = 0.5 * (gauss_node + 1.0);
+            let radius_m = element_start + xi * element_length;
+            let radial_weight = 0.5 * element_length * gauss_weight;
+            let radial_dofs =
+                local_radial_dofs(element_index, radial_element_count, xi, element_length)?;
+            for angular_index in 0..angular_samples {
+                let theta = (angular_index as f64 + 0.5) * angular_step;
+                let x_m = radius_m * theta.cos();
+                let y_m = radius_m * theta.sin();
+                let thickness = field.at(x_m, y_m, true);
+                let bending_rigidity = youngs_modulus * thickness.powi(3)
+                    / (12.0 * (1.0 - poisson_ratio * poisson_ratio));
+                let integration_weight = radius_m * radial_weight * angular_step;
+                let mass_weight = density * thickness * integration_weight;
+                let stiffness_weight = bending_rigidity * integration_weight;
+                let mut active =
+                    Vec::<ActiveBasis>::with_capacity(radial_dofs.len() * harmonics.len());
+                for (harmonic_index, (angular_order, symmetry)) in harmonics.iter().enumerate() {
+                    let angular = angular_shape(*angular_order, symmetry, theta)?;
+                    let harmonic_offset = harmonic_index * radial_dofs_per_harmonic;
+                    for radial in &radial_dofs {
+                        let mut radial_offset = 2 * (radial.node - 1);
+                        if radial.kind == RadialDof::Slope {
+                            radial_offset += 1;
+                        }
+                        active.push(ActiveBasis {
+                            index: harmonic_offset + radial_offset,
+                            value: radial.value * angular[0],
+                            curvature_rr: radial.second * angular[0],
+                            curvature_tt: radial.first * angular[0] / radius_m
+                                + radial.value * angular[2] / (radius_m * radius_m),
+                            curvature_rt: angular[1]
+                                * (radial.first / radius_m - radial.value / (radius_m * radius_m)),
+                        });
+                    }
+                }
+                active.sort_by_key(|row| row.index);
+                for left_offset in 0..active.len() {
+                    let left = active[left_offset];
+                    for right in &active[left_offset..] {
+                        mass[left.index][right.index] += mass_weight * left.value * right.value;
+                        let curvature = left.curvature_rr * right.curvature_rr
+                            + left.curvature_tt * right.curvature_tt
+                            + poisson_ratio
+                                * (left.curvature_rr * right.curvature_tt
+                                    + left.curvature_tt * right.curvature_rr)
+                            + 2.0 * (1.0 - poisson_ratio) * left.curvature_rt * right.curvature_rt;
+                        stiffness[left.index][right.index] += stiffness_weight * curvature;
+                    }
                 }
             }
         }
@@ -311,7 +427,7 @@ fn assemble(
 }
 
 #[allow(clippy::too_many_arguments)]
-fn probe_average(
+pub(crate) fn probe_average(
     algorithm: &Algorithm,
     coefficients: &[f64],
     basis: &[BasisFunction],
@@ -320,8 +436,8 @@ fn probe_average(
     footprint_radius_m: f64,
     hub_radius_m: f64,
     outer_radius_m: f64,
-) -> f64 {
-    let mut total = evaluate_mode(coefficients, basis, x_m, y_m, hub_radius_m, outer_radius_m);
+) -> Result<f64, String> {
+    let mut total = evaluate_mode(coefficients, basis, x_m, y_m, hub_radius_m, outer_radius_m)?;
     for index in 0..algorithm.probe_ring_samples {
         let theta = std::f64::consts::TAU * index as f64 / algorithm.probe_ring_samples as f64;
         let offset_x = footprint_radius_m * algorithm.probe_ring_radius_ratio * theta.cos();
@@ -333,9 +449,41 @@ fn probe_average(
             y_m + offset_y,
             hub_radius_m,
             outer_radius_m,
-        );
+        )?;
     }
-    total / (algorithm.probe_ring_samples + 1) as f64
+    Ok(total / (algorithm.probe_ring_samples + 1) as f64)
+}
+
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn first_analysis_node_value(
+    algorithm: &Algorithm,
+    coefficients: &[f64],
+    basis: &[BasisFunction],
+    radial_element_count: usize,
+    angular_samples: usize,
+    hub_radius_m: f64,
+    outer_radius_m: f64,
+) -> Result<f64, String> {
+    let radial_step = (outer_radius_m - hub_radius_m) / radial_element_count as f64;
+    for radial_node in 1..=radial_element_count {
+        let radius_m = hub_radius_m + radial_node as f64 * radial_step;
+        for angular_index in 0..angular_samples {
+            let theta =
+                (angular_index as f64 + 0.5) * std::f64::consts::TAU / angular_samples as f64;
+            let value = evaluate_mode(
+                coefficients,
+                basis,
+                radius_m * theta.cos(),
+                radius_m * theta.sin(),
+                hub_radius_m,
+                outer_radius_m,
+            )?;
+            if value.abs() > algorithm.sign_epsilon {
+                return Ok(value);
+            }
+        }
+    }
+    Ok(1.0)
 }
 
 fn radiation_efficiency(
@@ -344,7 +492,7 @@ fn radiation_efficiency(
     basis: &[BasisFunction],
     hub_radius_m: f64,
     outer_radius_m: f64,
-) -> f64 {
+) -> Result<f64, String> {
     let mut absolute_sum = 0.0;
     let mut signed_sum = 0.0;
     let mut count = 0;
@@ -362,30 +510,32 @@ fn radiation_efficiency(
                 radius * theta.sin(),
                 hub_radius_m,
                 outer_radius_m,
-            );
+            )?;
             absolute_sum += value.abs();
             signed_sum += value;
             count += 1;
         }
     }
     let coherence = signed_sum.abs() / absolute_sum.max(algorithm.normalization_floor);
-    absolute_sum / count as f64
-        * (algorithm.radiation_coherence_floor + algorithm.radiation_coherence_weight * coherence)
+    Ok(absolute_sum / count as f64
+        * (algorithm.radiation_coherence_floor + algorithm.radiation_coherence_weight * coherence))
 }
 
 pub fn solve_modes(
     spec: &PlateSpec,
     algorithm: &Algorithm,
     field: &MaterialField,
-    radial_samples: usize,
+    radial_element_count: usize,
+    maximum_fourier_order: usize,
     angular_samples: usize,
 ) -> Result<SolveResult, String> {
-    let basis = build_basis(algorithm);
+    let basis = build_basis(radial_element_count, maximum_fourier_order)?;
     let (stiffness, mass) = assemble(
         spec,
         algorithm,
         field,
-        radial_samples,
+        radial_element_count,
+        maximum_fourier_order,
         angular_samples,
         &basis,
     )?;
@@ -424,7 +574,7 @@ pub fn solve_modes(
         .collect::<Vec<_>>();
     if selected.len() < requested_count {
         return Err(format!(
-            "basis yielded {} modes in {}..{} Hz; {} were requested",
+            "finite-strip space yielded {} modes in {}..{} Hz; {} were requested",
             selected.len(),
             frequency_minimum,
             frequency_maximum,
@@ -453,18 +603,22 @@ pub fn solve_modes(
             actuator_radius,
             hub_radius,
             radius,
-        );
+        )?;
         let (sign, sign_reference) = if actuator_raw.abs() > algorithm.sign_epsilon {
             (
                 if actuator_raw >= 0.0 { 1.0 } else { -1.0 },
                 "actuator-positive",
             )
         } else {
-            let first = coefficients
-                .iter()
-                .copied()
-                .find(|value| value.abs() > algorithm.sign_epsilon)
-                .unwrap_or(1.0);
+            let first = first_analysis_node_value(
+                algorithm,
+                &coefficients,
+                &basis,
+                radial_element_count,
+                angular_samples,
+                hub_radius,
+                radius,
+            )?;
             (
                 if first >= 0.0 { 1.0 } else { -1.0 },
                 "first-nonzero-node-positive",
@@ -483,12 +637,9 @@ pub fn solve_modes(
             microphone_radius,
             hub_radius,
             radius,
-        );
+        )?;
         let radiation_raw =
-            radiation_efficiency(algorithm, &coefficients, &basis, hub_radius, radius);
-        // Python's max(enumerate(...), key=...) retains the first item on a
-        // tie. Keep that tie rule explicit so both independent bakers choose
-        // identical basis metadata.
+            radiation_efficiency(algorithm, &coefficients, &basis, hub_radius, radius)?;
         let mut dominant_index = 0;
         for candidate in 1..coefficients.len() {
             if coefficients[candidate].abs() > coefficients[dominant_index].abs() {
@@ -506,7 +657,8 @@ pub fn solve_modes(
             microphone_coupling_raw: microphone_raw,
             radiation_efficiency_raw: radiation_raw,
             sign_reference,
-            dominant_radial_order: dominant.radial_order,
+            dominant_radial_node_index: dominant.radial_node_index,
+            dominant_radial_dof: dominant.radial_dof,
             dominant_angular_order: dominant.angular_order,
             dominant_symmetry: dominant.symmetry.clone(),
         });
@@ -518,8 +670,15 @@ pub fn solve_modes(
         stiffness_matrix: stiffness,
         all_frequencies_hz: eigenpairs.into_iter().map(|pair| pair.0).collect(),
         quadrature: Quadrature {
-            radial_samples,
+            radial_element_count,
+            maximum_fourier_order,
+            radial_gauss_order: algorithm.radial_gauss_nodes.len(),
             angular_samples,
+            dof_count: expected_dof_count(radial_element_count, maximum_fourier_order),
+            point_count: radial_element_count
+                * algorithm.radial_gauss_nodes.len()
+                * angular_samples,
+            minimum_mapping_jacobian_m: (radius - hub_radius) / radial_element_count as f64 / 2.0,
         },
         eigensolver: EigensolverEvidence {
             sweeps,
@@ -528,21 +687,147 @@ pub fn solve_modes(
     })
 }
 
-fn modal_assurance(
+fn expected_dof_count(radial_element_count: usize, maximum_fourier_order: usize) -> usize {
+    2 * radial_element_count * (1 + 2 * maximum_fourier_order)
+}
+
+fn physical_grid(
+    spec: &PlateSpec,
     algorithm: &Algorithm,
-    left: &Mode,
-    right: &Mode,
-    reference_mass: &Matrix,
+    field: &MaterialField,
+    radial_element_count: usize,
+    angular_samples: usize,
+) -> Result<Vec<(f64, f64, f64)>, String> {
+    let radius = spec.number(&["geometry", "radiusM"])?;
+    let hub = spec.number(&["geometry", "hub", "radiusM"])?;
+    let density = spec.number(&["material", "densityKgPerM3"])?;
+    let element_length = (radius - hub) / radial_element_count as f64;
+    let angular_step = std::f64::consts::TAU / angular_samples as f64;
+    let mut points = Vec::with_capacity(
+        radial_element_count * algorithm.radial_gauss_nodes.len() * angular_samples,
+    );
+    for element_index in 0..radial_element_count {
+        let start = hub + element_index as f64 * element_length;
+        for gauss_index in 0..algorithm.radial_gauss_nodes.len() {
+            let radial_position =
+                start + 0.5 * (algorithm.radial_gauss_nodes[gauss_index] + 1.0) * element_length;
+            let radial_weight = 0.5 * element_length * algorithm.radial_gauss_weights[gauss_index];
+            for angular_index in 0..angular_samples {
+                let theta = (angular_index as f64 + 0.5) * angular_step;
+                let x_m = radial_position * theta.cos();
+                let y_m = radial_position * theta.sin();
+                let thickness = field.at(x_m, y_m, true);
+                let weight = density * thickness * radial_position * radial_weight * angular_step;
+                points.push((x_m, y_m, weight));
+            }
+        }
+    }
+    Ok(points)
+}
+
+fn sample_modes(
+    result: &SolveResult,
+    modes: &[Mode],
+    points: &[(f64, f64, f64)],
+    hub_radius_m: f64,
+    outer_radius_m: f64,
+) -> Result<Vec<Vec<f64>>, String> {
+    modes
+        .iter()
+        .map(|mode| {
+            points
+                .iter()
+                .map(|(x_m, y_m, _)| {
+                    evaluate_mode(
+                        &mode.coefficients,
+                        &result.basis,
+                        *x_m,
+                        *y_m,
+                        hub_radius_m,
+                        outer_radius_m,
+                    )
+                })
+                .collect()
+        })
+        .collect()
+}
+
+fn physical_mac(
+    left: &[f64],
+    right: &[f64],
+    points: &[(f64, f64, f64)],
+    normalization_floor: f64,
 ) -> f64 {
-    let numerator = mass_inner(&left.coefficients, reference_mass, &right.coefficients);
-    let left_norm = mass_inner(&left.coefficients, reference_mass, &left.coefficients);
-    let right_norm = mass_inner(&right.coefficients, reference_mass, &right.coefficients);
-    numerator * numerator / (left_norm * right_norm).max(algorithm.normalization_floor)
+    let mut cross = 0.0;
+    let mut left_norm = 0.0;
+    let mut right_norm = 0.0;
+    for index in 0..left.len() {
+        let weight = points[index].2;
+        cross += weight * left[index] * right[index];
+        left_norm += weight * left[index] * left[index];
+        right_norm += weight * right[index] * right[index];
+    }
+    cross * cross / (left_norm * right_norm).max(normalization_floor)
+}
+
+fn match_modes_on_physical_grid(
+    reference_modes: &[Mode],
+    reference_values: &[Vec<f64>],
+    candidate_modes: &[Mode],
+    candidate_values: &[Vec<f64>],
+    points: &[(f64, f64, f64)],
+    required_reference_count: usize,
+    normalization_floor: f64,
+) -> Result<Vec<(usize, f64)>, String> {
+    let mut pairs = Vec::<(f64, f64, usize, usize)>::new();
+    for reference_index in 0..required_reference_count {
+        let reference = &reference_modes[reference_index];
+        for (candidate_index, candidate) in candidate_modes.iter().enumerate() {
+            let mac = physical_mac(
+                &reference_values[reference_index],
+                &candidate_values[candidate_index],
+                points,
+                normalization_floor,
+            );
+            let relative_frequency = (reference.frequency_hz - candidate.frequency_hz).abs()
+                / reference.frequency_hz.max(normalization_floor);
+            pairs.push((-mac, relative_frequency, reference_index, candidate_index));
+        }
+    }
+    pairs.sort_by(|left, right| {
+        left.0
+            .partial_cmp(&right.0)
+            .unwrap_or(Ordering::Equal)
+            .then_with(|| left.1.partial_cmp(&right.1).unwrap_or(Ordering::Equal))
+            .then_with(|| left.2.cmp(&right.2))
+            .then_with(|| left.3.cmp(&right.3))
+    });
+    let mut assigned_reference = vec![false; required_reference_count];
+    let mut assigned_candidate = vec![false; candidate_modes.len()];
+    let mut matches = vec![None; required_reference_count];
+    let mut assigned_count = 0;
+    for (negative_mac, _, reference_index, candidate_index) in pairs {
+        if assigned_reference[reference_index] || assigned_candidate[candidate_index] {
+            continue;
+        }
+        matches[reference_index] = Some((candidate_index, -negative_mac));
+        assigned_reference[reference_index] = true;
+        assigned_candidate[candidate_index] = true;
+        assigned_count += 1;
+        if assigned_count == required_reference_count {
+            break;
+        }
+    }
+    matches
+        .into_iter()
+        .collect::<Option<Vec<_>>>()
+        .ok_or_else(|| "finite-strip physical-grid mode matching is incomplete".to_owned())
 }
 
 pub fn convergence_report(
     spec: &PlateSpec,
     algorithm: &Algorithm,
+    field: &MaterialField,
     coarse: &SolveResult,
     medium: &SolveResult,
     fine: &SolveResult,
@@ -558,60 +843,135 @@ pub fn convergence_report(
         "minimumModalAssuranceCriterion",
     ])?;
     let selected_count = fine.modes.len().min(16);
+    let candidate_count = medium.modes.len().min(coarse.modes.len()).min(24);
+    let radius = spec.number(&["geometry", "radiusM"])?;
+    let hub = spec.number(&["geometry", "hub", "radiusM"])?;
+    let points = physical_grid(
+        spec,
+        algorithm,
+        field,
+        fine.quadrature.radial_element_count,
+        fine.quadrature.angular_samples,
+    )?;
+    let fine_modes = &fine.modes[..selected_count];
+    let medium_modes = &medium.modes[..candidate_count];
+    let coarse_modes = &coarse.modes[..candidate_count];
+    let fine_values = sample_modes(fine, fine_modes, &points, hub, radius)?;
+    let medium_values = sample_modes(medium, medium_modes, &points, hub, radius)?;
+    let coarse_values = sample_modes(coarse, coarse_modes, &points, hub, radius)?;
+    let medium_matches = match_modes_on_physical_grid(
+        fine_modes,
+        &fine_values,
+        medium_modes,
+        &medium_values,
+        &points,
+        selected_count,
+        algorithm.normalization_floor,
+    )?;
+    let coarse_matches = match_modes_on_physical_grid(
+        fine_modes,
+        &fine_values,
+        coarse_modes,
+        &coarse_values,
+        &points,
+        selected_count,
+        algorithm.normalization_floor,
+    )?;
     let mut comparisons = Vec::with_capacity(selected_count);
     let mut accepted = true;
-    for index in 0..selected_count {
-        let coarse_mode = &coarse.modes[index];
-        let medium_mode = &medium.modes[index];
-        let fine_mode = &fine.modes[index];
+    for fine_index in 0..selected_count {
+        let fine_mode = &fine_modes[fine_index];
+        let (medium_index, medium_mac) = medium_matches[fine_index];
+        let (coarse_index, coarse_mac) = coarse_matches[fine_index];
+        let medium_mode = &medium_modes[medium_index];
+        let coarse_mode = &coarse_modes[coarse_index];
         let relative_change = (fine_mode.frequency_hz - medium_mode.frequency_hz).abs()
             / fine_mode.frequency_hz.max(algorithm.normalization_floor);
-        let mac = modal_assurance(algorithm, medium_mode, fine_mode, &fine.mass_matrix);
         let frequency_converged = relative_change <= maximum_change;
-        let shape_converged = mac >= minimum_mac;
+        let shape_converged = medium_mac >= minimum_mac;
         accepted &= frequency_converged && shape_converged;
         comparisons.push(json!({
             "modeId": format!("mode-{:03}", fine_mode.ordinal),
+            "coarseMatchedModeId": format!("mode-{:03}", coarse_mode.ordinal),
+            "mediumMatchedModeId": format!("mode-{:03}", medium_mode.ordinal),
             "coarseFrequencyHz": coarse_mode.frequency_hz,
             "mediumFrequencyHz": medium_mode.frequency_hz,
             "fineFrequencyHz": fine_mode.frequency_hz,
+            "coarseToFineModalAssuranceCriterion": coarse_mac,
             "mediumToFineRelativeChange": relative_change,
-            "mediumToFineModalAssuranceCriterion": mac,
+            "mediumToFineModalAssuranceCriterion": medium_mac,
             "frequencyConverged": frequency_converged,
             "shapeConverged": shape_converged,
         }));
     }
     let requested_element = spec.string(&["solverRequest", "elementFamily"])?;
+    let mesh_levels = spec.mesh_levels()?;
     Ok(json!({
         "schemaVersion": "mandelhowl.convergence-report.v1",
-        "method": "variable-thickness-kirchhoff-love-rayleigh-ritz",
+        "method": "variable-thickness-kirchhoff-love-c1-finite-strip-fem",
         "methodConformance": {
             "canonicalRequestedElementFamily": requested_element,
-            "executedElementFamily": "global-rayleigh-ritz-thin-plate-basis",
+            "executedElementFamily": "c1-cubic-hermite-annular-finite-strip",
             "matchesCanonicalElementFamily": requested_element == "kirchhoff-love-thin-plate",
             "handoffThinPlateMethodAllowed": true,
-            "note": "The global Rayleigh-Ritz basis is the numerical adapter used for the canonical Kirchhoff-Love thin-plate family. It is not shell FEM."
+            "thinPlateEigenanalysisSupported": algorithm.handoff_thin_plate_supported,
+            "surfaceMeshQualityValidated": algorithm.handoff_surface_mesh_validated,
+            "finiteElementAssemblyUsed": algorithm.handoff_finite_element_assembly_used,
+            "analysisSurfaceElementMeshCoupledToEigenproblem": algorithm.handoff_analysis_surface_mesh_coupled,
+            "surfaceTriangleArchiveCoupledToEigenproblem": algorithm.handoff_surface_triangle_archive_coupled,
+            "strictLiteralSection10_3Conformance": algorithm.handoff_strict_literal_conformance,
+            "operationalDisposition": algorithm.handoff_operational_disposition.as_str(),
+            "note": "C1 cubic-Hermite radial finite elements and normalized Fourier circumferential functions form the coupled Kirchhoff-Love finite-strip eigenproblem. The independent triangle archive remains manufacturing and coordinate evidence only.",
+        },
+        "analysisDiscretization": {
+            "type": "c1-cubic-hermite-annular-finite-strip",
+            "coupledToEigenproblemAssembly": true,
+            "radialInterpolation": "cubic-hermite-c1",
+            "angularInterpolation": "normalized-real-fourier",
+            "innerBoundary": "value-and-radial-slope-dofs-eliminated",
+            "outerBoundary": "natural-free-edge",
+            "refinementOwner": "solverRequest.meshLevels[*].analysisFiniteStrip",
+            "surfaceTriangleArchiveRole": "manufacturing, coordinate, and provenance evidence only",
+        },
+        "modeMatching": {
+            "method": "deterministic-greedy-physical-mass-MAC-on-fine-grid",
+            "referenceModeCount": selected_count,
+            "candidateModeCountPerCoarserLevel": candidate_count,
+            "physicalGridPointCount": points.len(),
+            "tieBreakOrder": "descending-MAC-then-relative-frequency-then-ordinals",
         },
         "levels": [
-            quadrature_json("coarse", &coarse.quadrature),
-            quadrature_json("medium", &medium.quadrature),
-            quadrature_json("fine", &fine.quadrature),
+            level_json(&mesh_levels[0], &coarse.quadrature),
+            level_json(&mesh_levels[1], &medium.quadrature),
+            level_json(&mesh_levels[2], &fine.quadrature),
         ],
         "criteria": {
             "maximumRelativeFrequencyChange": maximum_change,
             "minimumModalAssuranceCriterion": minimum_mac,
         },
         "comparisons": comparisons,
+        "finiteElementMeshConvergenceAccepted": accepted,
         "accepted": accepted,
     }))
 }
 
-fn quadrature_json(name: &str, quadrature: &Quadrature) -> Value {
+fn level_json(level: &MeshLevel, quadrature: &Quadrature) -> Value {
     json!({
-        "name": name,
-        "radialSamples": quadrature.radial_samples,
+        "name": level.name.as_str(),
+        "targetElementSizeM": level.target_element_size_m,
+        "analysisFiniteStrip": {
+            "radialElementCount": level.analysis_radial_element_count,
+            "maximumFourierOrder": level.analysis_maximum_fourier_order,
+            "angularQuadratureSamples": level.analysis_angular_samples,
+        },
+        "radialElementCount": quadrature.radial_element_count,
+        "maximumFourierOrder": quadrature.maximum_fourier_order,
+        "radialGaussOrder": quadrature.radial_gauss_order,
         "angularSamples": quadrature.angular_samples,
-        "pointCount": quadrature.radial_samples * quadrature.angular_samples,
+        "dofCount": quadrature.dof_count,
+        "pointCount": quadrature.point_count,
+        "minimumMappingJacobianM": quadrature.minimum_mapping_jacobian_m,
+        "boundaryConditions": "inner-value-and-slope-eliminated;outer-natural-free",
     })
 }
 
@@ -636,4 +996,22 @@ pub fn solver_evidence_binary(result: &SolveResult) -> Result<Vec<u8>, String> {
         }
     }
     Ok(output)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{build_basis, hermite_shapes};
+
+    #[test]
+    fn finite_strip_basis_dimensions_and_hermite_endpoints_are_exact() {
+        assert_eq!(build_basis(3, 7).unwrap().len(), 90);
+        assert_eq!(build_basis(4, 8).unwrap().len(), 136);
+        assert_eq!(build_basis(5, 9).unwrap().len(), 190);
+        let start = hermite_shapes(0.0, 0.03).unwrap();
+        let end = hermite_shapes(1.0, 0.03).unwrap();
+        assert_eq!(start.map(|row| row[0]), [1.0, 0.0, 0.0, 0.0]);
+        assert_eq!(end.map(|row| row[0]), [0.0, 0.0, 1.0, 0.0]);
+        assert_eq!(start.map(|row| row[1]), [0.0, 1.0, 0.0, 0.0]);
+        assert_eq!(end.map(|row| row[1]), [0.0, 0.0, 0.0, 1.0]);
+    }
 }

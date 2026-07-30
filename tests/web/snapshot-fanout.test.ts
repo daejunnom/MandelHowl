@@ -187,6 +187,26 @@ describe("RuntimeSnapshotStore", () => {
     expect(failingSubscriber).toHaveBeenCalledTimes(1);
     unsubscribe();
   });
+
+  it("delivers a subscriber added during publication exactly once", () => {
+    const store = new RuntimeSnapshotStore(snapshot(0));
+    const observedByLateSubscriber: number[] = [];
+    let unsubscribeLate = () => {};
+    const unsubscribeEarly = store.subscribe((value) => {
+      if (value.sequence !== 1) return;
+      unsubscribeLate = store.subscribe((lateValue) => {
+        observedByLateSubscriber.push(lateValue.sequence);
+      });
+    });
+
+    expect(store.publish(snapshot(1))).toBe(true);
+    expect(observedByLateSubscriber).toEqual([1]);
+    expect(store.publish(snapshot(2))).toBe(true);
+    expect(observedByLateSubscriber).toEqual([1, 2]);
+
+    unsubscribeLate();
+    unsubscribeEarly();
+  });
 });
 
 describe("RuntimeSnapshotLeaseFanout", () => {

@@ -4,10 +4,9 @@ import json
 import unittest
 
 try:
-    from .common import datasets
+    from .common import datasets, texture_by_kind
 except ImportError:
-    from common import datasets
-from mandelhowl_baker.ktx2 import validate_ktx2
+    from common import datasets, texture_by_kind
 
 
 class TextureModeMatchTests(unittest.TestCase):
@@ -18,8 +17,13 @@ class TextureModeMatchTests(unittest.TestCase):
                 (dataset / "manifest.json").read_text(encoding="utf-8")
             )
             textures = {
-                row["kind"]: validate_ktx2((dataset / row["path"]).read_bytes())
-                for row in manifest["files"]["textures"]
+                kind: texture_by_kind(dataset, manifest, kind)
+                for kind in (
+                    "signed-displacement",
+                    "normal",
+                    "nodal-mask",
+                    "sand-density",
+                )
             }
             displacement = textures["signed-displacement"]
             nodal = textures["nodal-mask"]
@@ -28,7 +32,7 @@ class TextureModeMatchTests(unittest.TestCase):
             self.assertEqual(displacement.width, 128)
             self.assertEqual(textures["normal"].channels, 2)
             layer_pixels = displacement.width * displacement.height
-            for layer in (0, 7, 15, 31, 47):
+            for layer in range(displacement.layers):
                 start = layer * layer_pixels
                 end = start + layer_pixels
                 d = displacement.image_data[start:end]

@@ -1,6 +1,6 @@
 /**
  * Dependency-free generator for the deliberately small YAML subset used by
- * specs/runtime. Run with:
+ * the canonical runtime and visual specs. Run with:
  *
  *   node packages/contracts/scripts/generate-runtime-specs.mjs
  *
@@ -15,7 +15,16 @@ const outputPath = resolve(
   root,
   "packages/contracts/src/generated/runtime-specs.generated.ts",
 );
+const releaseOutputPath = resolve(
+  root,
+  "packages/contracts/src/generated/dataset-release.generated.ts",
+);
 const releaseLockPath = resolve(root, "release/dataset-lock.json");
+const releaseSpecPath = "specs/runtime/dataset-release.v1.yaml";
+const coverageSchemaPath = resolve(
+  root,
+  "packages/contracts/schemas/coverage-report.schema.json",
+);
 const identitySources = {
   scientificAlgorithm: "specs/physics/baker-algorithm.v1.json",
   presentationContract: "specs/runtime/ui-nversion.v1.json",
@@ -41,10 +50,28 @@ const sources = [
     "AudioSafetySpec",
   ],
   [
-    "datasetRelease",
-    "specs/runtime/dataset-release.v1.yaml",
-    "GENERATED_DATASET_RELEASE_SPEC",
-    "DatasetReleaseSpec",
+    "performanceBudget",
+    "specs/visual/performance-budget.v1.yaml",
+    "GENERATED_PERFORMANCE_BUDGET_SPEC",
+    "PerformanceBudgetSpec",
+  ],
+  [
+    "motionSafety",
+    "specs/visual/motion-safety.v1.yaml",
+    "GENERATED_MOTION_SAFETY_SPEC",
+    "MotionSafetySpec",
+  ],
+  [
+    "renderQuality",
+    "specs/visual/quality-tiers.v1.yaml",
+    "GENERATED_RENDER_QUALITY_TIERS_SPEC",
+    "RenderQualityTiersSpec",
+  ],
+  [
+    "scene",
+    "specs/visual/scene.v1.yaml",
+    "GENERATED_SCENE_SPEC",
+    "SceneSpec",
   ],
 ];
 
@@ -84,7 +111,18 @@ function parseYamlSubset(source) {
       if (!Array.isArray(parent)) {
         throw new Error(`Sequence without array parent at line ${index + 1}`);
       }
-      parent.push(scalar(trimmed.slice(2)));
+      const itemText = trimmed.slice(2);
+      const separator = itemText.indexOf(":");
+      if (separator > 0) {
+        const item = {};
+        const key = itemText.slice(0, separator);
+        const rest = itemText.slice(separator + 1).trim();
+        item[key] = rest === "" ? {} : scalar(rest);
+        parent.push(item);
+        stack.push({ indent, value: item });
+      } else {
+        parent.push(scalar(itemText));
+      }
       continue;
     }
 
@@ -121,6 +159,8 @@ const parsed = sources.map(([key, path, constant, type]) => {
   const source = readFileSync(resolve(root, path), "utf8");
   return { key, path, constant, type, source, value: parseYamlSubset(source) };
 });
+const releaseSpecSource = readFileSync(resolve(root, releaseSpecPath), "utf8");
+const releaseSpec = parseYamlSubset(releaseSpecSource);
 const nVersionContractDigests = Object.fromEntries(
   Object.entries(identitySources).map(([key, sourcePath]) => [
     key,
@@ -129,17 +169,23 @@ const nVersionContractDigests = Object.fromEntries(
 );
 
 const body = `/**
- * GENERATED FILE — edit specs/runtime/*.yaml and run
+ * GENERATED FILE — edit specs/runtime/*.yaml or specs/visual/*.yaml and run
  * node packages/contracts/scripts/generate-runtime-specs.mjs.
  */
-import type { AudioSafetySpec, DatasetReleaseSpec, DialConfig, VolumeMapSpec } from "../runtime-config";
+import type { AudioSafetySpec, DialConfig, VolumeMapSpec } from "../runtime-config";
 import type { FeedbackSpec } from "../feedback-spec";
+import type { PerformanceBudgetSpec } from "../performance-budget";
+import type { MotionSafetySpec, RenderQualityTiersSpec, SceneSpec } from "../visual-specs";
 
 export const RUNTIME_SPEC_SOURCE_HASHES = Object.freeze(${JSON.stringify(
   Object.fromEntries(parsed.map((item) => [item.key, hash(item.source)])),
   null,
   2,
 )} as const);
+
+export const COVERAGE_REPORT_SCHEMA_SHA256 = ${JSON.stringify(
+  hash(readFileSync(coverageSchemaPath)),
+)};
 
 export const N_VERSION_CONTRACT_DIGESTS = Object.freeze(${JSON.stringify(
   nVersionContractDigests,
@@ -158,7 +204,26 @@ ${parsed
   )
   .join("\n\n")}
 `;
-const releaseSpec = parsed.find((item) => item.key === "datasetRelease").value;
+const releaseBody = `/**
+ * GENERATED PROMOTION PROJECTION — edit specs/runtime/dataset-release.v1.yaml
+ * and run node packages/contracts/scripts/generate-runtime-specs.mjs.
+ *
+ * This file contains only the promoted dataset pin. Scientific/runtime source
+ * attestations exclude this exact generated path to avoid a circular identity
+ * dependency while continuing to bind runtime-specs.generated.ts.
+ */
+import type { DatasetReleaseSpec } from "../runtime-config";
+
+export const DATASET_RELEASE_SOURCE_SHA256 = ${JSON.stringify(
+  hash(releaseSpecSource),
+)};
+
+export const GENERATED_DATASET_RELEASE_SPEC = Object.freeze(${JSON.stringify(
+  releaseSpec,
+  null,
+  2,
+)} as const) satisfies DatasetReleaseSpec;
+`;
 const releaseLock = `${JSON.stringify(
   {
     schemaVersion: "mandelhowl.dataset-lock.v1",
@@ -172,16 +237,25 @@ const releaseLock = `${JSON.stringify(
 
 if (process.argv.includes("--check")) {
   const current = readFileSync(outputPath, "utf8").replace(/\r\n/g, "\n");
+  const currentRelease = readFileSync(releaseOutputPath, "utf8").replace(
+    /\r\n/g,
+    "\n",
+  );
   const currentLock = readFileSync(releaseLockPath, "utf8").replace(
     /\r\n/g,
     "\n",
   );
-  if (current !== body || currentLock !== releaseLock) {
+  if (
+    current !== body ||
+    currentRelease !== releaseBody ||
+    currentLock !== releaseLock
+  ) {
     throw new Error(
-      "Generated runtime specs or dataset lock are stale. Run generate-runtime-specs.mjs.",
+      "Generated runtime specs, dataset release projection, or dataset lock are stale. Run generate-runtime-specs.mjs.",
     );
   }
 } else {
   writeFileSync(outputPath, body, "utf8");
+  writeFileSync(releaseOutputPath, releaseBody, "utf8");
   writeFileSync(releaseLockPath, releaseLock, "utf8");
 }

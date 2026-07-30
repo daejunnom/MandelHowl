@@ -8,6 +8,7 @@ export default defineConfig({
     },
   },
   test: {
+    allowOnly: false,
     environment: "node",
     include: ["tests/web/**/*.test.ts"],
     passWithNoTests: false,

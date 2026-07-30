@@ -3,7 +3,7 @@ import {
   mkdir,
   readFile,
   readdir,
-  stat,
+  lstat,
   writeFile,
 } from "node:fs/promises";
 import path from "node:path";
@@ -35,7 +35,10 @@ function crc32(bytes) {
 
 async function collectFiles(relativePath, result) {
   const absolutePath = path.join(projectRoot, relativePath);
-  const metadata = await stat(absolutePath);
+  const metadata = await lstat(absolutePath);
+  if (metadata.isSymbolicLink()) {
+    throw new Error(`Release archive entry must not be a symlink: ${relativePath}`);
+  }
   if (metadata.isFile()) {
     result.push(relativePath.replaceAll(path.sep, "/"));
     return;

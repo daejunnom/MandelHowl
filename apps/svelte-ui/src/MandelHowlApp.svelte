@@ -1,16 +1,29 @@
 <script lang="ts">
   import { onMount, tick } from "svelte";
   import {
+    canStartDialPointerGesture,
     createDialKeyboardCommand,
     createDialPointerCommand,
     createDialWheelCommand,
     isDialKeyboardKey,
+    resolveDatasetPresentationState,
     type MandelHowlBrowserRuntimePort,
     type MandelHowlUiSnapshot,
     type MandelHowlViewAttachment,
   } from "../../../packages/browser-runtime/src";
   import type { DialCommand } from "../../../packages/dial-engine/src";
-  import { presentOscilloscope } from "../../../packages/presentation-model/src";
+  import {
+    CANONICAL_SCENE_LAYOUT,
+    formatVirtualVolume,
+    measurementStatusLabel,
+    presentCausalMotion,
+    presentOscilloscope,
+  } from "../../../packages/presentation-model/src";
+  import { oscilloscopeSampleCountForQuality } from "../../../packages/render-engine/src";
+  import {
+    GENERATED_MOTION_SAFETY_SPEC,
+    GENERATED_SCENE_SPEC,
+  } from "../../../packages/contracts/src";
 
   interface Props {
     runtime: MandelHowlBrowserRuntimePort;
@@ -71,7 +84,10 @@
       : (snapshot.volume.lastSettledValue ?? 0),
   );
   let displayedVolume = $derived(
-    Math.round(volume).toString().padStart(3, "0"),
+    formatVirtualVolume(volume),
+  );
+  let measurementLabel = $derived(
+    measurementStatusLabel(snapshot.volume.status),
   );
   let displayedFrequency = $derived(formatFrequency(frequency));
   let frequencyTicks = $derived(
@@ -100,18 +116,43 @@
       : `MODE ${String(activeModeIndex + 1).padStart(2, "0")}`,
   );
   let regimeCopy = $derived(REGIME_COPY[snapshot.regime]);
+  let datasetPresentationState = $derived(
+    resolveDatasetPresentationState(presentation),
+  );
   let isVerifiedDataset = $derived(
-    presentation.datasetStatus === "verified",
+    datasetPresentationState === "verified",
+  );
+  let isStreamingDataset = $derived(
+    datasetPresentationState === "streaming",
   );
   let rendererKind = $derived(presentation.renderer?.kind ?? "static");
   let renderQuality = $derived(
     presentation.renderer?.quality ?? "reduced",
+  );
+  let renderDegradationStage = $derived(
+    presentation.renderer?.degradationStage ?? 0,
+  );
+  let materialSectionReady = $derived(
+    presentation.renderer?.materialSectionReady ?? false,
   );
   let oscilloscope = $derived(
     presentOscilloscope({
       recentSamples: snapshot.microphone.recentSamples,
       rmsNormalized: snapshot.microphone.rmsNormalized,
       peakNormalized: snapshot.microphone.peakNormalized,
+      sampleCount: oscilloscopeSampleCountForQuality(
+        renderQuality,
+        renderDegradationStage,
+      ),
+    }),
+  );
+  let causalMotion = $derived(
+    presentCausalMotion({
+      driveFrequencyHz: frequency,
+      minimumFrequencyHz: frequencyMin,
+      maximumFrequencyHz: frequencyMax,
+      feedbackEnvelopeNormalized: visualEnvelope,
+      microphoneRmsNormalized: snapshot.microphone.rmsNormalized,
     }),
   );
   let stableAnnouncement = $derived(
@@ -125,8 +166,21 @@
       `--envelope: ${visualEnvelope}`,
       `--measurement: ${Math.round(progress * 100)}%`,
       `--volume: ${volume}`,
-      `--phase-angle: ${activeModePhase}rad`,
       `--target-volume: ${presentation.challengeTarget ?? 0}`,
+      `--drive-cycle: ${causalMotion.driveCycleSeconds}s`,
+      `--return-cycle: ${causalMotion.returnCycleSeconds}s`,
+      `--feedback-cycle: ${causalMotion.feedbackCycleSeconds}s`,
+      `--status-cycle: ${causalMotion.statusCycleSeconds}s`,
+      `--speaker-travel: ${causalMotion.speakerTravelNormalized}`,
+      `--microphone-level: ${causalMotion.microphoneLevelNormalized}`,
+      `--feedback-level: ${causalMotion.feedbackLevelNormalized}`,
+      `--forced-border-width: ${GENERATED_MOTION_SAFETY_SPEC.forcedColors.minimumBorderWidthPx}px`,
+      `--speaker-center-x: ${CANONICAL_SCENE_LAYOUT.speakerCenterXPercent}%`,
+      `--speaker-center-y: ${CANONICAL_SCENE_LAYOUT.speakerCenterYPercent}%`,
+      `--plate-center-x: ${CANONICAL_SCENE_LAYOUT.plateCenterXPercent}%`,
+      `--plate-center-y: ${CANONICAL_SCENE_LAYOUT.plateCenterYPercent}%`,
+      `--microphone-center-x: ${CANONICAL_SCENE_LAYOUT.microphoneCenterXPercent}%`,
+      `--microphone-center-y: ${CANONICAL_SCENE_LAYOUT.microphoneCenterYPercent}%`,
     ].join("; "),
   );
 
@@ -199,6 +253,10 @@
 
   function onDialPointerDown(event: PointerEvent): void {
     if (event.pointerType === "mouse" && event.button !== 0) return;
+    if (!canStartDialPointerGesture(activePointerId)) {
+      event.preventDefault();
+      return;
+    }
     event.preventDefault();
     const element = event.currentTarget;
     if (!(element instanceof HTMLDivElement)) return;
@@ -372,6 +430,14 @@
     data-regime={snapshot.regime}
     data-ui-implementation="svelte5"
     data-ui-revision={presentation.revision}
+    data-render-degradation={renderDegradationStage}
+    data-snapshot-sequence={snapshot.sequence}
+    data-scene-read-order={GENERATED_SCENE_SPEC.readOrder.join(">")}
+    data-conceptual-input-count={GENERATED_SCENE_SPEC.inputCount}
+    data-conceptual-output-count={GENERATED_SCENE_SPEC.outputCount}
+    data-camera-projection={GENERATED_SCENE_SPEC.camera.projection}
+    data-camera-fov={GENERATED_SCENE_SPEC.camera.fieldOfViewDegrees}
+    data-camera-clip={`${GENERATED_SCENE_SPEC.camera.near},${GENERATED_SCENE_SPEC.camera.far}`}
     style={sceneStyle}
   >
     <header class="mh-header">
@@ -390,7 +456,13 @@
           <span>DATASET</span>
           {isVerifiedDataset
             ? "VERIFIED THIN-PLATE BAKE"
-            : "PROTOTYPE / CENTER CLAMP"}
+            : isStreamingDataset
+              ? "VERIFIED BAKE / TEXTURES STREAMING"
+              : datasetPresentationState === "loading"
+                ? "DATASET VERIFICATION PENDING"
+                : datasetPresentationState === "error"
+                  ? "DATASET UNAVAILABLE"
+                  : "PROTOTYPE / CENTER CLAMP"}
         </p>
         <p
           class={presentation.audioEnabled
@@ -502,12 +574,33 @@
 
         <div
           class="mh-apparatus"
+          data-renderer-kind={rendererKind}
           aria-label={`Signal path: speaker drives the ${
             isVerifiedDataset
               ? "verified Mandelbrot-encoded thin-plate bake"
+              : isStreamingDataset
+                ? "verified thin-plate metadata with texture shards streaming and an analytical fallback"
               : "explicitly labelled analytical prototype plate"
           }, microphone returns the response through the feedback loop. ${regimeCopy.label}, ${regimeCopy.description}.`}
         >
+          <!-- svelte-ignore a11y_no_interactive_element_to_noninteractive_role -->
+          <canvas
+            use:mountPlate
+            class="mh-apparatus-canvas mh-plate-canvas"
+            role="img"
+            aria-label={`Animated virtual speaker, Chladni plate and sand, virtual microphone, and feedback cable at ${displayedFrequency}; ${modeLabel.toLowerCase()}; ${
+              materialSectionReady
+                ? "precomputed Mandelbrot material thickness cutaway visible at the lower plate edge"
+                : isVerifiedDataset
+                  ? "verified modal dataset without an available material thickness cutaway"
+                  : isStreamingDataset
+                    ? "verified modal metadata with texture shards streaming through an analytical fallback"
+                    : "analytical prototype without a verified material cutaway"
+            }`}
+          >
+            Closed-loop Chladni apparatus visualization at
+            {displayedFrequency}.
+          </canvas>
           <div
             class="mh-signal-key mh-signal-key-drive"
             aria-hidden="true"
@@ -523,7 +616,11 @@
             <i></i>
           </div>
 
-          <div class="mh-speaker" aria-hidden="true">
+          <div
+            class="mh-speaker"
+            aria-hidden="true"
+            data-apparatus-position={GENERATED_SCENE_SPEC.apparatus.speaker.position.join(",")}
+          >
             <span class="mh-speaker-frame">
               <span class="mh-speaker-cone">
                 <i></i>
@@ -539,11 +636,16 @@
             <span></span>
           </div>
 
-          <figure class="mh-plate-assembly">
+          <figure
+            class="mh-plate-assembly"
+            data-apparatus-position={GENERATED_SCENE_SPEC.apparatus.plate.position.join(",")}
+          >
             <div class="mh-plate-title">
               <span>
                 {isVerifiedDataset
                   ? "MANDELBROT-ENCODED / THIN PLATE"
+                  : isStreamingDataset
+                    ? "VERIFIED BASIS / STREAMING TEXTURES"
                   : "ANALYTICAL PROTOTYPE"}
               </span>
               <strong>METAL PLATE + SAND</strong>
@@ -556,15 +658,6 @@
             </div>
             <div class="mh-plate-hardware">
               <div class="mh-plate-surface">
-                <!-- svelte-ignore a11y_no_interactive_element_to_noninteractive_role -->
-                <canvas
-                  use:mountPlate
-                  class="mh-plate-canvas"
-                  role="img"
-                  aria-label={`Animated Chladni sand pattern at ${displayedFrequency}; ${modeLabel.toLowerCase()}`}
-                >
-                  Chladni sand pattern visualization at {displayedFrequency}.
-                </canvas>
                 <span class="mh-plate-sheen" aria-hidden="true"></span>
                 <span class="mh-center-clamp" aria-hidden="true">
                   <i></i>
@@ -575,7 +668,9 @@
               <span>
                 {isVerifiedDataset
                   ? "VERIFIED MODAL DATA"
-                  : "DETERMINISTIC PREVIEW"}
+                  : isStreamingDataset
+                    ? "VERIFIED SHARDS PENDING"
+                    : "DETERMINISTIC PREVIEW"}
               </span>
               <span>
                 {rendererKind.toUpperCase()} / {renderQuality.toUpperCase()}
@@ -589,7 +684,11 @@
             <span></span>
           </div>
 
-          <div class="mh-microphone" aria-hidden="true">
+          <div
+            class="mh-microphone"
+            aria-hidden="true"
+            data-apparatus-position={GENERATED_SCENE_SPEC.apparatus.microphone.position.join(",")}
+          >
             <span class="mh-mic-capsule">
               <i></i>
               <i></i>
@@ -602,7 +701,11 @@
             <small>VIRTUAL RETURN</small>
           </div>
 
-          <div class="mh-feedback-cable" aria-hidden="true">
+          <div
+            class="mh-feedback-cable"
+            aria-hidden="true"
+            data-signal-direction={GENERATED_SCENE_SPEC.apparatus.cable.direction}
+          >
             <span class="mh-feedback-flow mh-flow-one"></span>
             <span class="mh-feedback-flow mh-flow-two"></span>
             <span class="mh-feedback-label">FEEDBACK LOOP</span>
@@ -627,6 +730,7 @@
               aria-hidden="true"
               data-auto-gain={oscilloscope.autoGainLinear.toFixed(3)}
               data-display-peak={oscilloscope.displayPeakNormalized.toFixed(3)}
+              data-sample-count={oscilloscope.samples.length}
             >
               <i class="mh-scope-zero"></i>
               {#each oscilloscope.samples as sample, index (index)}
@@ -652,33 +756,19 @@
               <span>
                 PEAK {oscilloscope.peakPercent.toString().padStart(3, "0")}
               </span>
+              {#if snapshot.regime === "critical"}
+                <span class="mh-scope-phase-emphasis">
+                  PHASE {activeModePhase.toFixed(2)} RAD
+                </span>
+              {/if}
             </p>
-          </div>
-
-          <div class="mh-phase-meter">
-            <div class="mh-instrument-label">
-              <span>LOOP ALIGNMENT</span>
-              <strong>MODE PHASE</strong>
-            </div>
-            <div
-              class="mh-phase-face"
-              role="img"
-              aria-label={`Active mode phase ${activeModePhase.toFixed(2)} radians`}
-            >
-              <i aria-hidden="true"></i>
-              <span aria-hidden="true">0</span>
-              <span aria-hidden="true">π</span>
-            </div>
-            <p>{activeModePhase.toFixed(2)} RAD</p>
           </div>
         </div>
 
         <div class="mh-measurement" aria-label="Measurement status">
           <div>
             <span>
-              {snapshot.volume.status === "measuring"
-                ? "MEASURING"
-                : "SETTLED"}
+              {measurementLabel}
             </span>
             <strong>
               {Math.round(progress * 100).toString().padStart(3, "0")}%
@@ -707,15 +797,13 @@
           <strong>{displayedVolume}</strong>
           <span class="mh-output-range">/ 100</span>
           <span class="mh-output-state">
-            {snapshot.volume.status === "measuring"
-              ? "MEASURING"
-              : "SETTLED"}
+            {measurementLabel}
           </span>
           {#if presentation.challengeTarget !== null}
             <span class="mh-challenge-readonly">
-              READ-ONLY TARGET {presentation.challengeTarget
-                .toString()
-                .padStart(3, "0")}
+              READ-ONLY TARGET {formatVirtualVolume(
+                presentation.challengeTarget,
+              )}
             </span>
           {/if}
         </div>
@@ -735,9 +823,9 @@
             {#if presentation.challengeTarget !== null}
               <span class="mh-target-line">
                 <i>
-                  TARGET {presentation.challengeTarget
-                    .toString()
-                    .padStart(3, "0")}
+                  TARGET {formatVirtualVolume(
+                    presentation.challengeTarget,
+                  )}
                 </i>
               </span>
             {/if}
@@ -799,6 +887,8 @@
       <p class="mh-prototype-status">
         {isVerifiedDataset
           ? "CONTENT-ADDRESSED / VERIFIED THIN-PLATE BAKE"
+          : isStreamingDataset
+            ? "CONTENT-ADDRESSED / VERIFIED TEXTURES STREAMING"
           : "ANALYTICAL PROTOTYPE / PRODUCTION BAKE PENDING"}
       </p>
     </footer>

@@ -5,6 +5,7 @@ import path from "node:path";
 import test from "node:test";
 
 import {
+  EVIDENCE_ONLY_NO_NATIVE_SPAWN_ENV,
   classifyProcessResult,
   installedNativeBinaryPath,
   runPythonBackend,
@@ -157,9 +158,15 @@ test("native reports preserve matching pre-run and post-run digests", () => {
     env: {
       ...process.env,
       CI: "true",
+      [EVIDENCE_ONLY_NO_NATIVE_SPAWN_ENV]: "0",
       MANDELHOWL_NATIVE_BAKER: process.execPath,
     },
   });
+  if (process.env[EVIDENCE_ONLY_NO_NATIVE_SPAWN_ENV] === "1") {
+    assert.equal(result.status, "blocked");
+    assert.equal(result.code, "MH_BAKER_EVIDENCE_ONLY_NO_NATIVE_SPAWN");
+    return;
+  }
   assert.equal(result.status, "protocol-error");
   assert.match(result.executableSha256, /^[a-f0-9]{64}$/);
   assert.equal(
@@ -170,4 +177,50 @@ test("native reports preserve matching pre-run and post-run digests", () => {
     result.postRunExecutableSha256,
     result.executableSha256,
   );
+});
+
+test("evidence-only verification blocks a valid native artifact before spawn", () => {
+  const result = runRustBackend({
+    projectRoot: process.cwd(),
+    args: ["--version"],
+    timeoutMs: 10_000,
+    env: {
+      ...process.env,
+      CI: "true",
+      [EVIDENCE_ONLY_NO_NATIVE_SPAWN_ENV]: "1",
+      MANDELHOWL_NATIVE_BAKER: process.execPath,
+    },
+  });
+  assert.equal(result.status, "blocked");
+  assert.equal(result.code, "MH_BAKER_EVIDENCE_ONLY_NO_NATIVE_SPAWN");
+  assert.equal(result.exitCode, null);
+  assert.match(result.executableSha256, /^[a-f0-9]{64}$/);
+});
+
+test("inherited evidence-only guard cannot be weakened by child env", () => {
+  const previousValue =
+    process.env[EVIDENCE_ONLY_NO_NATIVE_SPAWN_ENV];
+  process.env[EVIDENCE_ONLY_NO_NATIVE_SPAWN_ENV] = "1";
+  try {
+    const result = runRustBackend({
+      projectRoot: process.cwd(),
+      args: ["--version"],
+      timeoutMs: 10_000,
+      env: {
+        ...process.env,
+        CI: "true",
+        [EVIDENCE_ONLY_NO_NATIVE_SPAWN_ENV]: "0",
+        MANDELHOWL_NATIVE_BAKER: process.execPath,
+      },
+    });
+    assert.equal(result.status, "blocked");
+    assert.equal(result.code, "MH_BAKER_EVIDENCE_ONLY_NO_NATIVE_SPAWN");
+    assert.equal(result.exitCode, null);
+  } finally {
+    if (previousValue === undefined) {
+      delete process.env[EVIDENCE_ONLY_NO_NATIVE_SPAWN_ENV];
+    } else {
+      process.env[EVIDENCE_ONLY_NO_NATIVE_SPAWN_ENV] = previousValue;
+    }
+  }
 });

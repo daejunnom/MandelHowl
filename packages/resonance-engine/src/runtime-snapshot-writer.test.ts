@@ -15,7 +15,7 @@ const REPLACEMENT_DATASET_ID =
   "sha256:2222222222222222222222222222222222222222222222222222222222222222";
 
 const INITIAL_DIAGNOSTIC: DiagnosticRecord = Object.freeze({
-  code: "runtime.snapshot.initial",
+  code: "RUNTIME_SNAPSHOT_INITIAL",
   evidenceState: "confirmed",
   severity: "info",
   messageKey: "runtime.snapshot.initial",
@@ -23,7 +23,7 @@ const INITIAL_DIAGNOSTIC: DiagnosticRecord = Object.freeze({
 });
 
 const UPDATED_DIAGNOSTIC: DiagnosticRecord = Object.freeze({
-  code: "runtime.snapshot.updated",
+  code: "RUNTIME_SNAPSHOT_UPDATED",
   evidenceState: "confirmed",
   severity: "warning",
   messageKey: "runtime.snapshot.updated",

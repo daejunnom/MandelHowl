@@ -6,6 +6,7 @@ export {
   createDialState,
   reduceDialState,
   stepDialState,
+  stepDialStateInPlace,
 } from "./dial-engine";
 export {
   createDialConfig,

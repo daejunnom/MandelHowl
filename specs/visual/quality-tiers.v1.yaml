@@ -7,35 +7,53 @@ tiers:
   - id: webgl-full
     requires: [webgl2, float-texture]
     maximumDevicePixelRatio: 2
-    maximumTextureModesResident: 12
-    sandParticleBudget: 1200
-    oscilloscopeSamples: 256
+    maximumTextureModesResident: 4
+    sandParticleBudget: 3600
+    oscilloscopeSamples: 40
+    plateRadialSegments: 32
+    plateAngularSegments: 96
   - id: webgl-safe
     requires: [webgl2]
     maximumDevicePixelRatio: 1.5
-    maximumTextureModesResident: 6
-    sandParticleBudget: 640
-    oscilloscopeSamples: 128
+    maximumTextureModesResident: 4
+    sandParticleBudget: 2400
+    oscilloscopeSamples: 40
+    plateRadialSegments: 24
+    plateAngularSegments: 72
+  - id: webgl-reduced
+    requires: [webgl2]
+    maximumDevicePixelRatio: 1
+    maximumTextureModesResident: 4
+    sandParticleBudget: 1600
+    oscilloscopeSamples: 24
+    plateRadialSegments: 16
+    plateAngularSegments: 48
   - id: canvas-data
     requires: [canvas2d]
     maximumDevicePixelRatio: 1.25
     maximumTextureModesResident: 2
-    sandParticleBudget: 360
-    oscilloscopeSamples: 96
+    sandParticleBudget: 900
+    oscilloscopeSamples: 20
+    plateRadialSegments: 0
+    plateAngularSegments: 0
   - id: static-safe
     requires: []
     maximumDevicePixelRatio: 1
     maximumTextureModesResident: 0
     sandParticleBudget: 0
     oscilloscopeSamples: 0
+    plateRadialSegments: 0
+    plateAngularSegments: 0
 
 degradationOrder:
+  - reduce-sand-residual
+  - reduce-normal-resolution
   - disable-post-processing
-  - reduce-sand-particles
   - reduce-oscilloscope-samples
   - reduce-internal-resolution
   - switch-to-canvas-data
-  - switch-to-static-safe
+
+availabilityFallback: static-safe
 
 invariant:
   simulationSnapshotMayChange: false

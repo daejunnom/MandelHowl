@@ -41,14 +41,35 @@ export default defineConfig(async () => {
   process.env.WRANGLER_LOG_PATH ??= ".wrangler/logs";
   process.env.MINIFLARE_REGISTRY_PATH ??= ".wrangler/registry";
 
-  // Wrangler snapshots its log path while the Cloudflare plugin is imported.
-  const { cloudflare } = await import("@cloudflare/vite-plugin");
+  // Browser regression tests exercise the portable vinext/Vite server. They
+  // do not need Worker bindings, and must not spawn workerd/Miniflare on
+  // Windows where Application Control can reject that extra native surface.
+  // Production builds keep the Cloudflare plugin and exact Worker contract.
+  const usesPortableBrowserTestServer =
+    process.env.MANDELHOWL_PORTABLE_BROWSER_TEST_SERVER === "1";
+  const cloudflarePlugins = usesPortableBrowserTestServer
+    ? []
+    : [
+        (
+          // Wrangler snapshots its log path while this plugin is imported.
+          await import("@cloudflare/vite-plugin")
+        ).cloudflare({
+          viteEnvironment: { name: "rsc", childEnvironments: ["ssr"] },
+          config: localBindingConfig,
+        }),
+      ];
 
   const ignoredRuntimeArtifacts = [
     "**/playwright-report/**",
     "**/test-results/**",
     "**/coverage/**",
     "**/release/archives/**",
+    "**/target/**",
+    "**/tools/physics-baker-rs/bin/**",
+    "**/assets/generated/**",
+    "**/outputs/**",
+    "**/work/**",
+    "**/.cache/**",
     "**/.wrangler/**",
     "**/.codex-dev-*.log",
   ];
@@ -66,10 +87,7 @@ export default defineConfig(async () => {
       svelte(),
       vinext(),
       sites(),
-      cloudflare({
-        viteEnvironment: { name: "rsc", childEnvironments: ["ssr"] },
-        config: localBindingConfig,
-      }),
+      ...cloudflarePlugins,
     ],
   };
 });

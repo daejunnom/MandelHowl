@@ -1,0 +1,27 @@
+{
+  "schemaVersion": "mandelhowl.webgl-shader-allowlist.v1",
+  "digestAlgorithm": "sha256",
+  "loadingPolicy": "embedded-only-no-network-fetch",
+  "networkShaderFetchAllowed": false,
+  "programs": [
+    {
+      "id": "mandelhowl-plate-main",
+      "compileConstants": {
+        "maximumTextureModesResident": 4,
+        "materialSectionProfileSampleCount": 64,
+        "sandMaximumOpacity": 0.95,
+        "maximumFullFieldLuminanceDelta": 0.18
+      },
+      "vertex": {
+        "stage": "vertex",
+        "sourceExport": "VERTEX_SHADER",
+        "sha256": "a2d2fb4aca84a9ea5db0e206b24c30ba68f6e374915d7006abea17f5741bfda2"
+      },
+      "fragment": {
+        "stage": "fragment",
+        "sourceExport": "FRAGMENT_SHADER",
+        "sha256": "083c2a22e09e97ac491d1389ba2495ea7addf5093cf67c57cdc492bca3b05c2e"
+      }
+    }
+  ]
+}

@@ -11,6 +11,12 @@ export interface ExposureState {
   readonly active: boolean;
 }
 
+export interface MutableExposureState {
+  highFrequencySeconds: number;
+  saturationSeconds: number;
+  active: boolean;
+}
+
 export interface AudioLevelMeasurement {
   readonly rmsLinear: number;
   readonly peakLinear: number;
@@ -19,11 +25,13 @@ export interface AudioLevelMeasurement {
 }
 
 export function linearToDb(value: number): number {
-  return value <= 0 ? -120 : 20 * Math.log10(value);
+  if (Number.isNaN(value) || value <= 0) return -120;
+  if (!Number.isFinite(value)) return 120;
+  return 20 * Math.log10(value);
 }
 
 export function dbToLinear(value: number): number {
-  return Math.pow(10, value / 20);
+  return Number.isFinite(value) ? Math.pow(10, value / 20) : 0;
 }
 
 export function measureAudioSamples(
@@ -55,27 +63,60 @@ export function updateExposureState(
   elapsedSeconds: number,
   spec: Readonly<AudioSafetySpec>,
 ): ExposureState {
-  const elapsed = Math.min(0.25, Math.max(0, elapsedSeconds));
-  const highFrequency =
-    frame.frequency >= spec.exposureGuard.highFrequencyThresholdHz &&
-    frame.envelope > 0.12;
-  const saturated = frame.regime === "saturated" && frame.envelope > 0.8;
-  const highFrequencySeconds = highFrequency
-    ? previous.highFrequencySeconds + elapsed
-    : Math.max(0, previous.highFrequencySeconds - elapsed * 2);
-  const saturationSeconds = saturated
-    ? previous.saturationSeconds + elapsed
-    : Math.max(0, previous.saturationSeconds - elapsed * 2);
+  const next: MutableExposureState = {
+    highFrequencySeconds: previous.highFrequencySeconds,
+    saturationSeconds: previous.saturationSeconds,
+    active: previous.active,
+  };
+  updateExposureStateInPlace(
+    next,
+    frame,
+    elapsedSeconds,
+    spec,
+  );
+  return Object.freeze(next);
+}
 
-  return Object.freeze({
-    highFrequencySeconds,
-    saturationSeconds,
-    active:
-      highFrequencySeconds >=
-        spec.exposureGuard.maximumContinuousHighFrequencySeconds ||
-      saturationSeconds >=
-        spec.exposureGuard.maximumContinuousSaturationSeconds,
-  });
+/** Allocation-free exposure update for the live audio-frame path. */
+export function updateExposureStateInPlace(
+  state: MutableExposureState,
+  frame: {
+    readonly frequency: number;
+    readonly envelope: number;
+    readonly regime: ResonanceRegime;
+  },
+  elapsedSeconds: number,
+  spec: Readonly<AudioSafetySpec>,
+): MutableExposureState {
+  const elapsed = Math.min(
+    0.25,
+    Math.max(0, Number.isFinite(elapsedSeconds) ? elapsedSeconds : 0),
+  );
+  const frequency = Number.isFinite(frame.frequency)
+    ? frame.frequency
+    : 0;
+  const envelope = Number.isFinite(frame.envelope)
+    ? frame.envelope
+    : 0;
+  const highFrequency =
+    frequency >= spec.exposureGuard.highFrequencyThresholdHz &&
+    envelope > 0.12;
+  const saturated = frame.regime === "saturated" && envelope > 0.8;
+  const highFrequencySeconds = highFrequency
+    ? state.highFrequencySeconds + elapsed
+    : Math.max(0, state.highFrequencySeconds - elapsed * 2);
+  const saturationSeconds = saturated
+    ? state.saturationSeconds + elapsed
+    : Math.max(0, state.saturationSeconds - elapsed * 2);
+
+  state.highFrequencySeconds = highFrequencySeconds;
+  state.saturationSeconds = saturationSeconds;
+  state.active =
+    highFrequencySeconds >=
+      spec.exposureGuard.maximumContinuousHighFrequencySeconds ||
+    saturationSeconds >=
+      spec.exposureGuard.maximumContinuousSaturationSeconds;
+  return state;
 }
 
 export function outputGainFromEnvelope(
@@ -84,7 +125,10 @@ export function outputGainFromEnvelope(
   exposureGuardActive: boolean,
   spec: Readonly<AudioSafetySpec>,
 ): number {
-  const safeEnvelope = Math.min(1, Math.max(0, envelope));
+  const safeEnvelope = Math.min(
+    1,
+    Math.max(0, Number.isFinite(envelope) ? envelope : 0),
+  );
   const guardTrim = exposureGuardActive
     ? dbToLinear(-spec.exposureGuard.attenuationDb)
     : 1;
@@ -105,18 +149,42 @@ export function rateLimitGain(
   maximumChangeDbPerSecond: number,
   maximumGain: number,
 ): number {
-  const currentDb = linearToDb(Math.max(SILENCE_FLOOR, previousGain));
-  const targetDb = linearToDb(Math.max(SILENCE_FLOOR, targetGain));
+  const safeMaximumGain = Math.max(
+    0,
+    Number.isFinite(maximumGain) ? maximumGain : 0,
+  );
+  const safePreviousGain = Math.min(
+    safeMaximumGain,
+    Math.max(0, Number.isFinite(previousGain) ? previousGain : 0),
+  );
+  const safeTargetGain = Math.min(
+    safeMaximumGain,
+    Math.max(0, Number.isFinite(targetGain) ? targetGain : 0),
+  );
+  const currentDb = linearToDb(
+    Math.max(SILENCE_FLOOR, safePreviousGain),
+  );
+  const targetDb = linearToDb(
+    Math.max(SILENCE_FLOOR, safeTargetGain),
+  );
   const maximumDelta =
-    Math.max(0, maximumChangeDbPerSecond) *
-    Math.max(0, elapsedSeconds);
+    Math.max(
+      0,
+      Number.isFinite(maximumChangeDbPerSecond)
+        ? maximumChangeDbPerSecond
+        : 0,
+    ) *
+    Math.max(
+      0,
+      Number.isFinite(elapsedSeconds) ? elapsedSeconds : 0,
+    );
   const delta = Math.min(
     maximumDelta,
     Math.max(-maximumDelta, targetDb - currentDb),
   );
   const nextGain =
-    targetGain <= 0 && currentDb + delta <= -100
+    safeTargetGain <= 0 && currentDb + delta <= -100
       ? 0
       : dbToLinear(currentDb + delta);
-  return Math.min(Math.max(0, maximumGain), nextGain);
+  return Math.min(safeMaximumGain, Math.max(0, nextGain));
 }

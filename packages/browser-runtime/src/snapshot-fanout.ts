@@ -38,9 +38,10 @@ function reportConsumerError<Snapshot>(
  * reconstructed projection or reads mutable core state.
  */
 export class RuntimeSnapshotFanout {
-  private readonly consumers = new Set<SnapshotConsumer>();
+  private readonly consumers = new Map<SnapshotConsumer, number>();
   private readonly failingConsumers = new WeakSet<SnapshotConsumer>();
   private readonly onConsumerError?: SnapshotConsumerErrorObserver<RuntimeSnapshot>;
+  private nextSubscriptionOrdinal = 0;
   private publishedFrames = 0;
   private rejectedFrames = 0;
   private lastSequence: number | null = null;
@@ -51,7 +52,11 @@ export class RuntimeSnapshotFanout {
     consumers: readonly SnapshotConsumer[] = [],
     onConsumerError?: SnapshotConsumerErrorObserver<RuntimeSnapshot>,
   ) {
-    consumers.forEach((consumer) => this.consumers.add(consumer));
+    consumers.forEach((consumer) => {
+      if (!this.consumers.has(consumer)) {
+        this.consumers.set(consumer, ++this.nextSubscriptionOrdinal);
+      }
+    });
     this.onConsumerError = onConsumerError;
   }
 
@@ -67,7 +72,9 @@ export class RuntimeSnapshotFanout {
 
   subscribe(consumer: SnapshotConsumer): () => void {
     if (this.disposed) return () => {};
-    this.consumers.add(consumer);
+    if (!this.consumers.has(consumer)) {
+      this.consumers.set(consumer, ++this.nextSubscriptionOrdinal);
+    }
     return () => {
       this.consumers.delete(consumer);
     };
@@ -92,7 +99,13 @@ export class RuntimeSnapshotFanout {
     this.lastDatasetId = snapshot.datasetId;
     this.publishedFrames += 1;
     commitBeforeNotify?.(snapshot);
-    for (const consumer of this.consumers) {
+    const subscriptionBoundary = this.nextSubscriptionOrdinal;
+    for (const [consumer, ordinal] of this.consumers) {
+      // RuntimeSnapshotStore performs an immediate delivery after subscribing.
+      // A subscriber added by an earlier callback in this same publication
+      // must not then receive the identical frame a second time from Map
+      // iteration. It joins the next publication instead.
+      if (ordinal > subscriptionBoundary) continue;
       try {
         consumer(snapshot);
         this.failingConsumers.delete(consumer);

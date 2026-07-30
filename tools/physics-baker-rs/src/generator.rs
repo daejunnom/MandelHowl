@@ -18,12 +18,6 @@ pub struct GenerateOptions {
     pub release: bool,
     pub field_resolution: Option<usize>,
     pub texture_size: Option<usize>,
-    pub coarse_radial: usize,
-    pub coarse_angular: usize,
-    pub medium_radial: usize,
-    pub medium_angular: usize,
-    pub fine_radial: usize,
-    pub fine_angular: usize,
 }
 
 impl GenerateOptions {
@@ -35,12 +29,6 @@ impl GenerateOptions {
             release: false,
             field_resolution: None,
             texture_size: None,
-            coarse_radial: 24,
-            coarse_angular: 64,
-            medium_radial: 32,
-            medium_angular: 80,
-            fine_radial: 40,
-            fine_angular: 96,
         }
     }
 }
@@ -74,16 +62,21 @@ impl GenerateResult {
 pub fn generate(options: &GenerateOptions) -> Result<GenerateResult, String> {
     let algorithm = Algorithm::load()?;
     let spec = PlateSpec::load(&options.spec_path)?;
-    let field_resolution = options.field_resolution.unwrap_or(spec.usize(&[
-        "mandelbrotField",
-        "sampleResolution",
-        "widthPx",
-    ])?);
-    let texture_size = options
-        .texture_size
-        .unwrap_or(spec.usize(&["textureRequest", "widthPx"])?);
-    let field = generate_material_field(&spec, &algorithm, field_resolution)?;
+    let canonical_field_resolution =
+        spec.usize(&["mandelbrotField", "sampleResolution", "widthPx"])?;
+    let canonical_texture_size = spec.usize(&["textureRequest", "widthPx"])?;
     let levels = spec.mesh_levels()?;
+    validate_release_overrides(
+        options,
+        canonical_field_resolution,
+        canonical_texture_size,
+        &levels,
+    )?;
+    let field_resolution = options
+        .field_resolution
+        .unwrap_or(canonical_field_resolution);
+    let texture_size = options.texture_size.unwrap_or(canonical_texture_size);
+    let field = generate_material_field(&spec, &algorithm, field_resolution)?;
     let meshes = levels
         .iter()
         .map(|level| build_mesh_evidence(&spec, level))
@@ -92,24 +85,27 @@ pub fn generate(options: &GenerateOptions) -> Result<GenerateResult, String> {
         &spec,
         &algorithm,
         &field,
-        options.coarse_radial,
-        options.coarse_angular,
+        levels[0].analysis_radial_element_count,
+        levels[0].analysis_maximum_fourier_order,
+        levels[0].analysis_angular_samples,
     )?;
     let medium = solve_modes(
         &spec,
         &algorithm,
         &field,
-        options.medium_radial,
-        options.medium_angular,
+        levels[1].analysis_radial_element_count,
+        levels[1].analysis_maximum_fourier_order,
+        levels[1].analysis_angular_samples,
     )?;
     let fine = solve_modes(
         &spec,
         &algorithm,
         &field,
-        options.fine_radial,
-        options.fine_angular,
+        levels[2].analysis_radial_element_count,
+        levels[2].analysis_maximum_fourier_order,
+        levels[2].analysis_angular_samples,
     )?;
-    let convergence = convergence_report(&spec, &algorithm, &coarse, &medium, &fine)?;
+    let convergence = convergence_report(&spec, &algorithm, &field, &coarse, &medium, &fine)?;
     let processed = postprocess(&spec, &algorithm, &field, &fine, texture_size)?;
     let dataset_path = package_dataset(
         &PackageOptions {
@@ -131,4 +127,68 @@ pub fn generate(options: &GenerateOptions) -> Result<GenerateResult, String> {
         semantic_report,
         algorithm,
     })
+}
+
+fn validate_release_overrides(
+    options: &GenerateOptions,
+    field_resolution: usize,
+    texture_size: usize,
+    levels: &[crate::spec::MeshLevel],
+) -> Result<(), String> {
+    if !options.release {
+        return Ok(());
+    }
+    if levels.len() != 3 {
+        return Err("release generation requires exactly three canonical mesh levels".to_owned());
+    }
+    let candidates = [
+        (
+            "--field-resolution",
+            options.field_resolution.unwrap_or(field_resolution),
+            field_resolution,
+        ),
+        (
+            "--texture-size",
+            options.texture_size.unwrap_or(texture_size),
+            texture_size,
+        ),
+    ];
+    let mismatches = candidates
+        .into_iter()
+        .filter(|(_, actual, canonical)| actual != canonical)
+        .map(|(flag, actual, canonical)| format!("{flag}={actual} (spec={canonical})"))
+        .collect::<Vec<_>>();
+    if mismatches.is_empty() {
+        Ok(())
+    } else {
+        Err(format!(
+            "release generation forbids analysis overrides outside the content-addressed plate spec: {}",
+            mismatches.join(", ")
+        ))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn release_rejects_noncanonical_asset_resolution_override() {
+        let repository = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+        let spec =
+            PlateSpec::load(&repository.join("specs/plate/mandelbrot-plate.v1.yaml")).unwrap();
+        let levels = spec.mesh_levels().unwrap();
+        let field_resolution = spec
+            .usize(&["mandelbrotField", "sampleResolution", "widthPx"])
+            .unwrap();
+        let texture_size = spec.usize(&["textureRequest", "widthPx"]).unwrap();
+        let mut options = GenerateOptions::repository_defaults(&repository);
+        options.release = true;
+        options.texture_size = Some(texture_size + 1);
+        let error = validate_release_overrides(&options, field_resolution, texture_size, &levels)
+            .unwrap_err();
+        assert!(error.contains("--texture-size"));
+        options.texture_size = Some(texture_size);
+        validate_release_overrides(&options, field_resolution, texture_size, &levels).unwrap();
+    }
 }

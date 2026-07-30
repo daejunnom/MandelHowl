@@ -75,7 +75,7 @@ export interface DialConfig {
     readonly maximumVisualJitterRad: number;
   };
   readonly determinism: {
-    readonly timestampUnit: "s";
+    readonly timestampUnit: "ms";
     readonly tieBreak: "input-sequence";
     readonly randomSource: "forbidden";
   };
@@ -137,6 +137,15 @@ export interface AudioSafetySpec {
     readonly directVirtualVolumeMapping: "forbidden";
     readonly maximumOutputGainLinear: number;
     readonly exponent: number;
+  };
+  readonly modalTimbre: {
+    readonly maximumVoices: number;
+    readonly minimumEnergyNormalized: number;
+    readonly driveToneWeight: number;
+    readonly modalVoiceWeight: number;
+    readonly frequencySmoothingSeconds: number;
+    readonly gainAttackSeconds: number;
+    readonly gainReleaseSeconds: number;
   };
   readonly chain: readonly [
     "dc-blocker",

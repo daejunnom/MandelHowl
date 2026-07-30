@@ -1,21 +1,28 @@
 /**
- * GENERATED FILE — edit specs/runtime/*.yaml and run
+ * GENERATED FILE — edit specs/runtime/*.yaml or specs/visual/*.yaml and run
  * node packages/contracts/scripts/generate-runtime-specs.mjs.
  */
-import type { AudioSafetySpec, DatasetReleaseSpec, DialConfig, VolumeMapSpec } from "../runtime-config";
+import type { AudioSafetySpec, DialConfig, VolumeMapSpec } from "../runtime-config";
 import type { FeedbackSpec } from "../feedback-spec";
+import type { PerformanceBudgetSpec } from "../performance-budget";
+import type { MotionSafetySpec, RenderQualityTiersSpec, SceneSpec } from "../visual-specs";
 
 export const RUNTIME_SPEC_SOURCE_HASHES = Object.freeze({
-  "dial": "925137e2e598491618d5b598e6b53e4f4a449d1bfdb35ab220ae868c9b59970b",
-  "feedback": "b8ed42cb36648b68eb079515a7bb90fccb8d6258ef6c51786f30815cf7643b49",
+  "dial": "bd1fc1e618e82b513b5f0f84b315b7d10eded2c420661eca332c4865f30fc0e0",
+  "feedback": "468a57ee1c93c74dc7d23d6c1584413cc39bd0d54fd90cf26085d8eb3147557f",
   "volumeMap": "7fda34e109a98993a818e488aa5e0e81566659e085aec921f1e575822539c90a",
-  "audioSafety": "1fef8451c07dfbf361b4c609d5e40604d923c9a2392b6b379133ed57ab77e8bc",
-  "datasetRelease": "fc63800c9ec1c14e7581df90af717719ac22d20a105753a703fdf9b67227c8b3"
+  "audioSafety": "ec7e0358f7ce0bc16c9295ffc0797be0bbd0b2c3876d7438e85144856cfc00e6",
+  "performanceBudget": "91ed596c5c25a1606bb2a481878ac164be156664f813bc2602a98e27301d8e81",
+  "motionSafety": "8479993cab1ee14e6b3e59a36830b2ace92d1c054af25cacc6c07318dfb49b8d",
+  "renderQuality": "fb97f419a4d4a9b89787535cf4700e59e1a00116795a991001ee29df0335f2bd",
+  "scene": "2072d7a2e8494b37c8a6ed499d361f6e7bb4add1a6e8348c826e3480237504ec"
 } as const);
 
+export const COVERAGE_REPORT_SCHEMA_SHA256 = "255df55224022354daaafe42b318f692a550ff94cd861df686e348101a6f33ba";
+
 export const N_VERSION_CONTRACT_DIGESTS = Object.freeze({
-  "scientificAlgorithm": "sha256:89920ff6cd53b7c0207cc795555e5e7cacc3e10fdd2daa8aaa35c6ca3511332d",
-  "presentationContract": "sha256:fd531ac216689df6981ea0b40c77ee271cba848e9b831eed0763615da658a4b1"
+  "scientificAlgorithm": "sha256:4fac7c12618d1e561dab27214ce47e2b94cbc91e734ce9a100f32a143dc222ca",
+  "presentationContract": "sha256:780e74f5a26d25731ed3b2f6baca2688e640ba40bfb75bb8b00cf3c85367d7a0"
 } as const);
 
 export const GENERATED_DIAL_SPEC = Object.freeze({
@@ -79,7 +86,7 @@ export const GENERATED_DIAL_SPEC = Object.freeze({
     "maximumVisualJitterRad": 0.012
   },
   "determinism": {
-    "timestampUnit": "s",
+    "timestampUnit": "ms",
     "tieBreak": "input-sequence",
     "randomSource": "forbidden"
   }
@@ -87,6 +94,7 @@ export const GENERATED_DIAL_SPEC = Object.freeze({
 
 export const GENERATED_FEEDBACK_SPEC = Object.freeze({
   "schemaVersion": "mandelhowl.feedback-spec.v1",
+  "algorithmRevision": "fixed-step-modal-feedback-v3",
   "canonicalOwner": {
     "path": "specs/runtime/feedback.v1.yaml",
     "policy": "edit-source-regenerate-derived"
@@ -148,8 +156,8 @@ export const GENERATED_FEEDBACK_SPEC = Object.freeze({
       "decayBasePerSecond": 0.68,
       "decayMarginMultiplierPerSecond": 1.55,
       "criticalFollowRatePerSecond": 0.92,
-      "criticalLowerRmsMultiplier": 0.75,
-      "criticalSaturationPosition": 0.82
+      "criticalLowerRmsMultiplier": 1,
+      "criticalSaturationPosition": 1
     },
     "microphone": {
       "modeBaseWeight": 0.72,
@@ -284,6 +292,15 @@ export const GENERATED_AUDIO_SAFETY_SPEC = Object.freeze({
     "maximumOutputGainLinear": 0.1,
     "exponent": 0.72
   },
+  "modalTimbre": {
+    "maximumVoices": 8,
+    "minimumEnergyNormalized": 0.000001,
+    "driveToneWeight": 0.18,
+    "modalVoiceWeight": 0.82,
+    "frequencySmoothingSeconds": 0.025,
+    "gainAttackSeconds": 0.035,
+    "gainReleaseSeconds": 0.08
+  },
   "chain": [
     "dc-blocker",
     "band-limiter",
@@ -330,16 +347,217 @@ export const GENERATED_AUDIO_SAFETY_SPEC = Object.freeze({
   }
 } as const) satisfies AudioSafetySpec;
 
-export const GENERATED_DATASET_RELEASE_SPEC = Object.freeze({
-  "schemaVersion": "mandelhowl.dataset-release.v1",
+export const GENERATED_PERFORMANCE_BUDGET_SPEC = Object.freeze({
+  "schemaVersion": "mandelhowl.performance-budget.v1",
   "canonicalOwner": {
-    "path": "specs/runtime/dataset-release.v1.yaml",
+    "path": "specs/visual/performance-budget.v1.yaml",
+    "policy": "edit-source-update-tests"
+  },
+  "desktopTargetFramesPerSecond": 60,
+  "lowTierMinimumFramesPerSecond": 30,
+  "lowTierMaximumFrameWorkMs": 33.333333333333336,
+  "headlessSchedulerLivenessFramesPerSecond": 10,
+  "runtimeDegradation": {
+    "sampleWindowFrames": 120,
+    "percentile": 0.95,
+    "requiredOverBudgetWindows": 2
+  },
+  "browserSoak": {
+    "minimumSeconds": 15,
+    "maximumHeapGrowthBytes": 33554432,
+    "expectedSnapshotConsumers": 5
+  },
+  "simulationSoak": {
+    "durationSeconds": 3600,
+    "fixedBuffersMustRetainIdentity": true
+  }
+} as const) satisfies PerformanceBudgetSpec;
+
+export const GENERATED_MOTION_SAFETY_SPEC = Object.freeze({
+  "schemaVersion": "mandelhowl.motion-safety.v1",
+  "canonicalOwner": {
+    "path": "specs/visual/motion-safety.v1.yaml",
     "policy": "edit-source-regenerate-derived"
   },
-  "manifestUrl": "/runtime/manifest.json",
-  "datasetId": "sha256:d31d968f5812deae76626be450446e5d67cd9075515e36e3e57631204a3a8d98",
-  "manifestSha256": "50e0df50dbd64b17324d62197bb53750a2bb9cd7bb69a9d918bb75e75ebc90ad",
-  "modalModelId": "sha256:db567968bc4d628ebeb5f3a1fbce46ecf20881f83e0d0c9b0e501e1927b40953",
-  "sourceDirectory": "assets/generated/d31d968f5812deae76626be450446e5d67cd9075515e36e3e57631204a3a8d98",
-  "loadingPolicy": "verified-before-activation-with-analytical-fallback"
-} as const) satisfies DatasetReleaseSpec;
+  "limits": {
+    "maximumFlashHz": 2.5,
+    "maximumFullFieldLuminanceDelta": 0.18,
+    "maximumPlateDisplacementPx": 3,
+    "maximumCablePulseHz": 2
+  },
+  "reducedMotion": {
+    "plateDisplacementScale": 0.18,
+    "disableCableTravel": true,
+    "disableCameraMotion": true,
+    "preserve": [
+      "regime-label",
+      "settled-volume",
+      "measurement-progress",
+      "nodal-pattern",
+      "limiter-state"
+    ]
+  },
+  "forcedColors": {
+    "preserveOutlines": true,
+    "minimumBorderWidthPx": 1,
+    "doNotUseColorAsSoleSignal": true
+  }
+} as const) satisfies MotionSafetySpec;
+
+export const GENERATED_RENDER_QUALITY_TIERS_SPEC = Object.freeze({
+  "schemaVersion": "mandelhowl.render-quality-tiers.v1",
+  "canonicalOwner": {
+    "path": "specs/visual/quality-tiers.v1.yaml",
+    "policy": "edit-source-regenerate-derived"
+  },
+  "tiers": [
+    {
+      "id": "webgl-full",
+      "requires": [
+        "webgl2",
+        "float-texture"
+      ],
+      "maximumDevicePixelRatio": 2,
+      "maximumTextureModesResident": 4,
+      "sandParticleBudget": 3600,
+      "oscilloscopeSamples": 40,
+      "plateRadialSegments": 32,
+      "plateAngularSegments": 96
+    },
+    {
+      "id": "webgl-safe",
+      "requires": [
+        "webgl2"
+      ],
+      "maximumDevicePixelRatio": 1.5,
+      "maximumTextureModesResident": 4,
+      "sandParticleBudget": 2400,
+      "oscilloscopeSamples": 40,
+      "plateRadialSegments": 24,
+      "plateAngularSegments": 72
+    },
+    {
+      "id": "webgl-reduced",
+      "requires": [
+        "webgl2"
+      ],
+      "maximumDevicePixelRatio": 1,
+      "maximumTextureModesResident": 4,
+      "sandParticleBudget": 1600,
+      "oscilloscopeSamples": 24,
+      "plateRadialSegments": 16,
+      "plateAngularSegments": 48
+    },
+    {
+      "id": "canvas-data",
+      "requires": [
+        "canvas2d"
+      ],
+      "maximumDevicePixelRatio": 1.25,
+      "maximumTextureModesResident": 2,
+      "sandParticleBudget": 900,
+      "oscilloscopeSamples": 20,
+      "plateRadialSegments": 0,
+      "plateAngularSegments": 0
+    },
+    {
+      "id": "static-safe",
+      "requires": [],
+      "maximumDevicePixelRatio": 1,
+      "maximumTextureModesResident": 0,
+      "sandParticleBudget": 0,
+      "oscilloscopeSamples": 0,
+      "plateRadialSegments": 0,
+      "plateAngularSegments": 0
+    }
+  ],
+  "degradationOrder": [
+    "reduce-sand-residual",
+    "reduce-normal-resolution",
+    "disable-post-processing",
+    "reduce-oscilloscope-samples",
+    "reduce-internal-resolution",
+    "switch-to-canvas-data"
+  ],
+  "availabilityFallback": "static-safe",
+  "invariant": {
+    "simulationSnapshotMayChange": false,
+    "volumeMayChange": false
+  }
+} as const) satisfies RenderQualityTiersSpec;
+
+export const GENERATED_SCENE_SPEC = Object.freeze({
+  "schemaVersion": "mandelhowl.scene-spec.v1",
+  "canonicalOwner": {
+    "path": "specs/visual/scene.v1.yaml",
+    "policy": "edit-source-regenerate-derived"
+  },
+  "coordinateSystem": {
+    "type": "normalized-apparatus",
+    "xDirection": "left-to-right",
+    "yDirection": "top-to-bottom",
+    "zDirection": "toward-viewer"
+  },
+  "camera": {
+    "projection": "perspective",
+    "fieldOfViewDegrees": 38,
+    "near": 0.1,
+    "far": 100,
+    "target": [
+      0,
+      0,
+      0
+    ]
+  },
+  "apparatus": {
+    "speaker": {
+      "position": [
+        -1.35,
+        0.18,
+        0.1
+      ],
+      "aimTarget": [
+        0,
+        0,
+        0
+      ]
+    },
+    "plate": {
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "radius": 1,
+      "frontNormal": [
+        0,
+        0,
+        1
+      ]
+    },
+    "microphone": {
+      "position": [
+        1.34,
+        -0.12,
+        0.42
+      ],
+      "aimTarget": [
+        0,
+        0,
+        0
+      ]
+    },
+    "cable": {
+      "direction": "microphone-to-feedback-to-speaker"
+    }
+  },
+  "readOrder": [
+    "speaker",
+    "plate",
+    "microphone",
+    "feedback-loop",
+    "volume"
+  ],
+  "inputCount": 1,
+  "outputCount": 1
+} as const) satisfies SceneSpec;

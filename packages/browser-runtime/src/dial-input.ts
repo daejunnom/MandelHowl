@@ -20,6 +20,16 @@ export function isDialKeyboardKey(key: string): key is DialKeyboardKey {
   return DIAL_KEYBOARD_KEY_SET.has(key);
 }
 
+/**
+ * One physical gesture owns the dial until its matching end, cancel, or lost
+ * capture event. Secondary touch/pen contacts must never replace that owner.
+ */
+export function canStartDialPointerGesture(
+  activePointerId: number | null,
+): boolean {
+  return activePointerId === null;
+}
+
 export interface DialPointerCommandInput {
   readonly type: "pointer-start" | "pointer-move";
   readonly clientX: number;
@@ -75,6 +85,39 @@ export interface UiInputEventIdScope {
   related(): string;
 }
 
+function numberIdentity(value: number | undefined): string {
+  return value === undefined ? "" : String(value);
+}
+
+function commandIdentity(command: DialCommand): string {
+  switch (command.type) {
+    case "pointer-start":
+    case "pointer-move":
+      return [
+        numberIdentity(command.point.x),
+        numberIdentity(command.point.y),
+        numberIdentity(command.center.x),
+        numberIdentity(command.center.y),
+        numberIdentity(command.deadZoneRadius),
+      ].join(",");
+    case "keyboard":
+      return command.key;
+    case "wheel":
+      return numberIdentity(command.deltaY);
+    case "nudge":
+      return numberIdentity(command.deltaRadians);
+    case "set-frequency":
+      return numberIdentity(command.frequencyHz);
+    case "pointer-end":
+    case "pointer-cancel":
+      return "";
+    case "advance":
+      return numberIdentity(command.deltaSeconds);
+    case "reset":
+      return numberIdentity(command.frequencyHz);
+  }
+}
+
 /**
  * Stable event identity shared by React and Svelte adapters.
  *
@@ -94,7 +137,7 @@ export function createUiInputEventIdScope(
         "timestampMs" in command ? command.timestampMs : undefined;
       const inputEventId =
         typeof timestampMs === "number" && Number.isFinite(timestampMs)
-          ? `${command.type}:${timestampMs}`
+          ? `${command.type}:${timestampMs}:${commandIdentity(command)}`
           : fallback();
       currentInputEventId = inputEventId;
       queueMicrotask(() => {

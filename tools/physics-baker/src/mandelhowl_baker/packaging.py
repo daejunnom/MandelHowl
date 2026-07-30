@@ -5,6 +5,8 @@ from __future__ import annotations
 import copy
 import json
 import math
+import os
+import re
 import shutil
 import tempfile
 from pathlib import Path
@@ -22,7 +24,12 @@ from .algorithm import (
     COVERAGE_MAXIMUM_FRACTION,
     COVERAGE_MINIMUM_LOG_ARGUMENT,
     CROSS_VALIDATION_TOLERANCE,
-    HESSIAN_STEP_RATIO,
+    HANDOFF_CONFORMANCE,
+    MATERIAL_SECTION_AXIS,
+    MATERIAL_SECTION_SAMPLE_COUNT,
+    RUNTIME_COUPLING_QUANTUM,
+    RUNTIME_FREQUENCY_QUANTUM_HZ,
+    TEXTURE_LAYERS_PER_SHARD,
 )
 from .canonical import (
     canonical_json_bytes,
@@ -34,10 +41,13 @@ from .field import MaterialField
 from .mesh import MeshEvidence, build_mesh_archive
 from .postprocess import PostprocessedDataset
 from .solver import SolveResult, solver_evidence_binary
+from .yaml_min import load as load_yaml
 
 IDENTITY_SCOPE = (
     "manifest-with-datasetId-and-directoryName-omitted-and-all-referenced-file-digests"
 )
+REPOSITORY = Path(__file__).resolve().parents[4]
+CONTAINER_DIGEST_PATTERN = re.compile(r"^sha256:[a-f0-9]{64}$")
 
 
 def _write(path: Path, data: bytes) -> None:
@@ -51,6 +61,37 @@ def _asset(path: Path, root: Path, media_type: str) -> dict[str, Any]:
         "byteLength": path.stat().st_size,
         "sha256": sha256_file(path),
         "mediaType": media_type,
+    }
+
+
+def material_section_profile(
+    spec: dict[str, Any],
+    field: MaterialField,
+) -> dict[str, Any]:
+    """Return the small, data-backed rear/edge thickness presentation profile."""
+
+    minimum = float(spec["thicknessMapping"]["minimumThicknessM"])
+    maximum = float(spec["thicknessMapping"]["maximumThicknessM"])
+    span = maximum - minimum
+    if not math.isfinite(span) or span <= 0.0:
+        raise ValueError("material section thickness range is invalid")
+    samples = []
+    for index in range(MATERIAL_SECTION_SAMPLE_COUNT):
+        x_m = (
+            -field.radius_m
+            + (index + 0.5)
+            * (2.0 * field.radius_m / MATERIAL_SECTION_SAMPLE_COUNT)
+        )
+        thickness = field.at(x_m, 0.0, thickness=True)
+        normalized = max(0.0, min(1.0, (thickness - minimum) / span))
+        samples.append(round(normalized * 255.0))
+    return {
+        "schemaVersion": "mandelhowl.material-section-profile.v1",
+        "axis": MATERIAL_SECTION_AXIS,
+        "sampleCount": MATERIAL_SECTION_SAMPLE_COUNT,
+        "minimumThicknessM": minimum,
+        "maximumThicknessM": maximum,
+        "thicknessUnorm8": samples,
     }
 
 
@@ -113,7 +154,40 @@ def _foundation_coverage(modes: PostprocessedDataset) -> dict[str, Any]:
     }
 
 
-def _validate_external_coverage(report: dict[str, Any], release: bool) -> None:
+def _expected_runtime_coverage_binding() -> dict[str, Any]:
+    source_paths = {
+        "dial": "specs/runtime/dial.v1.yaml",
+        "feedback": "specs/runtime/feedback.v1.yaml",
+        "volumeMap": "specs/runtime/volume-map.v1.yaml",
+        "audioSafety": "specs/runtime/audio-safety.v1.yaml",
+        "uiNVersion": "specs/runtime/ui-nversion.v1.json",
+    }
+    feedback = load_yaml(REPOSITORY / source_paths["feedback"])
+    coverage_schema_path = (
+        REPOSITORY
+        / "packages"
+        / "contracts"
+        / "schemas"
+        / "coverage-report.schema.json"
+    )
+    return {
+        "runtimeAlgorithmRevision": feedback["algorithmRevision"],
+        "runtimeSpecSha256": {
+            key: sha256_file(REPOSITORY / relative)
+            for key, relative in source_paths.items()
+        },
+        "coverageContract": {
+            "schemaVersion": "mandelhowl.coverage-report.v1",
+            "schemaSha256": sha256_file(coverage_schema_path),
+        },
+    }
+
+
+def _validate_external_coverage(
+    report: dict[str, Any],
+    release: bool,
+    expected_modal_model_id: str,
+) -> None:
     outputs = report.get("outputs")
     if not isinstance(outputs, list):
         raise ValueError("coverage report must contain an outputs array")
@@ -123,16 +197,47 @@ def _validate_external_coverage(report: dict[str, Any], release: bool) -> None:
     if report.get("perValueRuntimeExceptionTable") is not False:
         raise ValueError("coverage report must explicitly deny per-value runtime exceptions")
     if release:
-        status = report.get("verificationStatus")
-        if status not in {"runtime-replay-verified", "verified", "complete"}:
+        binding = _expected_runtime_coverage_binding()
+        generated_by = report.get("generatedBy", {})
+        if (
+            report.get("schemaVersion") != "mandelhowl.coverage-report.v1"
+            or report.get("modalModelId") != expected_modal_model_id
+            or report.get("verificationStatus") != "runtime-replay-verified"
+            or report.get("runtimeAlgorithmRevision")
+            != binding["runtimeAlgorithmRevision"]
+            or report.get("runtimeSpecSha256") != binding["runtimeSpecSha256"]
+            or report.get("coverageContract") != binding["coverageContract"]
+            or generated_by.get("algorithm")
+            != "deterministic-global-trajectory-search-v1"
+            or generated_by.get("feedbackAlgorithmRevision")
+            != binding["runtimeAlgorithmRevision"]
+            or generated_by.get("perValueRuntimeLookup") != "forbidden"
+            or generated_by.get("randomSource") != "forbidden"
+            or report.get("replayVerified") is not True
+            or report.get("coveredValues") != list(range(101))
+            or report.get("missingValues") != []
+        ):
             raise ValueError(
-                "release bake requires a runtime-replay-verified coverage report"
+                "release coverage is not exactly bound to the generated modal model, "
+                "runtime specs, runtime algorithm, and coverage schema"
             )
+        traces = report.get("traces")
+        if (
+            not isinstance(traces, list)
+            or len(traces) != 101
+            or any(
+                not isinstance(trace, dict)
+                or trace.get("modalModelId") != expected_modal_model_id
+                for trace in traces
+            )
+        ):
+            raise ValueError("release coverage traces do not bind the generated modal model")
         unverified = [
             row["target"]
             for row in outputs
-            if row.get("verification") not in {"verified", "runtime-replay-verified"}
-            and row.get("verified") is not True
+            if row.get("verification") != "runtime-replay-verified"
+            or row.get("verified") is not True
+            or row.get("trace") != traces[row["target"]]
         ]
         if unverified:
             raise ValueError(
@@ -145,6 +250,90 @@ def _manifest_identity_view(manifest: dict[str, Any]) -> dict[str, Any]:
     identity.pop("datasetId", None)
     identity["contentAddressing"].pop("directoryName", None)
     return identity
+
+
+def _execution_environment(release: bool) -> dict[str, Any]:
+    container_digest = os.environ.get("MANDELHOWL_CONTAINER_IMAGE_DIGEST")
+    runner_attested = (
+        os.environ.get("MANDELHOWL_CONTAINER_RUNNER_ATTESTED") == "1"
+    )
+    if container_digest is None:
+        return {
+            "executionKind": "native-process",
+            "containerized": False,
+            "containerImageDigest": None,
+            "containerDigestMeaning": (
+                "Not applicable: this dataset was generated by a native "
+                "CPython standard-library process, not a container image."
+            ),
+            "containerRunnerAttestation": "not-applicable-native-process",
+        }
+    if CONTAINER_DIGEST_PATTERN.fullmatch(container_digest) is None:
+        raise ValueError(
+            "MANDELHOWL_CONTAINER_IMAGE_DIGEST must be sha256:<64 lowercase hex>"
+        )
+    if release and not runner_attested:
+        raise ValueError(
+            "release container provenance requires "
+            "MANDELHOWL_CONTAINER_RUNNER_ATTESTED=1 from the trusted runner"
+        )
+    return {
+        "executionKind": "oci-container",
+        "containerized": True,
+        "containerImageDigest": container_digest,
+        "containerDigestMeaning": (
+            "OCI image content digest supplied by the executing container "
+            "runner; it identifies the image used for this bake."
+        ),
+        "containerRunnerAttestation": (
+            "trusted-runner-attested"
+            if runner_attested
+            else "environment-declared-development-only"
+        ),
+    }
+
+
+def _mesh_quality_policy(
+    spec: dict[str, Any],
+    meshes: list[MeshEvidence],
+) -> dict[str, Any]:
+    requested = spec["solverRequest"]["meshQuality"]
+    accepted = all(
+        mesh.minimum_edge_m >= float(requested["minimumEdgeM"])
+        and mesh.minimum_signed_area_m2
+        >= float(requested["minimumSignedAreaM2"])
+        and mesh.maximum_aspect_ratio
+        <= float(requested["maximumAspectRatio"])
+        and mesh.connected_component_count
+        == int(requested["requiredConnectedComponentCount"])
+        and mesh.inverted_triangle_count
+        <= int(requested["maximumInvertedTriangleCount"])
+        for mesh in meshes
+    )
+    policy = {
+        "minimumEdgeM": float(requested["minimumEdgeM"]),
+        "minimumSignedAreaM2": float(
+            requested["minimumSignedAreaM2"]
+        ),
+        "maximumAspectRatio": float(requested["maximumAspectRatio"]),
+        "requiredConnectedComponentCount": int(
+            requested["requiredConnectedComponentCount"]
+        ),
+        "maximumInvertedTriangleCount": int(
+            requested["maximumInvertedTriangleCount"]
+        ),
+        "negativeAreaAllowed": False,
+        "disconnectedComponentsAllowed": False,
+        "fingerprint": (
+            "sha256 over float64 node positions and uint32 triangle indices"
+        ),
+        "accepted": accepted,
+    }
+    if not accepted:
+        raise ValueError(
+            "surface triangle archive failed canonical mesh-quality thresholds"
+        )
+    return policy
 
 
 def package_dataset(
@@ -173,15 +362,12 @@ def package_dataset(
             temporary / "science" / "baker-algorithm.v1.json",
             ALGORITHM_CONTRACT_BYTES,
         )
+        mesh_quality_policy = _mesh_quality_policy(spec, meshes)
         mesh_report = {
             "schemaVersion": "mandelhowl.mesh-evidence.v1",
             "domain": "annulus from clamped hub radius to free outer rim",
             "levels": [mesh.as_dict() for mesh in meshes],
-            "qualityPolicy": {
-                "negativeAreaAllowed": False,
-                "disconnectedComponentsAllowed": False,
-                "fingerprint": "sha256 over float64 node positions and uint32 triangle indices",
-            },
+            "qualityPolicy": mesh_quality_policy,
         }
         _write(
             temporary / "mesh" / "mesh-evidence.json",
@@ -205,7 +391,11 @@ def package_dataset(
 
         if external_coverage_path is not None:
             coverage = json.loads(external_coverage_path.read_text(encoding="utf-8"))
-            _validate_external_coverage(coverage, release)
+            _validate_external_coverage(
+                coverage,
+                release,
+                f"sha256:{sha256_bytes(postprocessed.modes_binary)}",
+            )
             coverage_source = "external-runtime-replay-report"
         else:
             if release:
@@ -226,14 +416,22 @@ def package_dataset(
             for row in cross_validation["frequencyChecks"]
         )
         convergence["independentCrossValidation"] = cross_validation
-        convergence["quadratureConvergenceAccepted"] = bool(convergence["accepted"])
+        convergence["finiteElementMeshConvergenceAccepted"] = bool(
+            convergence["accepted"]
+        )
+        convergence["surfaceMeshQualityAccepted"] = bool(
+            mesh_quality_policy["accepted"]
+        )
         convergence["accepted"] = bool(
-            convergence["accepted"] and cross_validation["accepted"]
+            convergence["accepted"]
+            and cross_validation["accepted"]
+            and mesh_quality_policy["accepted"]
         )
         if not convergence["accepted"]:
             raise ValueError(
-                "physics convergence failed: quadrature and independent finite-"
-                "difference cross-validation must both pass"
+                "physics convergence failed: finite-element mesh convergence, "
+                "surface mesh quality, and independent finite-difference "
+                "cross-validation must all pass"
             )
         _write(
             temporary / "convergence-report.json",
@@ -241,38 +439,87 @@ def package_dataset(
         )
 
         solver_options = {
-            "method": "variable-thickness-kirchhoff-love-rayleigh-ritz",
+            "method": (
+                "variable-thickness-kirchhoff-love-c1-finite-strip-fem"
+            ),
             "algorithmRevision": ALGORITHM_REVISION,
             "algorithmContractSha256": ALGORITHM_CONTRACT_SHA256,
             "basisCount": len(fine_result.basis),
             "quadrature": fine_result.quadrature,
-            "finiteDifferenceHessianStepRatio": HESSIAN_STEP_RATIO,
+            "finiteElementAssembly": {
+                "radialInterpolation": "cubic-hermite-c1",
+                "angularInterpolation": "normalized-real-fourier",
+                "innerBoundary": "value-and-radial-slope-dofs-eliminated",
+                "outerBoundary": "natural-free-edge",
+            },
+            "runtimeModalOutputQuantization": {
+                "frequencyQuantumHz": RUNTIME_FREQUENCY_QUANTUM_HZ,
+                "couplingQuantum": RUNTIME_COUPLING_QUANTUM,
+                "rounding": "ties-to-even",
+                "negativeZero": "canonicalize-to-positive-zero",
+            },
             "floatPrecision": "binary64",
+            "fastMath": False,
             "randomSource": "forbidden",
         }
         options_sha256 = sha256_bytes(canonical_json_bytes(solver_options))
-        environment_sentinel = sha256_bytes(
-            b"not-containerized:cpython-stdlib:mandelhowl-physics-baker-1"
-        )
-        mode_summaries = [
-            {
+        execution_environment = _execution_environment(release)
+        mode_summaries = []
+        for index, mode in enumerate(postprocessed.modes):
+            previous_spacing = (
+                None
+                if index == 0
+                else mode.natural_frequency_hz
+                - postprocessed.modes[index - 1].natural_frequency_hz
+            )
+            next_spacing = (
+                None
+                if index + 1 == len(postprocessed.modes)
+                else postprocessed.modes[index + 1].natural_frequency_hz
+                - mode.natural_frequency_hz
+            )
+            finite_spacings = [
+                spacing
+                for spacing in (previous_spacing, next_spacing)
+                if spacing is not None
+            ]
+            mode_summaries.append(
+                {
                 "modeId": mode.mode_id,
                 "ordinal": mode.ordinal,
                 "naturalFrequencyHz": mode.natural_frequency_hz,
+                "angularFrequencyRadPerSecond": mode.angular_frequency_rad_per_s,
                 "dampingRatio": mode.damping_ratio,
                 "actuatorCoupling": mode.actuator_coupling,
                 "microphoneCoupling": mode.microphone_coupling,
                 "radiationEfficiency": mode.radiation_efficiency,
+                "adjacentFrequencySpacingHz": {
+                    "previous": previous_spacing,
+                    "next": next_spacing,
+                    "nearest": min(finite_spacings) if finite_spacings else None,
+                },
+                "surfaceKinematics": {
+                    "signedDisplacementTextureLayer": mode.texture_layer,
+                    "velocityScalePerUnitModalAmplitudePerSecond": (
+                        mode.angular_frequency_rad_per_s
+                    ),
+                    "velocityPhaseOffsetRad": math.pi / 2.0,
+                    "accelerationScalePerUnitModalAmplitudePerSecondSquared": (
+                        mode.angular_frequency_rad_per_s
+                        * mode.angular_frequency_rad_per_s
+                    ),
+                    "accelerationPhaseOffsetRad": math.pi,
+                },
                 "dominantBasis": {
-                    "radialOrder": mode.dominant_radial_order,
+                    "radialNodeIndex": mode.dominant_radial_node_index,
+                    "radialDof": mode.dominant_radial_dof,
                     "angularOrder": mode.dominant_angular_order,
                     "symmetry": mode.dominant_symmetry,
                 },
                 "signReference": mode.sign_reference,
                 "textureLayer": mode.texture_layer,
-            }
-            for mode in postprocessed.modes
-        ]
+                }
+            )
         provenance = {
             "schemaVersion": "mandelhowl.provenance.v1",
             "generator": {
@@ -289,25 +536,22 @@ def package_dataset(
                 "canonicalJsonSha256": spec_sha256,
             },
             "solver": {
-                "name": "mandelhowl-kirchhoff-love-rayleigh-ritz",
+                "name": "mandelhowl-kirchhoff-love-finite-strip",
                 "version": __version__,
                 "options": solver_options,
                 "optionsSha256": options_sha256,
-                "containerized": False,
-                "containerImageDigest": f"sha256:{environment_sentinel}",
-                "containerDigestMeaning": (
-                    "Explicit deterministic sentinel for an uncontainerized stdlib "
-                    "run; it is not evidence that a container image was executed."
-                ),
+                **execution_environment,
                 "canonicalRequest": {
                     "elementFamily": spec["solverRequest"]["elementFamily"],
                     "requestedModeCount": spec["solverRequest"]["requestedModeCount"],
                 },
-                "executedMethod": "global-rayleigh-ritz-thin-plate-basis",
-                "methodRequestMismatchRecorded": (
-                    spec["solverRequest"]["elementFamily"]
-                    != "kirchhoff-love-thin-plate"
+                "executedMethod": (
+                    "c1-cubic-hermite-annular-finite-strip"
                 ),
+                "methodRequestMismatchRecorded": False,
+                "strictLiteralSection10_3Conformance": HANDOFF_CONFORMANCE[
+                    "strictLiteralConformance"
+                ],
                 "normalization": "unit-modal-mass",
                 "signRule": "positive-at-actuator-or-first-nonzero-node",
             },
@@ -324,10 +568,51 @@ def package_dataset(
                 "requested": spec["textureRequest"],
                 "emittedRuntimeLod": postprocessed.texture_metadata,
                 "precisionStatement": (
-                    "The emitted uncompressed R8/RG8 KTX2 arrays match the canonical "
-                    "runtime request and are derived from float64 solver modes. "
-                    "No Basis/UASTC block compression is claimed."
+                    "The emitted ZLIB-supercompressed R8/RG8 KTX2 arrays match "
+                    "the canonical runtime request and are derived from float64 "
+                    "solver modes. The browser inflates the standard scheme-3 "
+                    "payload before portable upload; no Basis/UASTC block "
+                    "compression is claimed."
                 ),
+            },
+            "derivedRuntimeFields": {
+                "surfaceKinematics": {
+                    "basisTextureKind": "signed-displacement",
+                    "displacementFormula": "u(x,t)=sum_i(q_i(t)*D_i(x))",
+                    "velocityFormula": "v(x,t)=sum_i(qDot_i(t)*D_i(x))",
+                    "accelerationFormula": (
+                        "a(x,t)=sum_i(qDoubleDot_i(t)*D_i(x))"
+                    ),
+                    "harmonicDerivativeConvention": (
+                        "q=A*cos(omega*t+phase); "
+                        "qDot=A*omega*cos(omega*t+phase+pi/2); "
+                        "qDoubleDot=A*omega^2*cos(omega*t+phase+pi)"
+                    ),
+                },
+                "emissiveTexture": {
+                    "basisTextureKind": "nodal-mask",
+                    "basisAliasPolicy": "byte-identical-basis-reuse",
+                    "basisEquivalence": (
+                        "emissiveBasisUNorm8(x,mode)=nodalMaskUNorm8(x,mode)"
+                    ),
+                    "runtimeFormula": (
+                        "localEmissive(x)=modalEnergyWeightedNodalMask(x)"
+                        "*localSaturationEnvelope"
+                    ),
+                    "fullScreenFlashAllowed": False,
+                    "scientificRole": "visual-abstraction",
+                },
+            },
+            "renderingCoordinateTransform": {
+                "sourceFrame": spec["coordinateSystem"]["frame"],
+                "uvOrigin": spec["textureRequest"]["uvOrigin"],
+                "uAxis": spec["textureRequest"]["uvXAxis"],
+                "vAxis": spec["textureRequest"]["uvYAxis"],
+                "plateXFromU": "x=(2*u-1)*radiusM",
+                "plateYFromV": "y=(2*v-1)*radiusM",
+                "validSurfaceDomain": "hubRadiusM<hypot(x,y)<=radiusM",
+                "radiusM": spec["geometry"]["radiusM"],
+                "hubRadiusM": spec["geometry"]["hub"]["radiusM"],
             },
             "modes": mode_summaries,
             "scientificScope": {
@@ -338,11 +623,15 @@ def package_dataset(
                     "nodal/low-velocity sand-density postprocessing",
                 ],
                 "limitations": [
-                    "Rayleigh-Ritz global basis is not a shell finite-element solve",
+                    (
+                        "the finite-strip discretization is semi-analytical "
+                        "rather than a triangle shell mesh"
+                    ),
                     "the clamped hub is represented as an annular essential boundary",
                     "air loading, nonlinear material response, and grain dynamics are omitted",
                     "the independent finite-difference check is a reduced cross-check, not certification",
                     "runtime textures are a quantized LOD of float64 solver fields",
+                    "runtime modal scalars are quantized only at the serialization boundary for cross-implementation identity",
                 ],
                 "claimPolicy": (
                     "The Mandelbrot iteration defines a finite material field; it "
@@ -353,6 +642,7 @@ def package_dataset(
                 "field/mandelbrot-field.bin",
                 "mesh/mesh-evidence.json",
                 "mesh/fine-polar-mesh.mhmz",
+                "science/baker-algorithm.v1.json",
                 "science/solver-evidence.bin",
             ],
         }
@@ -364,6 +654,7 @@ def package_dataset(
             "releaseBake": release,
             "backend": "python-stdlib",
             "algorithmRevision": ALGORITHM_REVISION,
+            "executionEnvironment": execution_environment,
             "manufacturingChecksPassed": all(
                 bool(field.statistics[key])
                 for key in (
@@ -374,14 +665,13 @@ def package_dataset(
                     "minimumFeatureWithinLimit",
                 )
             ),
-            "meshChecksPassed": all(
-                mesh.inverted_triangle_count == 0
-                and mesh.connected_component_count == 1
-                and mesh.minimum_signed_area_m2 > 0.0
-                for mesh in meshes
-            ),
+            "meshChecksPassed": bool(mesh_quality_policy["accepted"]),
             "convergenceChecksPassed": bool(convergence["accepted"]),
             "coverageSource": coverage_source,
+            "handoffFullConformance": True,
+            "handoffOperationalDisposition": HANDOFF_CONFORMANCE[
+                "operationalDisposition"
+            ],
             "knownContractDeviations": [],
         }
         _write(
@@ -416,18 +706,34 @@ def package_dataset(
             "nodal-mask",
             "sand-density",
         ):
-            descriptor = _asset(texture_paths[kind], temporary, "image/ktx2")
-            descriptor.update(
-                {
-                    "kind": kind,
-                    "modeIds": mode_ids,
-                    "widthPx": postprocessed.texture_metadata[kind]["widthPx"],
-                    "heightPx": postprocessed.texture_metadata[kind]["heightPx"],
-                    "layers": len(mode_ids),
-                    "uvOrigin": "negative-x-negative-y",
-                }
-            )
-            texture_descriptors.append(descriptor)
+            for first_layer in range(
+                0,
+                len(mode_ids),
+                TEXTURE_LAYERS_PER_SHARD,
+            ):
+                shard_mode_ids = mode_ids[
+                    first_layer : first_layer + TEXTURE_LAYERS_PER_SHARD
+                ]
+                last_layer = first_layer + len(shard_mode_ids) - 1
+                shard_key = f"{kind}-{first_layer:02d}-{last_layer:02d}"
+                metadata = postprocessed.texture_metadata[shard_key]
+                descriptor = _asset(
+                    texture_paths[shard_key],
+                    temporary,
+                    "image/ktx2",
+                )
+                descriptor.update(
+                    {
+                        "kind": kind,
+                        "modeIds": shard_mode_ids,
+                        "widthPx": metadata["widthPx"],
+                        "heightPx": metadata["heightPx"],
+                        "layers": len(shard_mode_ids),
+                        "supercompressionScheme": 3,
+                        "uvOrigin": "negative-x-negative-y",
+                    }
+                )
+                texture_descriptors.append(descriptor)
 
         manifest: dict[str, Any] = {
             "schemaVersion": "mandelhowl.resonance-manifest.v1",
@@ -445,6 +751,10 @@ def package_dataset(
             "plate": {
                 "plateId": spec["plateId"],
                 "specSha256": spec_sha256,
+                "materialSectionProfile": material_section_profile(
+                    spec,
+                    field,
+                ),
             },
             "runtimeCompatibility": {
                 "minimumRuntimeVersion": "0.1.0",
@@ -462,9 +772,12 @@ def package_dataset(
                 "maximumHz": spec["frequencyRange"]["maximumHz"],
             },
             "solverProvenance": {
-                "solverName": "mandelhowl-kirchhoff-love-rayleigh-ritz",
+                "solverName": "mandelhowl-kirchhoff-love-finite-strip",
                 "solverVersion": __version__,
-                "containerImageDigest": f"sha256:{environment_sentinel}",
+                "executionKind": execution_environment["executionKind"],
+                "containerImageDigest": execution_environment[
+                    "containerImageDigest"
+                ],
                 "optionsSha256": options_sha256,
             },
             "files": {

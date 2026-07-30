@@ -7,7 +7,7 @@ use mandelhowl_baker_native::dataset::{json_string, validate_dataset_semantics};
 use mandelhowl_baker_native::generator::{GenerateOptions, generate};
 use mandelhowl_baker_native::ktx2::write_ktx2_array;
 use mandelhowl_baker_native::sha256::{digest, hex};
-use mandelhowl_baker_native::solver::build_basis;
+use mandelhowl_baker_native::solver::{build_basis, hermite_shapes};
 use mandelhowl_baker_native::{MODE_RECORD_BYTES, decode_modes_v1};
 
 const EXIT_USAGE_OR_DATA: u8 = 2;
@@ -50,13 +50,30 @@ fn validate(dataset_root: &Path) -> Result<(), String> {
 
 fn self_test() -> Result<(), String> {
     let algorithm = Algorithm::load()?;
-    if build_basis(&algorithm).len() != 64 {
-        return Err("basis contract does not contain 64 functions".to_owned());
+    if [
+        build_basis(3, 7)?.len(),
+        build_basis(4, 8)?.len(),
+        build_basis(5, 9)?.len(),
+    ] != [90, 136, 190]
+    {
+        return Err("finite-strip basis dimensions are incompatible".to_owned());
+    }
+    let start = hermite_shapes(0.0, 0.03)?;
+    let end = hermite_shapes(1.0, 0.03)?;
+    if start.map(|row| row[0]) != [1.0, 0.0, 0.0, 0.0]
+        || end.map(|row| row[0]) != [0.0, 0.0, 1.0, 0.0]
+        || start.map(|row| row[1]) != [0.0, 1.0, 0.0, 0.0]
+        || end.map(|row| row[1]) != [0.0, 0.0, 0.0, 1.0]
+    {
+        return Err("finite-strip Hermite endpoint identities failed".to_owned());
     }
     if hex(&digest(b"abc")) != "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad" {
         return Err("SHA-256 self-test failed".to_owned());
     }
-    let texture = write_ktx2_array(2, 2, 1, 1, &[0, 64, 128, 255])?;
+    let texture_pixels = (0..32 * 32)
+        .map(|index| ((index / 16) % 16) as u8)
+        .collect::<Vec<_>>();
+    let texture = write_ktx2_array(32, 32, 1, 1, &texture_pixels)?;
     if texture.len() < 108 || &texture[..12] != b"\xabKTX 20\xbb\r\n\x1a\n" {
         return Err("KTX2 writer self-test failed".to_owned());
     }
@@ -77,7 +94,7 @@ fn self_test() -> Result<(), String> {
         "{{\"schemaVersion\":\"mandelhowl.native-self-test.v1\",\
          \"backend\":\"rust-native\",\"status\":\"pass\",\
          \"algorithmRevision\":{},\"algorithmContractSha256\":{},\
-         \"checks\":4}}",
+         \"checks\":7}}",
         json_string(&algorithm.revision),
         json_string(&algorithm.contract_sha256),
     );
@@ -114,30 +131,6 @@ fn run_generate(arguments: Vec<String>) -> Result<(), String> {
             }
             "--texture-size" => {
                 options.texture_size = Some(integer_argument(&arguments, index, flag)?);
-                index += 2;
-            }
-            "--coarse-radial" => {
-                options.coarse_radial = integer_argument(&arguments, index, flag)?;
-                index += 2;
-            }
-            "--coarse-angular" => {
-                options.coarse_angular = integer_argument(&arguments, index, flag)?;
-                index += 2;
-            }
-            "--medium-radial" => {
-                options.medium_radial = integer_argument(&arguments, index, flag)?;
-                index += 2;
-            }
-            "--medium-angular" => {
-                options.medium_angular = integer_argument(&arguments, index, flag)?;
-                index += 2;
-            }
-            "--fine-radial" => {
-                options.fine_radial = integer_argument(&arguments, index, flag)?;
-                index += 2;
-            }
-            "--fine-angular" => {
-                options.fine_angular = integer_argument(&arguments, index, flag)?;
                 index += 2;
             }
             _ => return Err(format!("generate received unknown option {flag:?}")),

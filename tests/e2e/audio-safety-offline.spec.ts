@@ -1,5 +1,8 @@
 import { expect, test } from "@playwright/test";
-import { GENERATED_AUDIO_SAFETY_SPEC } from "../../packages/contracts/src";
+import {
+  GENERATED_AUDIO_SAFETY_SPEC,
+  GENERATED_DIAL_SPEC,
+} from "../../packages/contracts/src";
 import type { OfflineAudioSafetySweep } from "../../packages/audio-engine/src";
 
 test("renders the canonical audio chain below peak and RMS limits", async ({
@@ -18,8 +21,21 @@ test("renders the canonical audio chain below peak and RMS limits", async ({
     "mandelhowl.offline-audio-safety-sweep.v1",
   );
   expect(sweep.frequenciesHz).toEqual([
-    55, 110, 220, 440, 1_000, 3_000, 6_000,
+    55,
+    110,
+    220,
+    440,
+    1_000,
+    3_000,
+    Math.min(
+      GENERATED_DIAL_SPEC.mapping.maximumFrequencyHz,
+      8_000,
+    ),
   ]);
+  expect(sweep.sourceVoiceCount).toBe(
+    1 + GENERATED_AUDIO_SAFETY_SPEC.modalTimbre.maximumVoices,
+  );
+  expect(sweep.negativeModalGainExercised).toBe(true);
   expect(sweep.maximumRmsDbfs).toBeLessThanOrEqual(
     GENERATED_AUDIO_SAFETY_SPEC.rmsLimiter.maximumRmsDbfs,
   );

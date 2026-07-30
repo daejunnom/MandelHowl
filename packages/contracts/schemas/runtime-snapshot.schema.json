@@ -14,6 +14,7 @@
     "simulationTimeSeconds",
     "dial",
     "modes",
+    "activeModeId",
     "microphone",
     "feedback",
     "regime",
@@ -53,7 +54,7 @@
       }
     },
     "activeModeId": {
-      "description": "Mode captured by the current drive response, or null when no mode crosses the capture threshold. Current producers always emit this additive v1 field; omission remains valid for stored v1 payload compatibility.",
+      "description": "Mode captured by the current drive response, or null when no mode crosses the capture threshold.",
       "oneOf": [
         {
           "type": "string",
@@ -143,6 +144,8 @@
       "additionalProperties": false,
       "required": [
         "modeId",
+        "naturalFrequencyHz",
+        "audibleWeightNormalized",
         "amplitudeNormalized",
         "phaseRad",
         "energyNormalized"
@@ -151,6 +154,15 @@
         "modeId": {
           "type": "string",
           "minLength": 1
+        },
+        "naturalFrequencyHz": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "audibleWeightNormalized": {
+          "type": "number",
+          "minimum": -1,
+          "maximum": 1
         },
         "amplitudeNormalized": {
           "type": "number",
@@ -288,7 +300,7 @@
       "properties": {
         "code": {
           "type": "string",
-          "pattern": "^[A-Z][A-Z0-9_]*$"
+          "pattern": "^[A-Z][A-Z0-9]*(?:[-_][A-Z0-9]+)*$"
         },
         "evidenceState": {
           "enum": ["confirmed", "needs_evidence", "inconclusive"]

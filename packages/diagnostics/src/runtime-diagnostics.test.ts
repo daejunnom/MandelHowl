@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { DIAGNOSTIC_CODE_PATTERN } from "../../contracts/src";
 import type { RuntimeCapabilities } from "./runtime-diagnostics";
 import {
   createDiagnostic,
@@ -90,6 +91,63 @@ describe("runtime diagnostics", () => {
     expect(presented.developerLines[0]).not.toContain("authorizationToken=private");
     expect(presented.developerLines[0]).toContain(
       "authorizationToken=[redacted]",
+    );
+  });
+
+  it("enforces stable codes while accepting both runtime and dataset forms", () => {
+    expect(
+      createDiagnostic({
+        code: "MH-AUDIO-GRAPH-FAILED",
+        severity: "warning",
+        messageKey: "audio.graphFailed",
+      }).code,
+    ).toBe("MH-AUDIO-GRAPH-FAILED");
+    expect(
+      createDiagnostic({
+        code: "DATASET_HASH_MISMATCH",
+        severity: "fatal",
+        messageKey: "dataset.hashMismatch",
+      }).code,
+    ).toBe("DATASET_HASH_MISMATCH");
+    expect(() =>
+      createDiagnostic({
+        code: "runtime.snapshot.invalid",
+        severity: "warning",
+        messageKey: "runtime.invalid",
+      }),
+    ).toThrow(/Invalid diagnostic code/);
+    expect(DIAGNOSTIC_CODE_PATTERN.test("MH-UI-SPLIT-BRAIN")).toBe(true);
+  });
+
+  it("redacts embedded credentials and broad browser environment evidence", () => {
+    const presented = presentDiagnostics([
+      createDiagnostic({
+        code: "MH-AUDIO-GRAPH-FAILED",
+        severity: "warning",
+        messageKey: "audio.graphFailed",
+        evidence: [
+          {
+            key: "reason",
+            value:
+              "request failed Authorization: Bearer abc.def; api_key=private",
+            source: "audio",
+          },
+          {
+            key: "userAgent",
+            value: "complete browser fingerprint",
+            source: "window",
+          },
+        ],
+      }),
+    ]);
+    expect(presented.developerLines[0]).not.toContain("abc.def");
+    expect(presented.developerLines[0]).not.toContain("private");
+    expect(presented.developerLines[0]).not.toContain(
+      "complete browser fingerprint",
+    );
+    expect(presented.developerLines[0]).toContain("[redacted]");
+    expect(presented.developerLines[0]).toContain(
+      "[omitted-environment]",
     );
   });
 });

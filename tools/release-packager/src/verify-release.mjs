@@ -1,23 +1,39 @@
 import { createHash } from "node:crypto";
 import { execFileSync } from "node:child_process";
-import { access, lstat, readdir, readFile, stat } from "node:fs/promises";
+import {
+  access,
+  lstat,
+  readdir,
+  readFile,
+  stat,
+} from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
+
+import { verifyAttestationBundle } from "../../baker-supervisor/src/attestation-bundle.mjs";
+import { collectBakerSourceInventory } from "../../baker-supervisor/src/source-tree.mjs";
+import { verifyContainerAttestationEnvelope } from "../../container-baker-runner/src/attestation-envelope.mjs";
+import { resolvePinnedAttestation } from "./pinned-attestation.mjs";
+import {
+  assertDatasetReleaseBindings,
+  assertReleaseProvenanceBindings,
+} from "./release-contract-bindings.mjs";
+import {
+  assertReleaseInputBindings,
+  collectReleaseInputDigests,
+} from "./release-input-bindings.mjs";
+import { assertSecurityHeadersPolicy } from "./security-headers-policy.mjs";
+import { verifyWebglShaderIntegrity } from "./webgl-shader-integrity.mjs";
 
 const projectRoot = path.resolve(process.cwd());
 const runtimeRoot = path.join(projectRoot, "public", "runtime");
 const manifestPath = path.join(runtimeRoot, "manifest.json");
 const bakerNVersionPolicyPath = "specs/physics/baker-nversion.v1.json";
-const bakerNVersionSourceRoots = [
-  "specs/physics",
-  "tools/baker-supervisor",
-  "tools/physics-baker",
-  "tools/physics-baker-rs",
-  "Cargo.toml",
-  "Cargo.lock",
-  "rust-toolchain.toml",
-  ".github/workflows",
-];
+const handoffVerificationContractPath =
+  "specs/acceptance/handoff-verification.v1.json";
+const datasetReleaseSpecPath = "specs/runtime/dataset-release.v1.yaml";
+const datasetReleaseProjectionPath =
+  "packages/contracts/src/generated/dataset-release.generated.ts";
 const uiNVersionSourceInputs = [
   ["specSha256", "specs/runtime/ui-nversion.v1.json"],
   ["svelteEntrySha256", "apps/svelte-ui/src/entry.ts"],
@@ -40,13 +56,6 @@ function git(...args) {
     cwd: projectRoot,
     encoding: "utf8",
   }).trim();
-}
-
-function gitPathList(...args) {
-  const output = execFileSync("git", args, {
-    cwd: projectRoot,
-  });
-  return output.toString("utf8").split("\0").filter(Boolean);
 }
 
 function comparePath(left, right) {
@@ -75,71 +84,27 @@ function assertBakerNVersionPolicy(policy) {
 
 function parseArguments(arguments_) {
   let requireClean = false;
-  let nVersionAttestation = null;
+  let pinnedNVersionAttestation = false;
   for (let index = 0; index < arguments_.length; index += 1) {
     const argument = arguments_[index];
     if (argument === "--require-clean") {
       requireClean = true;
-    } else if (argument === "--nversion-attestation") {
-      if (nVersionAttestation !== null || index + 1 >= arguments_.length) {
+    } else if (argument === "--pinned-nversion-attestation") {
+      if (pinnedNVersionAttestation) {
         throw new Error(
-          "--nversion-attestation requires exactly one report path.",
+          "--pinned-nversion-attestation may be specified only once.",
         );
       }
-      nVersionAttestation = arguments_[index + 1];
-      index += 1;
+      pinnedNVersionAttestation = true;
+    } else if (argument === "--nversion-attestation") {
+      throw new Error(
+        "External N-version attestation paths are forbidden; use the committed pinned attestation.",
+      );
     } else {
       throw new Error(`Unknown release verification option: ${argument}`);
     }
   }
-  return { requireClean, nVersionAttestation };
-}
-
-async function collectBakerNVersionSourceTree() {
-  const candidates = gitPathList(
-    "ls-files",
-    "-z",
-    "--cached",
-    "--others",
-    "--exclude-standard",
-    "--",
-    ...bakerNVersionSourceRoots,
-  );
-  const files = [];
-  for (const sourcePath of new Set(candidates)) {
-    const normalizedPath = sourcePath.replaceAll("\\", "/");
-    const absolutePath = path.join(projectRoot, normalizedPath);
-    let metadata;
-    try {
-      metadata = await lstat(absolutePath);
-    } catch (error) {
-      if (error?.code === "ENOENT") {
-        continue;
-      }
-      throw error;
-    }
-    if (!metadata.isFile()) {
-      throw new Error(
-        `Baker N-version source must be a regular file: ${normalizedPath}`,
-      );
-    }
-    files.push({
-      path: normalizedPath,
-      sha256: sha256(await readFile(absolutePath)),
-    });
-  }
-  files.sort((left, right) => comparePath(left.path, right.path));
-  const canonicalInventory = files
-    .map((file) => `${file.path}\0${file.sha256}\n`)
-    .join("");
-  return {
-    schemaVersion: "mandelhowl.baker-source-tree.v1",
-    digestAlgorithm: "sha256(path-nul-content-sha256-lf:v1)",
-    sha256: sha256(Buffer.from(canonicalInventory, "utf8")),
-    fileCount: files.length,
-    roots: bakerNVersionSourceRoots,
-    files,
-  };
+  return { requireClean, pinnedNVersionAttestation };
 }
 
 async function datasetAlgorithmCompatibility(
@@ -178,6 +143,7 @@ function assertNVersionAttestation(
   algorithmContractSha256,
   manifest,
   manifestSha256,
+  currentSourceTree,
 ) {
   const expected = [
     [
@@ -193,6 +159,21 @@ function assertNVersionAttestation(
     ["promotionAllowed", report?.promotionAllowed, true],
     ["releaseEligible", report?.releaseEligible, true],
     ["selectedSource", report?.selectedSource, "rust-native"],
+    [
+      "sourceTreeSha256",
+      report?.sourceTreeSha256,
+      currentSourceTree.sha256,
+    ],
+    [
+      "sourceTreeFileCount",
+      report?.sourceTreeFileCount,
+      currentSourceTree.fileCount,
+    ],
+    [
+      "sourceTreeDigestAlgorithm",
+      report?.sourceTreeDigestAlgorithm,
+      currentSourceTree.digestAlgorithm,
+    ],
     ["backends.rust.backend", report?.backends?.rust?.backend, "rust-native"],
     [
       "backends.python.backend",
@@ -268,6 +249,47 @@ function assertNVersionAttestation(
     if (actual !== required) {
       throw new Error(`Baker N-version attestation mismatch: ${label}`);
     }
+  }
+  if (!sameJson(report?.sourceTreeRoots, currentSourceTree.roots)) {
+    throw new Error(
+      "Baker N-version attestation mismatch: sourceTreeRoots",
+    );
+  }
+  if (
+    !sameJson(
+      report?.sourceTreeExcludedPaths,
+      currentSourceTree.excludedPaths,
+    )
+  ) {
+    throw new Error(
+      "Baker N-version attestation mismatch: sourceTreeExcludedPaths",
+    );
+  }
+  const priorLkg = report?.priorLastKnownGood;
+  const priorDatasetId = priorLkg?.datasetId;
+  const priorDirectoryName =
+    typeof priorDatasetId === "string" &&
+    /^sha256:[a-f0-9]{64}$/.test(priorDatasetId)
+      ? priorDatasetId.slice("sha256:".length)
+      : null;
+  if (
+    report?.lastKnownGoodPreserved !== true ||
+    !sameJson(priorLkg, report?.lastKnownGood) ||
+    priorLkg?.valid !== true ||
+    priorLkg?.code !== "MH_BAKER_LKG_VERIFIED" ||
+    !/^[a-f0-9]{64}$/.test(priorLkg?.lockSha256 ?? "") ||
+    priorDirectoryName === null ||
+    typeof priorLkg?.datasetDirectory !== "string" ||
+    priorLkg.datasetDirectory.replaceAll("\\", "/") !==
+      `assets/generated/${priorDirectoryName}` ||
+    !/^[a-f0-9]{64}$/.test(priorLkg?.manifestSha256 ?? "") ||
+    !/^[a-f0-9]{64}$/.test(
+      priorLkg?.exactPackageFingerprintSha256 ?? "",
+    )
+  ) {
+    throw new Error(
+      "Baker N-version attestation prior LKG evidence is missing or invalid.",
+    );
   }
 
   const rustExecutableSha256 = report?.backends?.rust?.executableSha256;
@@ -467,6 +489,14 @@ const lock = JSON.parse(
 const releaseProvenance = JSON.parse(
   await readFile(path.join(runtimeRoot, "release-provenance.json"), "utf8"),
 );
+const [datasetReleaseSpecSource, datasetReleaseProjectionSource, packageJson] =
+  await Promise.all([
+    readFile(path.join(projectRoot, datasetReleaseSpecPath), "utf8"),
+    readFile(path.join(projectRoot, datasetReleaseProjectionPath), "utf8"),
+    readFile(path.join(projectRoot, "package.json"), "utf8").then((source) =>
+      JSON.parse(source),
+    ),
+  ]);
 
 if (manifest.schemaVersion !== "mandelhowl.resonance-manifest.v1") {
   throw new Error(`Unsupported manifest: ${manifest.schemaVersion}`);
@@ -474,23 +504,22 @@ if (manifest.schemaVersion !== "mandelhowl.resonance-manifest.v1") {
 if (!/^sha256:[a-f0-9]{64}$/.test(manifest.datasetId ?? "")) {
   throw new Error("Dataset ID is not content-addressed.");
 }
-const directoryName = manifest.datasetId.slice("sha256:".length);
-if (
-  lock.schemaVersion !== "mandelhowl.dataset-lock.v1" ||
-  lock.datasetId !== manifest.datasetId ||
-  lock.datasetDirectory !== `assets/generated/${directoryName}` ||
-  lock.manifestSha256 !== sha256(manifestBytes)
-) {
-  throw new Error("release/dataset-lock.json does not pin this manifest.");
-}
-if (
-  releaseProvenance.schemaVersion !== "mandelhowl.release-provenance.v3" ||
-  releaseProvenance.datasetId !== manifest.datasetId ||
-  releaseProvenance.datasetManifestSha256 !== sha256(manifestBytes) ||
-  releaseProvenance.webCommit !== git("rev-parse", "HEAD")
-) {
-  throw new Error("Release provenance does not match HEAD and the dataset.");
-}
+assertDatasetReleaseBindings({
+  releaseSpecSource: datasetReleaseSpecSource,
+  generatedProjectionSource: datasetReleaseProjectionSource,
+  lock,
+  manifest,
+  manifestBytes,
+});
+assertReleaseProvenanceBindings({
+  releaseProvenance,
+  manifest,
+  manifestSha256: sha256(manifestBytes),
+  headCommit: git("rev-parse", "HEAD"),
+  headCommitTimestamp: git("show", "-s", "--format=%cI", "HEAD"),
+  currentNodeVersion: process.version,
+  nodeEngine: packageJson.engines?.node,
+});
 
 const algorithmContractBytes = await readFile(
   path.join(projectRoot, "specs", "physics", "baker-algorithm.v1.json"),
@@ -514,6 +543,7 @@ const pinnedDatasetCompatibility = await datasetAlgorithmCompatibility(
   manifest.algorithmRevision,
   algorithmContractSha256,
 );
+const webglShaderIntegrity = verifyWebglShaderIntegrity(projectRoot);
 if (
   manifest.algorithmRevision !== undefined &&
   manifest.algorithmRevision !== algorithmContract.algorithmRevision
@@ -543,12 +573,22 @@ if (
     attestationScope: pinnedDatasetCompatibility.contractBound
       ? "dataset-bound"
       : "implementation-only-legacy",
-    verificationOption: "--nversion-attestation",
+    verificationOption: "--pinned-nversion-attestation",
   })
 ) {
   throw new Error("Release provenance Baker N-version policy mismatch.");
 }
-const bakerNVersionSourceTree = await collectBakerNVersionSourceTree();
+if (
+  !sameJson(
+    releaseProvenance.webglShaderIntegrity,
+    webglShaderIntegrity,
+  )
+) {
+  throw new Error(
+    "Release provenance WebGL shader allowlist binding mismatch.",
+  );
+}
+const bakerNVersionSourceTree = collectBakerSourceInventory(projectRoot);
 if (
   !sameJson(
     releaseProvenance.bakerNVersion?.sourceTree,
@@ -584,22 +624,65 @@ for (const [key, file] of uiNVersionSourceInputs) {
   }
 }
 
-const sourceInputs = [
-  ["packageLockSha256", "package-lock.json"],
-  ["licenseSha256", "LICENSE"],
-  ["thirdPartyNoticesSha256", "THIRD_PARTY_NOTICES.md"],
-  [
-    "thirdPartyLicenseInventorySha256",
-    "release/third-party-license-inventory.json",
-  ],
-  ["securityHeadersSha256", "public/_headers"],
-];
-for (const [key, file] of sourceInputs) {
-  const actual = sha256(await readFile(path.join(projectRoot, file)));
-  if (releaseProvenance.inputs?.[key] !== actual) {
-    throw new Error(`Release provenance input mismatch: ${file}`);
-  }
+const handoffVerificationContractBytes = await readFile(
+  path.join(projectRoot, handoffVerificationContractPath),
+);
+const handoffVerificationContract = JSON.parse(
+  handoffVerificationContractBytes.toString("utf8"),
+);
+if (
+  handoffVerificationContract.schemaVersion !==
+    "mandelhowl.handoff-verification.v1" ||
+  handoffVerificationContract.handoff?.path !== "MandelHowl_핸드오프.md" ||
+  !/^[a-f0-9]{64}$/.test(
+    handoffVerificationContract.handoff?.sha256 ?? "",
+  ) ||
+  handoffVerificationContract.architectureReference?.path !==
+    "MandelHowl_파일_구조.md" ||
+  !/^[a-f0-9]{64}$/.test(
+    handoffVerificationContract.architectureReference?.sha256 ?? "",
+  )
+) {
+  throw new Error("Unsupported whole-handoff verification contract.");
 }
+const handoffSourceSha256 = sha256(
+  await readFile(
+    path.join(projectRoot, handoffVerificationContract.handoff.path),
+  ),
+);
+const architectureReferenceSha256 = sha256(
+  await readFile(
+    path.join(
+      projectRoot,
+      handoffVerificationContract.architectureReference.path,
+    ),
+  ),
+);
+if (
+  handoffSourceSha256 !== handoffVerificationContract.handoff.sha256 ||
+  architectureReferenceSha256 !==
+    handoffVerificationContract.architectureReference.sha256 ||
+  !sameJson(releaseProvenance.acceptance, {
+    schemaVersion: handoffVerificationContract.schemaVersion,
+    verificationContractPath: handoffVerificationContractPath,
+    verificationContractSha256: sha256(handoffVerificationContractBytes),
+    handoffPath: handoffVerificationContract.handoff.path,
+    handoffSha256: handoffVerificationContract.handoff.sha256,
+    architectureReferencePath:
+      handoffVerificationContract.architectureReference.path,
+    architectureReferenceSha256:
+      handoffVerificationContract.architectureReference.sha256,
+  })
+) {
+  throw new Error(
+    "Release provenance whole-handoff acceptance binding mismatch.",
+  );
+}
+
+assertReleaseInputBindings({
+  provenanceInputs: releaseProvenance.inputs,
+  actualDigests: await collectReleaseInputDigests(projectRoot),
+});
 
 if (options.requireClean) {
   if (
@@ -614,11 +697,21 @@ if (options.requireClean) {
 
 let nVersionAttestation = null;
 let nVersionAttestationScope = null;
-if (options.nVersionAttestation !== null) {
-  const attestationPath = path.resolve(
+if (options.pinnedNVersionAttestation) {
+  const pinnedAttestation = resolvePinnedAttestation({
     projectRoot,
-    options.nVersionAttestation,
-  );
+    lock,
+  });
+  const attestationPath = pinnedAttestation.reportPath;
+  const attestationMetadata = await lstat(attestationPath);
+  if (
+    !attestationMetadata.isFile() ||
+    attestationMetadata.isSymbolicLink()
+  ) {
+    throw new Error(
+      "Committed pinned OCI attestation report is not a regular file.",
+    );
+  }
   const attestationBytes = await readFile(attestationPath);
   nVersionAttestation = JSON.parse(attestationBytes.toString("utf8"));
   nVersionAttestationScope = assertNVersionAttestation(
@@ -627,7 +720,24 @@ if (options.nVersionAttestation !== null) {
     algorithmContractSha256,
     manifest,
     sha256(manifestBytes),
+    bakerNVersionSourceTree,
   );
+  if (nVersionAttestationScope !== "dataset-bound") {
+    throw new Error(
+      "Committed OCI release evidence must be bound to the pinned dataset.",
+    );
+  }
+  verifyAttestationBundle({
+    reportPath: attestationPath,
+    report: nVersionAttestation,
+    projectRoot,
+  });
+  verifyContainerAttestationEnvelope({
+    reportPath: attestationPath,
+    reportBytes: attestationBytes,
+    report: nVersionAttestation,
+    expectedManifest: manifest,
+  });
 }
 
 const references = collectAssetReferences(manifest.files);
@@ -719,15 +829,7 @@ const headers = await readFile(
   path.join(projectRoot, "public", "_headers"),
   "utf8",
 );
-for (const required of [
-  "Content-Security-Policy",
-  "Permissions-Policy",
-  "X-Content-Type-Options",
-]) {
-  if (!headers.includes(required)) {
-    throw new Error(`Missing security header: ${required}`);
-  }
-}
+assertSecurityHeadersPolicy(headers);
 
 process.stdout.write(
   `Verified ${references.length} content-addressed assets for ${manifest.datasetId}.\n`,

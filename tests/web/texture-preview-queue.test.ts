@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   activeMode,
   createPlateTexturePreviewQueue,
+  shouldPublishSettledVolumeImmediately,
 } from "../../app/mandelhowl-lab";
 import type { RuntimeSnapshot } from "../../packages/contracts/src";
 import type { VerifiedAssetProgressEvent } from "../../packages/asset-runtime/src";
@@ -37,6 +38,33 @@ function progressEvent(
 }
 
 describe("production sand texture preview queue", () => {
+  it("publishes a newly settled result without waiting for the 24 Hz lane", () => {
+    const measuring = {
+      status: "measuring" as const,
+      value: null,
+    };
+    const settled = {
+      status: "settled" as const,
+      value: 37,
+    };
+
+    expect(
+      shouldPublishSettledVolumeImmediately(measuring, settled),
+    ).toBe(true);
+    expect(
+      shouldPublishSettledVolumeImmediately(settled, {
+        ...settled,
+        value: 38,
+      }),
+    ).toBe(true);
+    expect(
+      shouldPublishSettledVolumeImmediately(settled, settled),
+    ).toBe(false);
+    expect(
+      shouldPublishSettledVolumeImmediately(settled, measuring),
+    ).toBe(false);
+  });
+
   it("presents the immediate capture identity instead of residual dominance", () => {
     const snapshot = {
       activeModeId: "new",

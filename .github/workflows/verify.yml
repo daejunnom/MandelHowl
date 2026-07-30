@@ -33,28 +33,30 @@ jobs:
       - run: node tools/baker-supervisor/src/supervisor.mjs validate --strict
         env:
           MANDELHOWL_NATIVE_BAKER: ${{ github.workspace }}/target/release/mandelhowl-baker-native
-      - name: Full independent generation and semantic differential
+      - name: Fresh Linux native dual-generation quality evidence
         run: >-
           node tools/baker-supervisor/src/supervisor.mjs generate
           --strict
+          --coverage-report tests/runtime/fixtures/reachability-report.json
           --timeout-ms 2400000
           --output-root "${{ runner.temp }}/mandelhowl-nversion-output"
-          --report-file "${{ runner.temp }}/baker-nversion-report.json"
+          --attestation-bundle "${{ runner.temp }}/baker-nversion-attestation"
+          --report-file "${{ runner.temp }}/baker-nversion-attestation/attestation.json"
         env:
           MANDELHOWL_NATIVE_BAKER: ${{ github.workspace }}/target/release/mandelhowl-baker-native
 
-      - name: Upload dual-generation attestation
+      - name: Upload fresh Linux quality attestation
         uses: actions/upload-artifact@v4
         with:
-          name: baker-nversion-attestation
-          path: ${{ runner.temp }}/baker-nversion-report.json
+          name: baker-nversion-quality-attestation
+          path: ${{ runner.temp }}/baker-nversion-attestation
           if-no-files-found: error
           retention-days: 7
 
   full-verification:
     needs: native-baker-nversion
     runs-on: windows-latest
-    timeout-minutes: 45
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
 
@@ -69,18 +71,16 @@ jobs:
 
       - run: npm ci
       - run: npx playwright install chromium
-      - run: npm run verify
 
-      - name: Download dual-generation attestation
-        uses: actions/download-artifact@v4
-        with:
-          name: baker-nversion-attestation
-          path: ${{ runner.temp }}/mandelhowl-nversion-attestation
-
-      - name: Verify release against Linux N-version attestation
+      - name: Verify handoff against committed pinned OCI evidence
         run: >-
-          npm run release:verify:attested --
-          "${{ runner.temp }}/mandelhowl-nversion-attestation/baker-nversion-report.json"
+          npm run handoff:verify --
+          --report "${{ runner.temp }}/mandelhowl-handoff-verification.json"
 
-      - run: npm run release:archive
-      - run: npm run release:archive:check
+      - name: Upload whole-handoff verification report
+        uses: actions/upload-artifact@v4
+        with:
+          name: handoff-verification-report
+          path: ${{ runner.temp }}/mandelhowl-handoff-verification.json
+          if-no-files-found: error
+          retention-days: 7

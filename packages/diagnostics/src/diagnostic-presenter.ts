@@ -105,6 +105,11 @@ function sanitizeEvidenceValue(
   if (/token|secret|password|authorization|cookie/i.test(key)) {
     return "[redacted]";
   }
+  if (
+    /useragent|browserenvironment|installedplugins|screen|referrer/i.test(key)
+  ) {
+    return "[omitted-environment]";
+  }
   const withoutUrlDetails = value.replace(
     /https?:\/\/[^\s,]+/gi,
     (candidate) => {
@@ -120,9 +125,18 @@ function sanitizeEvidenceValue(
     /url|uri|origin|referrer/i.test(key)
       ? withoutUrlDetails.replace(/[?#].*$/, "")
       : withoutUrlDetails;
-  return withoutQuery.length <= 240
-    ? withoutQuery
-    : `${withoutQuery.slice(0, 237)}...`;
+  const withoutEmbeddedSecrets = withoutQuery
+    .replace(
+      /\b(?:bearer)\s+[a-z0-9._~+/=-]+/gi,
+      "Bearer [redacted]",
+    )
+    .replace(
+      /\b(token|secret|password|authorization|cookie|api[-_ ]?key)\s*[:=]\s*[^\s,;]+/gi,
+      "$1=[redacted]",
+    );
+  return withoutEmbeddedSecrets.length <= 240
+    ? withoutEmbeddedSecrets
+    : `${withoutEmbeddedSecrets.slice(0, 237)}...`;
 }
 
 function formatDeveloperLine(record: DiagnosticRecord): string {

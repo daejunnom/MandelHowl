@@ -19,6 +19,10 @@ export type MandelHowlDatasetStatus =
   | "prototype"
   | "error";
 
+export type MandelHowlDatasetPresentationState =
+  | MandelHowlDatasetStatus
+  | "streaming";
+
 export interface MandelHowlPresentedDiagnostic {
   readonly severity: "none" | "info" | "warning" | "fatal";
   readonly title: string | null;
@@ -47,6 +51,31 @@ export interface MandelHowlUiSnapshot {
   readonly renderer: PlateRendererStatus | null;
   readonly diagnostic: MandelHowlPresentedDiagnostic;
   readonly challengeTarget: number | null;
+}
+
+/**
+ * Fail-closed scientific presentation gate shared by both UI versions.
+ *
+ * Loader verification establishes the immutable core/provenance identity.
+ * A view may claim the visible bake only after its renderer has the same
+ * dataset and has verified every texture shard required by the current mode.
+ */
+export function resolveDatasetPresentationState(
+  presentation: Pick<
+    MandelHowlUiSnapshot,
+    "datasetStatus" | "renderer" | "runtime"
+  >,
+): MandelHowlDatasetPresentationState {
+  if (presentation.datasetStatus !== "verified") {
+    return presentation.datasetStatus;
+  }
+  const renderer = presentation.renderer;
+  return renderer !== null &&
+    !renderer.contextLost &&
+    renderer.datasetId === presentation.runtime.datasetId &&
+    renderer.textureReady
+    ? "verified"
+    : "streaming";
 }
 
 export interface MandelHowlUiSnapshotReadable {

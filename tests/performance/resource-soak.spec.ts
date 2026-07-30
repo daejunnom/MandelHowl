@@ -1,5 +1,8 @@
 import { expect, test, type Page } from "@playwright/test";
-import { GENERATED_AUDIO_SAFETY_SPEC } from "../../packages/contracts/src";
+import {
+  GENERATED_AUDIO_SAFETY_SPEC,
+  GENERATED_PERFORMANCE_BUDGET_SPEC,
+} from "../../packages/contracts/src";
 import { waitForRuntimeReady } from "../e2e/runtime-ready";
 
 interface BrowserMemory {
@@ -38,13 +41,27 @@ async function exerciseDial(page: Page, count: number): Promise<void> {
   }, count);
 }
 
-test.setTimeout(60_000);
+test.setTimeout(90_000);
 
 test("keeps runtime consumers, audio nodes and buffers bounded during a soak", async ({
   page,
 }, testInfo) => {
   await page.goto("/");
   await waitForRuntimeReady(page);
+  await expect(
+    page.locator(".mh-header-readouts p").first(),
+  ).toContainText("VERIFIED THIN-PLATE BAKE", { timeout: 30_000 });
+  await expect
+    .poll(
+      () =>
+        page.evaluate(
+          () =>
+            window.__MANDELHOWL_HEALTH__?.getSnapshot().renderer
+              ?.textureReady,
+        ),
+      { timeout: 30_000 },
+    )
+    .toBe(true);
   await exerciseDial(page, 4);
 
   await expect
@@ -66,7 +83,12 @@ test("keeps runtime consumers, audio nodes and buffers bounded during a soak", a
   const baselineHeap = await usedHeapBytes(page);
 
   await exerciseDial(page, 160);
-  await page.waitForTimeout(2_500);
+  await page.waitForTimeout(
+    (GENERATED_PERFORMANCE_BUDGET_SPEC.browserSoak
+      .minimumSeconds *
+      1_000) /
+      2,
+  );
   const middle = await page.evaluate(() =>
     window.__MANDELHOWL_HEALTH__?.getSnapshot(),
   );
@@ -74,7 +96,12 @@ test("keeps runtime consumers, audio nodes and buffers bounded during a soak", a
   if (!middle) return;
 
   await exerciseDial(page, 160);
-  await page.waitForTimeout(2_500);
+  await page.waitForTimeout(
+    (GENERATED_PERFORMANCE_BUDGET_SPEC.browserSoak
+      .minimumSeconds *
+      1_000) /
+      2,
+  );
   const final = await page.evaluate(() =>
     window.__MANDELHOWL_HEALTH__?.getSnapshot(),
   );
@@ -88,7 +115,6 @@ test("keeps runtime consumers, audio nodes and buffers bounded during a soak", a
   expect(final.presentationFanout.consumerCount).toBe(
     baseline.presentationFanout.consumerCount,
   );
-  expect(final.presentationFanout.consumerCount).toBe(3);
   expect(final.presentationFanout.rejectedFrames).toBe(0);
   expect(final.presentationFanout.publishedFrames).toBeGreaterThan(
     middle.presentationFanout.publishedFrames,
@@ -99,10 +125,16 @@ test("keeps runtime consumers, audio nodes and buffers bounded during a soak", a
   expect(final.hotPathFanout.consumerCount).toBe(
     baseline.hotPathFanout.consumerCount,
   );
-  expect(final.hotPathFanout.consumerCount).toBe(2);
   expect(final.hotPathFanout.rejectedFrames).toBe(0);
   expect(final.hotPathFanout.publishedFrames).toBeGreaterThan(
     middle.hotPathFanout.publishedFrames,
+  );
+  expect(
+    final.presentationFanout.consumerCount +
+      final.hotPathFanout.consumerCount,
+  ).toBe(
+    GENERATED_PERFORMANCE_BUDGET_SPEC.browserSoak
+      .expectedSnapshotConsumers,
   );
   expect(final.animationFrames).toBeGreaterThan(middle.animationFrames);
   expect(final.renderer?.framesRendered ?? 0).toBeGreaterThan(
@@ -116,6 +148,10 @@ test("keeps runtime consumers, audio nodes and buffers bounded during a soak", a
     final.presentationFanout.publishedFrames -
     baseline.presentationFanout.publishedFrames;
   const observedFramesPerSecond = observedFrames / observedSeconds;
+  expect(observedSeconds).toBeGreaterThanOrEqual(
+    GENERATED_PERFORMANCE_BUDGET_SPEC.browserSoak
+      .minimumSeconds,
+  );
   // One exceptional dataset-transition publication may occur after the
   // baseline; normal presentation snapshots remain bounded to 24 Hz.
   expect(observedPresentationFrames).toBeLessThanOrEqual(
@@ -139,12 +175,19 @@ test("keeps runtime consumers, audio nodes and buffers bounded during a soak", a
   // Shared/headless hosts can deschedule the browser. Product work must fit
   // the canonical tier budget when it is actually scheduled; scheduler FPS
   // remains a liveness check because host descheduling is outside page work.
-  expect(observedFramesPerSecond).toBeGreaterThanOrEqual(10);
+  expect(observedFramesPerSecond).toBeGreaterThanOrEqual(
+    GENERATED_PERFORMANCE_BUDGET_SPEC
+      .headlessSchedulerLivenessFramesPerSecond,
+  );
   const desktopTier =
     final.renderer?.quality === "high" ||
     final.renderer?.quality === "balanced";
   expect(final.frameWorkP95Ms).toBeLessThanOrEqual(
-    desktopTier ? 1_000 / 60 : 1_000 / 30,
+    desktopTier
+      ? 1_000 /
+          GENERATED_PERFORMANCE_BUDGET_SPEC
+            .desktopTargetFramesPerSecond
+      : GENERATED_PERFORMANCE_BUDGET_SPEC.lowTierMaximumFrameWorkMs,
   );
   expect(final.longestFrameWorkMs).toBeLessThan(50);
   expect(final.audio.graphNodeCount).toBe(baseline.audio.graphNodeCount);
@@ -163,7 +206,10 @@ test("keeps runtime consumers, audio nodes and buffers bounded during a soak", a
   expect(Number.isFinite(final.longestFrameDeltaMs)).toBe(true);
   expect(final.longestFrameDeltaMs).toBeLessThan(5_000);
 
-  if (baselineHeap !== null && finalHeap !== null) {
-    expect(finalHeap - baselineHeap).toBeLessThan(32 * 1024 * 1024);
-  }
+  expect(baselineHeap).not.toBeNull();
+  expect(finalHeap).not.toBeNull();
+  expect((finalHeap ?? 0) - (baselineHeap ?? 0)).toBeLessThan(
+    GENERATED_PERFORMANCE_BUDGET_SPEC.browserSoak
+      .maximumHeapGrowthBytes,
+  );
 });

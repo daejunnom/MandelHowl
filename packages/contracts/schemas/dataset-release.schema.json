@@ -9,6 +9,7 @@
     "canonicalOwner",
     "manifestUrl",
     "datasetId",
+    "manifestSha256",
     "modalModelId",
     "sourceDirectory",
     "loadingPolicy"
@@ -28,6 +29,10 @@
     "datasetId": {
       "type": "string",
       "pattern": "^sha256:[a-f0-9]{64}$"
+    },
+    "manifestSha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
     },
     "modalModelId": {
       "type": "string",

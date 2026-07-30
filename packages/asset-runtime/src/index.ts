@@ -20,8 +20,11 @@ export type {
   ResonanceDatasetLoadResult,
   TextureAssetKind,
   TextureAssetUrl,
+  VerifiedModePresentationMetadata,
   VerifiedAssetProgressEvent,
   VerifiedAssetUrls,
+  VerifiedTextureAsset,
+  VerifiedTextureAssets,
   VerifiedTextureAssetMetadata,
 } from "./asset-loader";
 export {
@@ -32,3 +35,4 @@ export {
 } from "./manifest-validator";
 export type { ManifestValidationResult } from "./manifest-validator";
 export { bytesEqual, sha256Hex } from "./sha256";
+export { validateTextureAtlasBytes } from "./ktx2-validator";

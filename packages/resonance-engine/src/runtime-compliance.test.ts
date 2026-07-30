@@ -2,24 +2,29 @@ import { createHash } from "node:crypto";
 import { readdirSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
+import challengeSamples from "../../../specs/challenge/sample-targets.v1.json";
 import type {
   ReachabilityCoverageReport,
   ResonanceTrajectoryTrace,
 } from "../../contracts/src";
 import { GENERATED_FEEDBACK_SPEC } from "../../contracts/src";
+import { COVERAGE_REPORT_SCHEMA_SHA256 } from "../../contracts/src";
 import {
   advanceMandelHowlRuntime,
+  advanceMandelHowlRuntimeInPlace,
   advanceResonance,
   createMandelHowlRuntime,
   createResonanceState,
   getRuntimeSnapshot,
   getResonanceSnapshot,
-  replayResonanceTrajectory,
+  RUNTIME_FEEDBACK_ALGORITHM_REVISION,
   volumeFromVirtualRms,
   dispatchRuntimeDial,
 } from "./index";
+import { replayResonanceTrajectory } from "../../../tools/reachability-generator/src/trajectory-coverage";
 import { decodeModesBinaryV1 } from "../../asset-runtime/src";
 import type { RuntimeModalDataset } from "./index";
+import { GENERATED_PERFORMANCE_BUDGET_SPEC } from "../../contracts/src";
 
 function simulateFrames(
   frameSeconds: number,
@@ -73,6 +78,164 @@ describe("runtime contracts", () => {
     expect(at144.volume).toBe(at60.volume);
   });
 
+  it("keeps every production hot-path state and scratch identity stable", () => {
+    const runtime = createMandelHowlRuntime({
+      initialFrequencyHz: 221.4,
+    });
+    const identities = {
+      runtime,
+      dial: runtime.dial,
+      resonance: runtime.resonance,
+      modeEnergy: runtime.resonance.modeEnergy,
+      modePhase: runtime.resonance.modePhaseRadians,
+      responseScratch: runtime.resonance.modeResponseScratch,
+      driveScratch: runtime.resonance.modeDriveScoreScratch,
+      loopScratch: runtime.resonance.modeLoopScoreScratch,
+      frequencyOrder:
+        runtime.resonance.frequencySortedModeIndices,
+      updateIndices: runtime.resonance.modeUpdateIndices,
+      updateMarks: runtime.resonance.modeUpdateMarks,
+      nonzeroIndices: runtime.resonance.nonzeroModeIndices,
+      nextNonzeroIndices:
+        runtime.resonance.nextNonzeroModeIndices,
+      activeIndices: runtime.resonance.activeModeIndices,
+      activePriority:
+        runtime.resonance.activeModePriorityScratch,
+    };
+
+    let returned = runtime;
+    for (let frame = 0; frame < 10_000; frame += 1) {
+      returned = advanceMandelHowlRuntimeInPlace(
+        runtime,
+        1 / 60,
+      );
+    }
+    expect(returned).toBe(runtime);
+    expect(runtime.dial).toBe(identities.dial);
+    expect(runtime.resonance).toBe(identities.resonance);
+    expect(runtime.resonance.modeEnergy).toBe(identities.modeEnergy);
+    expect(runtime.resonance.modePhaseRadians).toBe(
+      identities.modePhase,
+    );
+    expect(runtime.resonance.modeResponseScratch).toBe(
+      identities.responseScratch,
+    );
+    expect(runtime.resonance.modeDriveScoreScratch).toBe(
+      identities.driveScratch,
+    );
+    expect(runtime.resonance.modeLoopScoreScratch).toBe(
+      identities.loopScratch,
+    );
+    expect(runtime.resonance.frequencySortedModeIndices).toBe(
+      identities.frequencyOrder,
+    );
+    expect(runtime.resonance.modeUpdateIndices).toBe(
+      identities.updateIndices,
+    );
+    expect(runtime.resonance.modeUpdateMarks).toBe(
+      identities.updateMarks,
+    );
+    expect(runtime.resonance.nonzeroModeIndices).toBe(
+      identities.nonzeroIndices,
+    );
+    expect(runtime.resonance.nextNonzeroModeIndices).toBe(
+      identities.nextNonzeroIndices,
+    );
+    expect(runtime.resonance.activeModeIndices).toBe(
+      identities.activeIndices,
+    );
+    expect(runtime.resonance.activeModePriorityScratch).toBe(
+      identities.activePriority,
+    );
+  });
+
+  it(
+    "keeps fixed buffers finite and identity-stable for the canonical one-hour simulation soak",
+    () => {
+      const runtime = createMandelHowlRuntime({
+        initialFrequencyHz: 221.4,
+      });
+      const fixedStepSeconds =
+        GENERATED_FEEDBACK_SPEC.simulation.fixedStepSeconds;
+      const stepCount = Math.round(
+        GENERATED_PERFORMANCE_BUDGET_SPEC.simulationSoak
+          .durationSeconds / fixedStepSeconds,
+      );
+      const identities = {
+        modeEnergy: runtime.resonance.modeEnergy,
+        modePhase: runtime.resonance.modePhaseRadians,
+        responseScratch: runtime.resonance.modeResponseScratch,
+        driveScratch: runtime.resonance.modeDriveScoreScratch,
+        loopScratch: runtime.resonance.modeLoopScoreScratch,
+        frequencyOrder:
+          runtime.resonance.frequencySortedModeIndices,
+        updateIndices: runtime.resonance.modeUpdateIndices,
+        updateMarks: runtime.resonance.modeUpdateMarks,
+        nonzeroIndices: runtime.resonance.nonzeroModeIndices,
+        nextNonzeroIndices:
+          runtime.resonance.nextNonzeroModeIndices,
+        delayBuffer: runtime.resonance.delayBuffer,
+        rmsWindow: runtime.resonance.rmsWindow,
+        activeIndices: runtime.resonance.activeModeIndices,
+        activePriority:
+          runtime.resonance.activeModePriorityScratch,
+      };
+
+      for (let step = 0; step < stepCount; step += 1) {
+        advanceMandelHowlRuntimeInPlace(runtime, fixedStepSeconds);
+      }
+
+      expect(runtime.resonance.modeEnergy).toBe(identities.modeEnergy);
+      expect(runtime.resonance.modePhaseRadians).toBe(
+        identities.modePhase,
+      );
+      expect(runtime.resonance.modeResponseScratch).toBe(
+        identities.responseScratch,
+      );
+      expect(runtime.resonance.modeDriveScoreScratch).toBe(
+        identities.driveScratch,
+      );
+      expect(runtime.resonance.modeLoopScoreScratch).toBe(
+        identities.loopScratch,
+      );
+      expect(runtime.resonance.frequencySortedModeIndices).toBe(
+        identities.frequencyOrder,
+      );
+      expect(runtime.resonance.modeUpdateIndices).toBe(
+        identities.updateIndices,
+      );
+      expect(runtime.resonance.modeUpdateMarks).toBe(
+        identities.updateMarks,
+      );
+      expect(runtime.resonance.nonzeroModeIndices).toBe(
+        identities.nonzeroIndices,
+      );
+      expect(runtime.resonance.nextNonzeroModeIndices).toBe(
+        identities.nextNonzeroIndices,
+      );
+      expect(runtime.resonance.delayBuffer).toBe(
+        identities.delayBuffer,
+      );
+      expect(runtime.resonance.rmsWindow).toBe(identities.rmsWindow);
+      expect(runtime.resonance.activeModeIndices).toBe(
+        identities.activeIndices,
+      );
+      expect(runtime.resonance.activeModePriorityScratch).toBe(
+        identities.activePriority,
+      );
+      expect(
+        [
+          ...runtime.resonance.modeEnergy,
+          ...runtime.resonance.modePhaseRadians,
+          ...runtime.resonance.delayBuffer,
+          ...runtime.resonance.rmsWindow,
+        ].every(Number.isFinite),
+      ).toBe(true);
+      expect(runtime.resonance.simulationStep).toBe(stepCount);
+    },
+    30_000,
+  );
+
   it("resets delayed transients instead of integrating a paused-tab gap", () => {
     const state = createResonanceState({ initialFrequencyHz: 221.4 });
     advanceResonance(state, 1 / 60, {
@@ -98,7 +261,7 @@ describe("runtime contracts", () => {
 
   it("exposes MEASURING without transient volume and settles atomically", () => {
     let runtime = createMandelHowlRuntime({
-      initialFrequencyHz: 221.4,
+      initialFrequencyHz: 369.2,
     });
     const initial = getRuntimeSnapshot(runtime);
     expect(initial.volume).toEqual({
@@ -229,19 +392,118 @@ describe("reachability evidence", () => {
     );
   }
 
-  it("proves the uniform static extreme distribution target", () => {
-    expect(report.staticDistribution.sampleCount).toBe(401);
-    expect(report.staticDistribution.extremeFraction).toBeGreaterThanOrEqual(
-      0.9,
+  it(
+    "independently recomputes the uniform static extreme distribution target",
+    () => {
+      const dataset = productionDataset();
+      const sampleCount = 401;
+      const durationSeconds = 10;
+      const fixedStepSeconds =
+        GENERATED_FEEDBACK_SPEC.simulation.fixedStepSeconds;
+      const stepCount = Math.round(
+        durationSeconds / fixedStepSeconds,
+      );
+      let zeroCount = 0;
+      let hundredCount = 0;
+      let intermediateCount = 0;
+
+      for (let sample = 0; sample < sampleCount; sample += 1) {
+        const frequencyHz =
+          dataset.frequencyRangeHz[0] +
+          (dataset.frequencyRangeHz[1] -
+            dataset.frequencyRangeHz[0]) *
+            (sample / (sampleCount - 1));
+        let state = createResonanceState({
+          dataset,
+          initialFrequencyHz: frequencyHz,
+        });
+        for (let step = 0; step < stepCount; step += 1) {
+          state = advanceResonance(
+            state,
+            fixedStepSeconds,
+            {
+              frequencyHz,
+              sweepHzPerSecond: 0,
+              direction: 0,
+            },
+          );
+        }
+        const value = getResonanceSnapshot(state).lastSettledVolume;
+        if (value === 0) zeroCount += 1;
+        else if (value === 100) hundredCount += 1;
+        else intermediateCount += 1;
+      }
+      const extremeFraction =
+        (zeroCount + hundredCount) / sampleCount;
+
+      expect({
+        sampleCount,
+        zeroCount,
+        hundredCount,
+        intermediateCount,
+        extremeFraction,
+      }).toEqual({
+        sampleCount: report.staticDistribution.sampleCount,
+        zeroCount: report.staticDistribution.zeroCount,
+        hundredCount: report.staticDistribution.hundredCount,
+        intermediateCount:
+          report.staticDistribution.intermediateCount,
+        extremeFraction:
+          report.staticDistribution.extremeFraction,
+      });
+      expect(extremeFraction).toBeGreaterThanOrEqual(0.9);
+      expect(report.staticDistribution.requiredExtremeFraction).toBe(
+        0.9,
+      );
+      expect(report.staticDistribution.passed).toBe(true);
+      expect(report.missingValues).toEqual([]);
+      expect(report.outputs).toHaveLength(101);
+      expect(report.perValueRuntimeExceptionTable).toBe(false);
+      expect(report.verificationStatus).toBe(
+        "runtime-replay-verified",
+      );
+      expect(report.runtimeAlgorithmRevision).toBe(
+        RUNTIME_FEEDBACK_ALGORITHM_REVISION,
+      );
+      expect(report.coverageContract).toEqual({
+        schemaVersion: report.schemaVersion,
+        schemaSha256: COVERAGE_REPORT_SCHEMA_SHA256,
+      });
+      expect(report.generatedBy.feedbackAlgorithmRevision).toBe(
+        RUNTIME_FEEDBACK_ALGORITHM_REVISION,
+      );
+      expect(report.generatedBy.feedbackAlgorithmRevision).toBe(
+        GENERATED_FEEDBACK_SPEC.algorithmRevision,
+      );
+      expect(report.coveredValues).toEqual(
+        Array.from({ length: 101 }, (_, value) => value),
+      );
+    },
+    60_000,
+  );
+
+  it("replays every canonical read-only challenge sample target", () => {
+    expect(challengeSamples.schemaVersion).toBe(
+      "mandelhowl.challenge-samples.v1",
     );
-    expect(report.staticDistribution.passed).toBe(true);
-    expect(report.missingValues).toEqual([]);
-    expect(report.outputs).toHaveLength(101);
-    expect(report.perValueRuntimeExceptionTable).toBe(false);
-    expect(report.verificationStatus).toBe("runtime-replay-verified");
-    expect(report.coveredValues).toEqual(
-      Array.from({ length: 101 }, (_, value) => value),
-    );
+    const dataset = productionDataset();
+    for (const sample of challengeSamples.targets) {
+      const output = report.outputs.find(
+        ({ target }) => target === sample.targetVolume,
+      );
+      expect(
+        output,
+        `missing challenge sample ${sample.challengeId}`,
+      ).toBeDefined();
+      const replay = replayResonanceTrajectory(
+        dataset,
+        output!.trace,
+      );
+      expect(
+        replay.matchedExpectedVolume,
+        `challenge sample ${sample.challengeId}`,
+      ).toBe(true);
+    }
   });
 
   it(
