@@ -1,0 +1,135 @@
+{
+  "schemaVersion": "mandelhowl.baker-algorithm.v1",
+  "algorithmRevision": "kirchhoff-love-c1-finite-strip-r2",
+  "numericPolicy": {
+    "floatPrecision": "binary64",
+    "fastMath": false,
+    "summationOrder": "source-loop-order",
+    "quantizationRounding": "ties-to-even",
+    "randomSource": "forbidden"
+  },
+  "field": {
+    "minimumResolutionPx": 32,
+    "escapeRadius": 2,
+    "gaussianApproximationBoxPasses": 3,
+    "manufacturingBevelBoxPasses": 10,
+    "conjugateSymmetryTolerance": 1e-15
+  },
+  "assembly": {
+    "analysisDiscretization": "c1-cubic-hermite-annular-finite-strip",
+    "radialInterpolation": "cubic-hermite-c1",
+    "angularInterpolation": "normalized-real-fourier",
+    "radialMesh": "uniform-annular-strips",
+    "radialGaussOrder": 5,
+    "radialGaussNodes": [
+      -0.906179845938664,
+      -0.5384693101056831,
+      0,
+      0.5384693101056831,
+      0.906179845938664
+    ],
+    "radialGaussWeights": [
+      0.23692688505618908,
+      0.47862867049936647,
+      0.5688888888888889,
+      0.47862867049936647,
+      0.23692688505618908
+    ],
+    "angularQuadrature": "midpoint",
+    "quadratureLoopOrder": "element-then-radial-gauss-ascending-then-theta-ascending-then-active-global-index-ascending",
+    "boundaryEnforcement": "eliminate-inner-value-and-radial-slope-dofs",
+    "analysisResolutionSource": "plate-spec.solverRequest.meshLevels[*].analysisFiniteStrip",
+    "surfaceTriangleArchiveRole": "manufacturing-coordinate-and-provenance-evidence-only"
+  },
+  "handoffConformance": {
+    "section": "10.3/B1",
+    "requiredMethod": "thin-plate-or-shell-element-eigenanalysis",
+    "executedMethod": "c1-cubic-hermite-annular-finite-strip",
+    "thinPlateEigenanalysisSupported": true,
+    "surfaceMeshQualityValidated": true,
+    "finiteElementAssemblyUsed": true,
+    "analysisSurfaceElementMeshCoupledToEigenproblem": true,
+    "surfaceTriangleArchiveCoupledToEigenproblem": false,
+    "strictLiteralConformance": true,
+    "operationalDisposition": "strict-thin-plate-finite-element-adapter"
+  },
+  "eigensolver": {
+    "name": "cyclic-jacobi-generalized-symmetric",
+    "relativeTolerance": 1e-12,
+    "maximumSweeps": 100
+  },
+  "coupling": {
+    "probeRingSamples": 8,
+    "probeRingRadiusRatio": 0.72,
+    "radiationRadialSamples": 12,
+    "radiationAngularSamples": 32,
+    "radiationCoherenceFloor": 0.35,
+    "radiationCoherenceWeight": 0.65,
+    "signEpsilon": 1e-10,
+    "ordinalDampingSlope": 0.012
+  },
+  "response": {
+    "sampleCount": 512,
+    "spacing": "logarithmic",
+    "normalizationFloor": 1e-30
+  },
+  "runtimeModalOutput": {
+    "frequencyQuantumHz": 0.00000095367431640625,
+    "couplingQuantum": 0.000000007450580596923828125,
+    "rounding": "ties-to-even",
+    "angularFrequencyDerivation": "quantized-frequency-times-ieee754-tau",
+    "negativeZero": "canonicalize-to-positive-zero"
+  },
+  "texture": {
+    "container": "KTX2",
+    "supercompressionScheme": 3,
+    "zlibDeflateProfile": "fixed-huffman-or-stored",
+    "layersPerShard": 4,
+    "shardOrdering": "kind-then-global-texture-layer-ascending",
+    "shardPathPattern": "textures/{kind}-{firstLayer:02d}-{lastLayer:02d}.ktx2",
+    "nodalAbsoluteThreshold": 0.065,
+    "sandGaussianScale": 0.12,
+    "lowVelocityThreshold": 0.1,
+    "highVelocityThreshold": 0.5,
+    "normalVisualScale": 0.0015,
+    "finiteDifferenceCheckOrdinals": [1, 8, 16, 32, 48],
+    "maximumCrossValidationRelativeDifference": 0.15,
+    "surfaceKinematicsDerivation": "u=sum(q_i*D_i);v=sum(qDot_i*D_i);a=sum(qDoubleDot_i*D_i)",
+    "emissiveBasisSource": "nodal-mask",
+    "emissiveBasisAliasPolicy": "byte-identical-basis-reuse",
+    "emissiveRuntimeModulation": "modal-energy-weighted-nodal-mask-times-local-saturation-envelope"
+  },
+  "materialSectionProfile": {
+    "sampleCount": 64,
+    "axis": "x-at-y-zero",
+    "samplePositionConvention": "uniform-cell-centres",
+    "resampling": "bilinear-binary64-thickness"
+  },
+  "foundationCoverage": {
+    "captureRate": 1.85,
+    "maximumFraction": 0.985,
+    "minimumLogArgument": 0.000001,
+    "baseDetuneRatio": 0.00035,
+    "detuneStep": 0.000015,
+    "detuneCycle": 11
+  },
+  "differentialTolerance": {
+    "modeFrequencyRelative": 1e-9,
+    "modeScalarAbsolute": 1e-10,
+    "responseFrequencyRelative": 1e-12,
+    "responseComponentAbsolute": 2e-10,
+    "solverEvidenceRelative": 5e-8,
+    "solverEvidenceAbsolute": 3e-9,
+    "solverModeCoefficientL2Relative": 1e-8,
+    "solverModeMinimumModalAssuranceCriterion": 0.999999999,
+    "meshEvidenceRelative": 2e-9,
+    "meshEvidenceAbsolute": 2e-12,
+    "meshNodeAbsoluteM": 3e-8,
+    "reportScalarRelative": 2e-9,
+    "reportScalarAbsolute": 2e-10,
+    "adjacentFrequencySpacingAbsoluteHz": 2e-8,
+    "textureMaximumLsb": 1,
+    "textureMaximumDifferentFraction": 0.0001,
+    "fieldMaximumLsb": 1
+  }
+}

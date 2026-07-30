@@ -34,6 +34,7 @@
       "NUI1",
       "NUI2",
       "NUI3",
+      "DIAL0",
       "M1",
       "M2",
       "M3"
@@ -41,7 +42,7 @@
     "qualityCriteria": 18,
     "obligations": {
       "expectedCount": 503,
-      "expectedLedgerSha256": "5d9bebde77edc266c46798bdf613459851f5a88ed24a86c40642da74a72d738d"
+      "expectedLedgerSha256": "3896b048183a96c9b5470c4b1f10760b00d8439f4260475f5708e0f0face3872"
     }
   },
   "validationSuiteRequirements": {
@@ -4912,6 +4913,57 @@
           "kind": "test",
           "path": "tests/web/presentation-contract.test.ts",
           "testId": "makes each lazy UI candidate report its own compiled contract identity"
+        }
+      ]
+    },
+    {
+      "id": "DIAL0",
+      "source": "specs/runtime/dial.v1.yaml",
+      "suites": [
+        "contracts",
+        "unit",
+        "web",
+        "e2e"
+      ],
+      "evidence": [
+        "packages/contracts/src/frequency-fixed-point.test.ts",
+        "packages/dial-engine/src/dial-engine.test.ts",
+        "packages/resonance-engine/src/resonance-engine.test.ts",
+        "tests/web/instrument-presentation.test.ts",
+        "tests/web/ui-input-contract.test.ts",
+        "tests/e2e/dial-centihertz.spec.ts",
+        "tests/runtime/fixtures/reachability-report.json"
+      ],
+      "claimAnchors": [
+        {
+          "id": "EXT-DIAL0-FIXED-POINT",
+          "kind": "test",
+          "path": "packages/contracts/src/frequency-fixed-point.test.ts",
+          "testId": "formats exactly two decimal places without floating formatting"
+        },
+        {
+          "id": "EXT-DIAL0-DELIBERATE-FRICTION",
+          "kind": "test",
+          "path": "tests/web/ui-input-contract.test.ts",
+          "testId": "suppresses Shift+Arrow instead of exposing a fine-control shortcut"
+        },
+        {
+          "id": "EXT-DIAL0-ADJACENT-REGIMES",
+          "kind": "test",
+          "path": "packages/resonance-engine/src/resonance-engine.test.ts",
+          "testId": "distinguishes adjacent critical and growing centihertz in the pinned production dataset"
+        },
+        {
+          "id": "EXT-DIAL0-NVERSION-PRESENTATION",
+          "kind": "test",
+          "path": "tests/web/instrument-presentation.test.ts",
+          "testId": "keeps React and Svelte on the shared exact frequency and ARIA contract"
+        },
+        {
+          "id": "EXT-DIAL0-BROWSER",
+          "kind": "test",
+          "path": "tests/e2e/dial-centihertz.spec.ts",
+          "testId": "keeps Shift+Arrow inert while displaying exact centihertz"
         }
       ]
     },

@@ -23,6 +23,8 @@ export {
 } from "./end-stop";
 export {
   angleToFrequency,
+  angleToFrequencyCentiHz,
+  frequencyCentiHzToAngle,
   frequencyToAngle,
 } from "./frequency-scale";
 export {

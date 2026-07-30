@@ -1,9 +1,13 @@
 import {
   COVERAGE_REPORT_SCHEMA_SHA256,
+  CENTIHERTZ_PER_HERTZ,
   GENERATED_FEEDBACK_SPEC,
   GENERATED_DIAL_SPEC,
   N_VERSION_CONTRACT_DIGESTS,
   RUNTIME_SPEC_SOURCE_HASHES,
+  fromCentiHertz,
+  normalizeCentiHertz,
+  toCentiHertz,
   type ReachabilityCoverageReport,
   type ResonanceTrajectoryTrace,
   type StaticDistributionReport,
@@ -50,7 +54,7 @@ export function validateResonanceTrajectoryTrace(
   trace: ResonanceTrajectoryTrace,
 ): readonly string[] {
   const errors: string[] = [];
-  if (trace.schemaVersion !== "mandelhowl.resonance-trajectory-trace.v1") {
+  if (trace.schemaVersion !== "mandelhowl.resonance-trajectory-trace.v2") {
     errors.push("TRACE_SCHEMA_VERSION_UNSUPPORTED");
   }
   if (!Number.isFinite(trace.durationSeconds) || trace.durationSeconds <= 0) {
@@ -75,11 +79,11 @@ export function validateResonanceTrajectoryTrace(
       errors.push("TRACE_TIME_INVALID");
     }
     if (
-      !Number.isFinite(keyframe.frequencyHz) ||
-      keyframe.frequencyHz <
-        GENERATED_DIAL_SPEC.mapping.minimumFrequencyHz ||
-      keyframe.frequencyHz >
-        GENERATED_DIAL_SPEC.mapping.maximumFrequencyHz
+      !Number.isSafeInteger(keyframe.frequencyCentiHz) ||
+      keyframe.frequencyCentiHz <
+        toCentiHertz(GENERATED_DIAL_SPEC.mapping.minimumFrequencyHz) ||
+      keyframe.frequencyCentiHz >
+        toCentiHertz(GENERATED_DIAL_SPEC.mapping.maximumFrequencyHz)
     ) {
       errors.push("TRACE_FREQUENCY_INVALID");
     }
@@ -87,6 +91,15 @@ export function validateResonanceTrajectoryTrace(
   });
   if (trace.keyframes[0]?.atSeconds !== 0) {
     errors.push("TRACE_MUST_START_AT_ZERO");
+  }
+  if (
+    !Number.isSafeInteger(trace.initialFrequencyCentiHz) ||
+    trace.initialFrequencyCentiHz <
+      toCentiHertz(GENERATED_DIAL_SPEC.mapping.minimumFrequencyHz) ||
+    trace.initialFrequencyCentiHz >
+      toCentiHertz(GENERATED_DIAL_SPEC.mapping.maximumFrequencyHz)
+  ) {
+    errors.push("TRACE_INITIAL_FREQUENCY_INVALID");
   }
   return Object.freeze([...new Set(errors)]);
 }
@@ -106,7 +119,7 @@ function driveAtTime(
       const duration = right.atSeconds - left.atSeconds;
       if (duration <= 0) {
         return {
-          frequencyHz: right.frequencyHz,
+          frequencyHz: fromCentiHertz(right.frequencyCentiHz),
           sweepHzPerSecond: 0,
           direction: 0,
         };
@@ -117,11 +130,16 @@ function driveAtTime(
         1,
       );
       const sweep =
-        (right.frequencyHz - left.frequencyHz) / duration;
+        (right.frequencyCentiHz - left.frequencyCentiHz) /
+        (CENTIHERTZ_PER_HERTZ * duration);
+      const frequencyCentiHz = normalizeCentiHertz(
+        left.frequencyCentiHz +
+          (right.frequencyCentiHz - left.frequencyCentiHz) *
+            progress,
+        left.frequencyCentiHz,
+      );
       return {
-        frequencyHz:
-          left.frequencyHz +
-          (right.frequencyHz - left.frequencyHz) * progress,
+        frequencyHz: fromCentiHertz(frequencyCentiHz),
         sweepHzPerSecond: sweep,
         direction: sweep < 0 ? -1 : sweep > 0 ? 1 : 0,
       };
@@ -129,7 +147,7 @@ function driveAtTime(
     left = right;
   }
   return {
-    frequencyHz: left.frequencyHz,
+    frequencyHz: fromCentiHertz(left.frequencyCentiHz),
     sweepHzPerSecond: 0,
     direction: 0,
   };
@@ -148,7 +166,9 @@ export function replayResonanceTrajectory(
   }
   let state = createResonanceState({
     dataset,
-    initialFrequencyHz: trace.initialFrequencyHz,
+    initialFrequencyHz: fromCentiHertz(
+      trace.initialFrequencyCentiHz,
+    ),
   });
   const step = GENERATED_FEEDBACK_SPEC.simulation.fixedStepSeconds;
   const stepCount = Math.round(trace.durationSeconds / step);
@@ -174,11 +194,11 @@ export function replayResonanceTrajectory(
 
 interface TracePlan {
   readonly id: string;
-  readonly initialFrequencyHz: number;
+  readonly initialFrequencyCentiHz: number;
   readonly durationSeconds: number;
   readonly keyframes: readonly {
     readonly atSeconds: number;
-    readonly frequencyHz: number;
+    readonly frequencyCentiHz: number;
   }[];
 }
 
@@ -190,7 +210,7 @@ interface MarginBranch {
 
 interface TrajectoryFamily {
   readonly id: string;
-  readonly initialFrequencyHz: number | "candidate";
+  readonly initialFrequencyCentiHz: number | "candidate";
   readonly rampSeconds: number;
   readonly holdSeconds: number;
   readonly quietHoldSeconds: number;
@@ -199,6 +219,7 @@ interface TrajectoryFamily {
 
 interface TrajectoryObservation {
   readonly position: number;
+  readonly frequencyCentiHz: number;
   readonly settledVolume: number | null;
 }
 
@@ -208,10 +229,10 @@ function createTraceFromPlan(
   expectedSettledVolume = 0,
 ): ResonanceTrajectoryTrace {
   return Object.freeze({
-    schemaVersion: "mandelhowl.resonance-trajectory-trace.v1",
+    schemaVersion: "mandelhowl.resonance-trajectory-trace.v2",
     traceId: plan.id,
     modalModelId: dataset.modalModelId,
-    initialFrequencyHz: plan.initialFrequencyHz,
+    initialFrequencyCentiHz: plan.initialFrequencyCentiHz,
     durationSeconds: plan.durationSeconds,
     expectedSettledVolume,
     keyframes: Object.freeze(
@@ -242,16 +263,16 @@ function directTracePlan(
 ): TracePlan {
   return Object.freeze({
     id,
-    initialFrequencyHz,
+    initialFrequencyCentiHz: toCentiHertz(initialFrequencyHz),
     durationSeconds: rampSeconds + holdSeconds,
     keyframes: Object.freeze([
       Object.freeze({
         atSeconds: 0,
-        frequencyHz: initialFrequencyHz,
+        frequencyCentiHz: toCentiHertz(initialFrequencyHz),
       }),
       Object.freeze({
         atSeconds: rampSeconds,
-        frequencyHz,
+        frequencyCentiHz: toCentiHertz(frequencyHz),
       }),
     ]),
   });
@@ -262,17 +283,20 @@ function explorationTracePlan(
   candidateFrequencyHz: number,
   peakFrequencyHz: number,
 ): TracePlan {
-  const initialFrequencyHz =
-    family.initialFrequencyHz === "candidate"
-      ? candidateFrequencyHz
-      : family.initialFrequencyHz;
+  const candidateFrequencyCentiHz =
+    toCentiHertz(candidateFrequencyHz);
+  const peakFrequencyCentiHz = toCentiHertz(peakFrequencyHz);
+  const initialFrequencyCentiHz =
+    family.initialFrequencyCentiHz === "candidate"
+      ? candidateFrequencyCentiHz
+      : family.initialFrequencyCentiHz;
   const keyframes: Array<{
     readonly atSeconds: number;
-    readonly frequencyHz: number;
+    readonly frequencyCentiHz: number;
   }> = [
     Object.freeze({
       atSeconds: 0,
-      frequencyHz: initialFrequencyHz,
+      frequencyCentiHz: initialFrequencyCentiHz,
     }),
   ];
   let time = family.quietHoldSeconds;
@@ -280,7 +304,7 @@ function explorationTracePlan(
     keyframes.push(
       Object.freeze({
         atSeconds: time,
-        frequencyHz: initialFrequencyHz,
+        frequencyCentiHz: initialFrequencyCentiHz,
       }),
     );
   }
@@ -289,32 +313,32 @@ function explorationTracePlan(
     keyframes.push(
       Object.freeze({
         atSeconds: time,
-        frequencyHz: peakFrequencyHz,
+        frequencyCentiHz: peakFrequencyCentiHz,
       }),
     );
     time += family.peakHoldSeconds;
     keyframes.push(
       Object.freeze({
         atSeconds: time,
-        frequencyHz: peakFrequencyHz,
+        frequencyCentiHz: peakFrequencyCentiHz,
       }),
     );
   }
   if (
-    keyframes[keyframes.length - 1]?.frequencyHz !==
-    candidateFrequencyHz
+    keyframes[keyframes.length - 1]?.frequencyCentiHz !==
+    candidateFrequencyCentiHz
   ) {
     time += family.rampSeconds;
     keyframes.push(
       Object.freeze({
         atSeconds: time,
-        frequencyHz: candidateFrequencyHz,
+        frequencyCentiHz: candidateFrequencyCentiHz,
       }),
     );
   }
   return Object.freeze({
     id: family.id,
-    initialFrequencyHz,
+    initialFrequencyCentiHz,
     durationSeconds: time + family.holdSeconds,
     keyframes: Object.freeze(keyframes),
   });
@@ -448,6 +472,8 @@ function exploreTrajectoryFamily(
   tracesByVolume: Map<number, ResonanceTrajectoryTrace>,
 ): number {
   const observations = new Map<number, TrajectoryObservation>();
+  const observationsByCentiHz =
+    new Map<number, TrajectoryObservation>();
   let attempts = 0;
 
   const observe = (position: number): TrajectoryObservation => {
@@ -458,6 +484,18 @@ function exploreTrajectoryFamily(
       branch,
       position,
     );
+    const frequencyCentiHz = toCentiHertz(frequency);
+    const frequencyCached =
+      observationsByCentiHz.get(frequencyCentiHz);
+    if (frequencyCached) {
+      const observation = Object.freeze({
+        position,
+        frequencyCentiHz,
+        settledVolume: frequencyCached.settledVolume,
+      });
+      observations.set(position, observation);
+      return observation;
+    }
     const trace = createTraceFromPlan(
       dataset,
       explorationTracePlan(
@@ -478,9 +516,11 @@ function exploreTrajectoryFamily(
     }
     const observation = Object.freeze({
       position,
+      frequencyCentiHz,
       settledVolume: replay.settledVolume,
     });
     observations.set(position, observation);
+    observationsByCentiHz.set(frequencyCentiHz, observation);
     return observation;
   };
 
@@ -492,12 +532,19 @@ function exploreTrajectoryFamily(
     if (tracesByVolume.size === 101 || depth >= maximumRefinementDepth) {
       return;
     }
+    if (left.frequencyCentiHz === right.frequencyCentiHz) return;
     const outputGap =
       left.settledVolume === null || right.settledVolume === null
         ? Number.POSITIVE_INFINITY
         : Math.abs(right.settledVolume - left.settledVolume);
     if (outputGap <= 1) return;
     const middle = observe((left.position + right.position) / 2);
+    if (
+      middle.frequencyCentiHz === left.frequencyCentiHz ||
+      middle.frequencyCentiHz === right.frequencyCentiHz
+    ) {
+      return;
+    }
     refine(left, middle, depth + 1);
     refine(middle, right, depth + 1);
   };
@@ -637,10 +684,27 @@ export function searchReachabilityCoverage(
     Math.abs(initialFrequencyHz - dataset.frequencyRangeHz[1])
       ? dataset.frequencyRangeHz[1]
       : dataset.frequencyRangeHz[0];
+  const historyFamilies: readonly TrajectoryFamily[] = Object.freeze(
+    [0.8, 2.4].map(
+      (peakHoldSeconds) =>
+        Object.freeze({
+          id: `global-peak-history-${peakHoldSeconds
+            .toFixed(1)
+            .replace(".", "_")}`,
+          initialFrequencyCentiHz: toCentiHertz(
+            initialFrequencyHz,
+          ),
+          rampSeconds: Math.max(0.6, resolved.rampSeconds),
+          holdSeconds: Math.max(16, resolved.holdSeconds),
+          quietHoldSeconds: 0,
+          peakHoldSeconds,
+        }),
+    ),
+  );
   const families: readonly TrajectoryFamily[] = Object.freeze([
     Object.freeze({
       id: "global-direct-approach",
-      initialFrequencyHz,
+      initialFrequencyCentiHz: toCentiHertz(initialFrequencyHz),
       rampSeconds: resolved.rampSeconds,
       holdSeconds: resolved.holdSeconds,
       quietHoldSeconds: 0,
@@ -648,7 +712,7 @@ export function searchReachabilityCoverage(
     }),
     Object.freeze({
       id: "global-opposite-approach",
-      initialFrequencyHz: oppositeEndpoint,
+      initialFrequencyCentiHz: toCentiHertz(oppositeEndpoint),
       rampSeconds: resolved.rampSeconds,
       holdSeconds: resolved.holdSeconds,
       quietHoldSeconds: 0,
@@ -656,7 +720,7 @@ export function searchReachabilityCoverage(
     }),
     Object.freeze({
       id: "global-static-hold",
-      initialFrequencyHz: "candidate",
+      initialFrequencyCentiHz: "candidate",
       rampSeconds: 0,
       holdSeconds: resolved.holdSeconds,
       quietHoldSeconds: 0,
@@ -664,7 +728,7 @@ export function searchReachabilityCoverage(
     }),
     Object.freeze({
       id: "global-slow-approach",
-      initialFrequencyHz,
+      initialFrequencyCentiHz: toCentiHertz(initialFrequencyHz),
       rampSeconds: Math.max(1.2, resolved.rampSeconds * 3),
       holdSeconds: Math.max(14, resolved.holdSeconds),
       quietHoldSeconds: 0,
@@ -672,20 +736,13 @@ export function searchReachabilityCoverage(
     }),
     Object.freeze({
       id: "global-quiet-then-approach",
-      initialFrequencyHz,
+      initialFrequencyCentiHz: toCentiHertz(initialFrequencyHz),
       rampSeconds: resolved.rampSeconds,
       holdSeconds: Math.max(14, resolved.holdSeconds),
       quietHoldSeconds: 1,
       peakHoldSeconds: 0,
     }),
-    Object.freeze({
-      id: "global-peak-history",
-      initialFrequencyHz,
-      rampSeconds: Math.max(0.6, resolved.rampSeconds),
-      holdSeconds: Math.max(16, resolved.holdSeconds),
-      quietHoldSeconds: 0,
-      peakHoldSeconds: 0.8,
-    }),
+    ...historyFamilies,
   ]);
 
   for (const family of families) {
@@ -729,16 +786,16 @@ export function searchReachabilityCoverage(
           .matchedExpectedVolume,
     );
   const report: ReachabilityCoverageReport = Object.freeze({
-    schemaVersion: "mandelhowl.coverage-report.v1",
+    schemaVersion: "mandelhowl.coverage-report.v2",
     modalModelId: dataset.modalModelId,
     runtimeAlgorithmRevision:
       GENERATED_FEEDBACK_SPEC.algorithmRevision,
     coverageContract: Object.freeze({
-      schemaVersion: "mandelhowl.coverage-report.v1",
+      schemaVersion: "mandelhowl.coverage-report.v2",
       schemaSha256: COVERAGE_REPORT_SCHEMA_SHA256,
     }),
     generatedBy: Object.freeze({
-      algorithm: "deterministic-global-trajectory-search-v1",
+      algorithm: "deterministic-global-trajectory-search-v2",
       feedbackAlgorithmRevision:
         GENERATED_FEEDBACK_SPEC.algorithmRevision,
       perValueRuntimeLookup: "forbidden",

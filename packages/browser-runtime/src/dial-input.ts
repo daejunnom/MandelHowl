@@ -69,8 +69,25 @@ export function createDialPointerCommand(
 export function createDialKeyboardCommand(
   key: DialKeyboardKey,
   timestampMs: number,
-): DialCommand {
-  return Object.freeze({ type: "keyboard", key, timestampMs });
+): DialCommand;
+export function createDialKeyboardCommand(
+  key: DialKeyboardKey,
+  timestampMs: number,
+  shiftKey: boolean,
+): DialCommand | null;
+export function createDialKeyboardCommand(
+  key: DialKeyboardKey,
+  timestampMs: number,
+  shiftKey = false,
+): DialCommand | null {
+  if (shiftKey && key.startsWith("Arrow")) {
+    return null;
+  }
+  return Object.freeze({
+    type: "keyboard",
+    key,
+    timestampMs,
+  });
 }
 
 export function createDialWheelCommand(
@@ -107,14 +124,14 @@ function commandIdentity(command: DialCommand): string {
     case "nudge":
       return numberIdentity(command.deltaRadians);
     case "set-frequency":
-      return numberIdentity(command.frequencyHz);
+      return numberIdentity(command.frequencyCentiHz);
     case "pointer-end":
     case "pointer-cancel":
       return "";
     case "advance":
       return numberIdentity(command.deltaSeconds);
     case "reset":
-      return numberIdentity(command.frequencyHz);
+      return numberIdentity(command.frequencyCentiHz);
   }
 }
 

@@ -1,27 +1,28 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://mandelhowl.dev/schemas/dial-gesture-trace.v1.schema.json",
-  "title": "MandelHowl deterministic dial gesture trace v1",
+  "$id": "https://mandelhowl.dev/schemas/dial-gesture-trace.v2.schema.json",
+  "title": "MandelHowl deterministic dial gesture trace v2",
   "type": "object",
   "additionalProperties": false,
   "required": [
     "schemaVersion",
     "traceId",
-    "initialFrequencyHz",
+    "initialFrequencyCentiHz",
     "durationSeconds",
     "events"
   ],
   "properties": {
     "schemaVersion": {
-      "const": "mandelhowl.dial-gesture-trace.v1"
+      "const": "mandelhowl.dial-gesture-trace.v2"
     },
     "traceId": {
       "type": "string",
       "minLength": 1
     },
-    "initialFrequencyHz": {
-      "type": "number",
-      "exclusiveMinimum": 0
+    "initialFrequencyCentiHz": {
+      "type": "integer",
+      "minimum": 4500,
+      "maximum": 600000
     },
     "durationSeconds": {
       "type": "number",
@@ -122,12 +123,13 @@
             {
               "type": "object",
               "additionalProperties": false,
-              "required": ["type", "frequencyHz"],
+              "required": ["type", "frequencyCentiHz"],
               "properties": {
                 "type": { "const": "set-frequency" },
-                "frequencyHz": {
-                  "type": "number",
-                  "exclusiveMinimum": 0
+                "frequencyCentiHz": {
+                  "type": "integer",
+                  "minimum": 4500,
+                  "maximum": 600000
                 }
               }
             }

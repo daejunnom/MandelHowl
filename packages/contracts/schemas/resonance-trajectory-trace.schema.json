@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://mandelhowl.dev/schemas/resonance-trajectory-trace.v1.schema.json",
-  "title": "MandelHowl deterministic resonance trajectory v1",
+  "$id": "https://mandelhowl.dev/schemas/resonance-trajectory-trace.v2.schema.json",
+  "title": "MandelHowl deterministic resonance trajectory v2",
   "$ref": "#/$defs/trace",
   "$defs": {
     "contentId": {
@@ -11,14 +11,14 @@
     "keyframe": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["sequence", "atSeconds", "frequencyHz"],
+      "required": ["sequence", "atSeconds", "frequencyCentiHz"],
       "properties": {
         "sequence": { "type": "integer", "minimum": 0 },
         "atSeconds": { "type": "number", "minimum": 0 },
-        "frequencyHz": {
-          "type": "number",
-          "minimum": 45,
-          "maximum": 6000
+        "frequencyCentiHz": {
+          "type": "integer",
+          "minimum": 4500,
+          "maximum": 600000
         }
       }
     },
@@ -29,21 +29,21 @@
         "schemaVersion",
         "traceId",
         "modalModelId",
-        "initialFrequencyHz",
+        "initialFrequencyCentiHz",
         "durationSeconds",
         "expectedSettledVolume",
         "keyframes"
       ],
       "properties": {
         "schemaVersion": {
-          "const": "mandelhowl.resonance-trajectory-trace.v1"
+          "const": "mandelhowl.resonance-trajectory-trace.v2"
         },
         "traceId": { "type": "string", "minLength": 1 },
         "modalModelId": { "$ref": "#/$defs/contentId" },
-        "initialFrequencyHz": {
-          "type": "number",
-          "minimum": 45,
-          "maximum": 6000
+        "initialFrequencyCentiHz": {
+          "type": "integer",
+          "minimum": 4500,
+          "maximum": 600000
         },
         "durationSeconds": {
           "type": "number",

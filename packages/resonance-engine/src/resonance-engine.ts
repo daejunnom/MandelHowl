@@ -2,6 +2,8 @@ import {
   GENERATED_DIAL_SPEC,
   GENERATED_FEEDBACK_SPEC,
   GENERATED_VOLUME_MAP_SPEC,
+  fromCentiHertz,
+  toCentiHertz,
   type ContentAddressedId,
   type DiagnosticRecord,
   type FrequencyResponseTable,
@@ -15,7 +17,7 @@ import {
 
 const TAU = Math.PI * 2;
 export const RUNTIME_FEEDBACK_ALGORITHM_REVISION =
-  "fixed-step-modal-feedback-v3" as const;
+  "fixed-step-modal-feedback-v4" as const;
 
 function assertSupportedFeedbackAlgorithmRevision(
   revision: string,
@@ -123,8 +125,9 @@ export interface ResonanceState {
   sequence: number;
   accumulatorSeconds: number;
   pausedGapCount: number;
-  driveFrequencyHz: number;
-  previousDriveFrequencyHz: number;
+  /** Canonical drive frequency stored as an integer centihertz. */
+  driveFrequencyCentiHz: number;
+  previousDriveFrequencyCentiHz: number;
   sweepHzPerSecond: number;
   approachDirection: -1 | 0 | 1;
   drivePhaseRadians: number;
@@ -184,6 +187,7 @@ export interface ResonanceSnapshot {
   readonly datasetId: ContentAddressedId;
   readonly simulationTimeSeconds: number;
   readonly simulationStep: number;
+  readonly frequencyCentiHz: number;
   readonly frequencyHz: number;
   readonly sweepHzPerSecond: number;
   readonly modeEnergy: readonly number[];
@@ -688,11 +692,11 @@ export function createResonanceState(
     options.dataset ?? PROTOTYPE_MODAL_DATASET,
   );
   const [minimumFrequency, maximumFrequency] = dataset.frequencyRangeHz;
-  const frequencyHz = clamp(
+  const frequencyCentiHz = toCentiHertz(clamp(
     finiteOr(options.initialFrequencyHz, 220),
     minimumFrequency,
     maximumFrequency,
-  );
+  ));
   const delaySamples = Math.max(
     1,
     Math.round(
@@ -728,8 +732,8 @@ export function createResonanceState(
     sequence: 0,
     accumulatorSeconds: 0,
     pausedGapCount: 0,
-    driveFrequencyHz: frequencyHz,
-    previousDriveFrequencyHz: frequencyHz,
+    driveFrequencyCentiHz: frequencyCentiHz,
+    previousDriveFrequencyCentiHz: frequencyCentiHz,
     sweepHzPerSecond: 0,
     approachDirection: 0,
     drivePhaseRadians: 0,
@@ -1100,13 +1104,19 @@ function integrateFixedStep(
 ): void {
   const [minimumFrequency, maximumFrequency] =
     state.dataset.frequencyRangeHz;
-  const frequencyHz = clamp(
-    finiteOr(driveFrequencyHz, state.driveFrequencyHz),
+  const previousFrequencyHz = fromCentiHertz(
+    state.driveFrequencyCentiHz,
+  );
+  const frequencyCentiHz = toCentiHertz(clamp(
+    finiteOr(driveFrequencyHz, previousFrequencyHz),
     minimumFrequency,
     maximumFrequency,
-  );
+  ));
+  const frequencyHz = fromCentiHertz(frequencyCentiHz);
   const inferredSweep =
-    (frequencyHz - state.driveFrequencyHz) / FIXED_STEP_SECONDS;
+    (frequencyCentiHz - state.driveFrequencyCentiHz) /
+    (GENERATED_DIAL_SPEC.fixedPoint.centihertzPerHertz *
+      FIXED_STEP_SECONDS);
   const sweepHzPerSecond = clamp(
     finiteOr(driveSweepHzPerSecond, inferredSweep),
     -50_000,
@@ -1586,8 +1596,7 @@ function integrateFixedStep(
 
   const frequencyMotion = Math.abs(sweepHzPerSecond);
   const changedFrequency =
-    Math.abs(frequencyHz - state.driveFrequencyHz) >
-    Math.max(1e-6, frequencyHz * 1e-8);
+    frequencyCentiHz !== state.driveFrequencyCentiHz;
   const stableDrive =
     frequencyMotion <
       GENERATED_DIAL_SPEC.velocityEstimator
@@ -1663,8 +1672,9 @@ function integrateFixedStep(
     state.lastSettledVolume = state.instantaneousVolume;
   }
   state.previousMeasuredRms = measurementTrendRms;
-  state.previousDriveFrequencyHz = state.driveFrequencyHz;
-  state.driveFrequencyHz = frequencyHz;
+  state.previousDriveFrequencyCentiHz =
+    state.driveFrequencyCentiHz;
+  state.driveFrequencyCentiHz = frequencyCentiHz;
   state.sweepHzPerSecond = sweepHzPerSecond;
   state.approachDirection = approachDirection;
   state.simulationTimeSeconds += FIXED_STEP_SECONDS;
@@ -1698,7 +1708,9 @@ export function resetResonanceAfterPausedGap(
 export function advanceResonance(
   state: ResonanceState,
   deltaSeconds: number,
-  drive: ResonanceDrive = { frequencyHz: state.driveFrequencyHz },
+  drive: ResonanceDrive = {
+    frequencyHz: fromCentiHertz(state.driveFrequencyCentiHz),
+  },
 ): ResonanceState {
   return advanceResonanceScalars(
     state,
@@ -1771,7 +1783,8 @@ export function getResonanceSnapshot(
     datasetId: state.dataset.datasetId,
     simulationTimeSeconds: state.simulationTimeSeconds,
     simulationStep: state.simulationStep,
-    frequencyHz: state.driveFrequencyHz,
+    frequencyCentiHz: state.driveFrequencyCentiHz,
+    frequencyHz: fromCentiHertz(state.driveFrequencyCentiHz),
     sweepHzPerSecond: state.sweepHzPerSecond,
     modeEnergy: Object.freeze(Array.from(state.modeEnergy)),
     modePhaseRadians: Object.freeze(Array.from(state.modePhaseRadians)),
@@ -1799,7 +1812,9 @@ export function replaceResonanceDataset(
 ): ResonanceState {
   return createResonanceState({
     dataset,
-    initialFrequencyHz: state.driveFrequencyHz,
+    initialFrequencyHz: fromCentiHertz(
+      state.driveFrequencyCentiHz,
+    ),
     diagnostics,
   });
 }

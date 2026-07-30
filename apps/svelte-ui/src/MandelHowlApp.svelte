@@ -14,13 +14,18 @@
   import type { DialCommand } from "../../../packages/dial-engine/src";
   import {
     CANONICAL_SCENE_LAYOUT,
+    formatCompactFrequencyHz,
+    formatDriveFrequencyCentiHz,
+    formatDriveFrequencyHz,
     formatVirtualVolume,
+    logarithmicFrequencyTickHz,
     measurementStatusLabel,
     presentCausalMotion,
     presentOscilloscope,
   } from "../../../packages/presentation-model/src";
   import { oscilloscopeSampleCountForQuality } from "../../../packages/render-engine/src";
   import {
+    fromCentiHertz,
     GENERATED_MOTION_SAFETY_SPEC,
     GENERATED_SCENE_SPEC,
   } from "../../../packages/contracts/src";
@@ -71,6 +76,9 @@
   let detached = false;
 
   let snapshot = $derived(presentation.runtime);
+  let frequencyCentiHz = $derived(
+    snapshot.dial.driveFrequencyCentiHz,
+  );
   let frequency = $derived(snapshot.dial.driveFrequencyHz);
   let frequencyMin = $derived(presentation.minimumFrequencyHz);
   let frequencyMax = $derived(presentation.maximumFrequencyHz);
@@ -89,14 +97,16 @@
   let measurementLabel = $derived(
     measurementStatusLabel(snapshot.volume.status),
   );
-  let displayedFrequency = $derived(formatFrequency(frequency));
+  let displayedFrequency = $derived(
+    formatDriveFrequencyCentiHz(frequencyCentiHz),
+  );
   let frequencyTicks = $derived(
     [
       frequencyMin,
-      logarithmicTick(frequencyMin, frequencyMax, 1 / 3),
-      logarithmicTick(frequencyMin, frequencyMax, 2 / 3),
+      logarithmicFrequencyTickHz(frequencyMin, frequencyMax, 1 / 3),
+      logarithmicFrequencyTickHz(frequencyMin, frequencyMax, 2 / 3),
       frequencyMax,
-    ].map(formatCompactFrequency),
+    ].map(formatCompactFrequencyHz),
   );
   let activeModeIndex = $derived(
     snapshot.activeModeId === null
@@ -186,29 +196,6 @@
 
   function clampUnit(value: number): number {
     return Math.min(1, Math.max(0, value));
-  }
-
-  function formatFrequency(value: number): string {
-    if (value >= 1_000) {
-      const precision = value < 10_000 ? 2 : 1;
-      return `${(value / 1_000).toFixed(precision)} kHz`;
-    }
-    return `${value.toFixed(value < 100 ? 1 : 0)} Hz`;
-  }
-
-  function formatCompactFrequency(value: number): string {
-    if (value >= 1_000) {
-      return `${Number((value / 1_000).toPrecision(3))}k`;
-    }
-    return `${Math.round(value)}`;
-  }
-
-  function logarithmicTick(
-    minimum: number,
-    maximum: number,
-    normalized: number,
-  ): number {
-    return minimum * Math.pow(maximum / minimum, normalized);
   }
 
   function reportViewFailure(error: unknown): void {
@@ -335,7 +322,13 @@
   function onDialKeyDown(event: KeyboardEvent): void {
     if (!isDialKeyboardKey(event.key)) return;
     event.preventDefault();
-    dispatch(createDialKeyboardCommand(event.key, event.timeStamp));
+    const command = createDialKeyboardCommand(
+      event.key,
+      event.timeStamp,
+      event.shiftKey,
+    );
+    if (command === null) return;
+    dispatch(command);
     activateAudio();
   }
 
@@ -493,7 +486,7 @@
           aria-label="Drive frequency"
           aria-valuemin={frequencyMin}
           aria-valuemax={frequencyMax}
-          aria-valuenow={Math.round(frequency)}
+          aria-valuenow={fromCentiHertz(frequencyCentiHz)}
           aria-valuetext={`${displayedFrequency}, ${regimeCopy.label.toLowerCase()}`}
           aria-orientation="horizontal"
           onpointerdown={onDialPointerDown}
@@ -536,7 +529,9 @@
             <span class="mh-dial-type">DRIVE FREQUENCY</span>
             <strong>{displayedFrequency}</strong>
             <span class="mh-dial-hint">
-              {presentation.dragging ? "SWEEPING" : "DRAG · KEYS · WHEEL"}
+              {presentation.dragging
+                ? "SWEEPING"
+                : "DRAG · KEYS · WHEEL"}
             </span>
           </span>
 
@@ -549,9 +544,9 @@
           <span>LOG SWEEP</span>
           <span class="mh-drive-direction">
             <i aria-hidden="true">−</i>
-            {formatFrequency(frequencyMin)}
+            {formatDriveFrequencyHz(frequencyMin)}
             <b aria-hidden="true"></b>
-            {formatFrequency(frequencyMax)}
+            {formatDriveFrequencyHz(frequencyMax)}
             <i aria-hidden="true">+</i>
           </span>
         </div>

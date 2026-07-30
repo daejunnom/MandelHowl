@@ -176,7 +176,7 @@ class FakeAudioContext {
 
 function runtimeSnapshot(sequence = 1): RuntimeSnapshot {
   return {
-    schemaVersion: "mandelhowl.runtime-snapshot.v1",
+    schemaVersion: "mandelhowl.runtime-snapshot.v2",
     unitSystem: "SI",
     datasetId: `sha256:${"a".repeat(64)}`,
     sequence,
@@ -185,6 +185,8 @@ function runtimeSnapshot(sequence = 1): RuntimeSnapshot {
     dial: {
       unwrappedAngleRad: 0,
       angularVelocityRadPerSecond: 0,
+      driveFrequencyCentiHz: 22_000,
+      previousDriveFrequencyCentiHz: 22_000,
       driveFrequencyHz: 220,
       previousDriveFrequencyHz: 220,
       sweepRateHzPerSecond: 0,

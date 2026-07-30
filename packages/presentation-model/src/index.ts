@@ -20,3 +20,9 @@ export {
   CANONICAL_SCENE_LAYOUT,
   type CanonicalSceneLayout,
 } from "./scene-layout-presenter";
+export {
+  formatCompactFrequencyHz,
+  formatDriveFrequencyCentiHz,
+  formatDriveFrequencyHz,
+  logarithmicFrequencyTickHz,
+} from "./frequency-presenter";

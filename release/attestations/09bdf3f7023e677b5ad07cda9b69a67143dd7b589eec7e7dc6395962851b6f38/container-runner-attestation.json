@@ -1,0 +1,42 @@
+{
+  "schemaVersion": "mandelhowl.container-baker-runner-attestation.v1",
+  "releaseOnly": true,
+  "executionSurface": "offline-release-only-oci-envelope-not-browser-runtime",
+  "engine": {
+    "name": "docker",
+    "serverVersion": "29.4.3",
+    "operatingSystem": "linux"
+  },
+  "image": {
+    "id": "sha256:c878d65dd0d71a302228c4729092878398ab405c390226a5c3135ea51264474e",
+    "identitySource": "docker image inspect .Id",
+    "targetPlatform": "linux/amd64",
+    "pinnedBaseImages": [
+      "node:22.19.0-bookworm-slim@sha256:4a4884e8a44826194dff92ba316264f392056cbe243dcc9fd3551e71cea02b90",
+      "rust:1.96.0-bookworm@sha256:5e2214abe154fe26e39f64488952e5c991eeed1d6d6da7cc8381ae83927f0cfc"
+    ]
+  },
+  "isolation": {
+    "network": "none",
+    "rootFilesystem": "read-only",
+    "capabilities": "all-dropped",
+    "noNewPrivileges": true,
+    "sourceMount": "not-mounted-filtered-image-snapshot",
+    "outputMount": "read-write"
+  },
+  "injectedEnvironment": {
+    "MANDELHOWL_CONTAINER_IMAGE_DIGEST": "sha256:c878d65dd0d71a302228c4729092878398ab405c390226a5c3135ea51264474e",
+    "MANDELHOWL_CONTAINER_RUNNER_ATTESTED": "1",
+    "MANDELHOWL_MANAGED_INSTALL": "1",
+    "MANDELHOWL_NATIVE_BAKER": "/opt/mandelhowl/bin/mandelhowl-baker-native",
+    "MANDELHOWL_PYTHON": "/usr/bin/python3"
+  },
+  "containerExitCode": 0,
+  "supervisorReport": {
+    "path": "attestation.json",
+    "sha256": "e6c5ae84eacadeac3775765a7b3bba532e2cedd08eaac2c149c6d1a80b5bfc81",
+    "state": "dual-verified",
+    "releaseEligible": true,
+    "promotionAllowed": true
+  }
+}

@@ -21,6 +21,14 @@ mapping:
   clampFrequencyAtEndStops: true
   formula: "f=minHz*(maxHz/minHz)^((clamp(angle,minAngle,maxAngle)-minAngle)/(maxAngle-minAngle))"
 
+fixedPoint:
+  canonicalUnit: centihertz
+  centihertzPerHertz: 100
+  decimalPlaces: 2
+  quantization: nearest-centihertz
+  tieBreak: half-away-from-zero
+  physicsBoundary: hertz-from-centihertz
+
 pointerSampling:
   unwrapPeriodRad: 6.283185307179586
   minimumRadiusRatio: 0.22

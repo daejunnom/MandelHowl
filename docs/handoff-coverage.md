@@ -134,6 +134,7 @@ ownership 분리를 고정한다.
 | NUI1 | PASS | shared dial-input unit과 forced React/Svelte gesture differential이 같은 canonical frequency를 확인 |
 | NUI2 | PASS | supervisor unit과 fault E2E가 load/mount/readiness/heartbeat/view/attached-renderer failure, generation revoke, duplicate rejection과 failover 전후 state continuity 확인 |
 | NUI3 | PASS | structured `MH-UI-*` evidence, split-brain quarantine, hidden heartbeat suspension, release provenance v4의 UI spec·candidate·supervisor·host source digest 검증 |
+| DIAL0 | PASS | canonical integer centihertz, 항상 두 자리인 React/Svelte readout·ARIA, 기존 coarse Arrow 감도와 inert Shift+Arrow, production 684.11/684.12 critical/growing 경계, centihertz-only 0..100 reachability replay 확인 |
 
 Fail-operational 범위는 framework view availability다. 두 UI는 하나의
 TypeScript scientific runtime, dataset loader, renderer/audio graph,

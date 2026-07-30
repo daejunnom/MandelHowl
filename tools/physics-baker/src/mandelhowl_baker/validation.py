@@ -1023,7 +1023,7 @@ def validate_dataset(dataset: Path) -> dict[str, Any]:
             and coverage.get("coverageContract")
             == runtime_binding["coverageContract"]
             and generated_by.get("algorithm")
-            == "deterministic-global-trajectory-search-v1"
+            == "deterministic-global-trajectory-search-v2"
             and generated_by.get("feedbackAlgorithmRevision")
             == runtime_binding["runtimeAlgorithmRevision"]
             and generated_by.get("perValueRuntimeLookup") == "forbidden"
@@ -1031,7 +1031,7 @@ def validate_dataset(dataset: Path) -> dict[str, Any]:
         )
     )
     common_coverage_invalid = (
-        coverage.get("schemaVersion") != "mandelhowl.coverage-report.v1"
+        coverage.get("schemaVersion") != "mandelhowl.coverage-report.v2"
         or coverage.get("perValueRuntimeExceptionTable") is not False
         or targets != expected_targets
     )

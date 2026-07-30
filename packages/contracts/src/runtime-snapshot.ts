@@ -10,7 +10,13 @@ export type ResonanceRegime =
 export interface DialSnapshot {
   readonly unwrappedAngleRad: number;
   readonly angularVelocityRadPerSecond: number;
+  /** Canonical current drive value, stored as an integer 0.01 Hz unit. */
+  readonly driveFrequencyCentiHz: number;
+  /** Canonical previous drive value, stored as an integer 0.01 Hz unit. */
+  readonly previousDriveFrequencyCentiHz: number;
+  /** Physics-boundary projection of driveFrequencyCentiHz. */
   readonly driveFrequencyHz: number;
+  /** Physics-boundary projection of previousDriveFrequencyCentiHz. */
   readonly previousDriveFrequencyHz: number;
   readonly sweepRateHzPerSecond: number;
   readonly approachDirection: "decreasing" | "stationary" | "increasing";
@@ -68,7 +74,7 @@ export type VolumeSnapshot =
  * dimensionless and never represent device or operating-system volume.
  */
 export interface RuntimeSnapshot {
-  readonly schemaVersion: "mandelhowl.runtime-snapshot.v1";
+  readonly schemaVersion: "mandelhowl.runtime-snapshot.v2";
   readonly unitSystem: "SI";
   readonly datasetId: ContentAddressedId;
   readonly sequence: number;

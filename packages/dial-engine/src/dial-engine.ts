@@ -1,4 +1,9 @@
 import { estimateAngularVelocity } from "./angular-velocity";
+import {
+  fromCentiHertz,
+  GENERATED_DIAL_SPEC,
+  toCentiHertz,
+} from "../../contracts/src";
 import type { DialCommand, DialKeyboardKey } from "./dial-command";
 import {
   createDialConfig,
@@ -6,7 +11,11 @@ import {
   type DialState,
 } from "./dial-state";
 import { applyEndStopResistance, clampToDialRange } from "./end-stop";
-import { angleToFrequency, frequencyToAngle } from "./frequency-scale";
+import {
+  angleToFrequencyCentiHz,
+  frequencyCentiHzToAngle,
+  frequencyToAngle,
+} from "./frequency-scale";
 import { integrateDialInertia } from "./inertia";
 import { clamp, finiteOr, signWithDeadBand } from "./math";
 import {
@@ -25,13 +34,24 @@ function writeDerivedDialState(
   velocityRadiansPerSecond: number,
   elapsedSeconds: number,
 ): void {
-  const previousFrequency = state.frequencyHz;
+  const previousFrequencyCentiHz = state.frequencyCentiHz;
+  const previousFrequency = fromCentiHertz(
+    previousFrequencyCentiHz,
+  );
   const previousStoppedSeconds = state.stoppedSeconds;
   const angle = finiteOr(angleRadians, state.unwrappedAngleRadians);
   const effectiveAngle = clampToDialRange(angle, state.config);
-  const frequency = angleToFrequency(effectiveAngle, state.config);
+  const frequencyCentiHz = angleToFrequencyCentiHz(
+    effectiveAngle,
+    state.config,
+  );
+  const frequency = fromCentiHertz(frequencyCentiHz);
   const dt = Math.max(0, finiteOr(elapsedSeconds, 0));
-  const sweep = dt > 0 ? (frequency - previousFrequency) / dt : 0;
+  const sweep =
+    dt > 0
+      ? (frequencyCentiHz - previousFrequencyCentiHz) /
+        (GENERATED_DIAL_SPEC.fixedPoint.centihertzPerHertz * dt)
+      : 0;
   const velocity = finiteOr(velocityRadiansPerSecond, 0);
   const direction = signWithDeadBand(
     Math.abs(sweep) > 1e-7 ? sweep : velocity,
@@ -47,6 +67,8 @@ function writeDerivedDialState(
   state.angleRadians = angle;
   state.effectiveAngleRadians = effectiveAngle;
   state.angularVelocityRadiansPerSecond = velocity;
+  state.previousFrequencyCentiHz = previousFrequencyCentiHz;
+  state.frequencyCentiHz = frequencyCentiHz;
   state.previousFrequencyHz = previousFrequency;
   state.frequencyHz = frequency;
   state.frequencySweepHzPerSecond = finiteOr(sweep, 0);
@@ -90,6 +112,7 @@ function ageRecentPointerVelocity(
 export function createDialState(
   options: {
     readonly config?: Partial<Omit<DialConfig, "version">>;
+    readonly initialFrequencyCentiHz?: number;
     readonly initialFrequencyHz?: number;
     readonly initialAngleRadians?: number;
   } = {},
@@ -97,12 +120,23 @@ export function createDialState(
   const config = createDialConfig(options.config);
   const initialAngle =
     options.initialAngleRadians === undefined
-      ? frequencyToAngle(
-          finiteOr(options.initialFrequencyHz ?? 220, 220),
-          config,
-        )
+      ? options.initialFrequencyCentiHz === undefined
+        ? frequencyToAngle(
+            finiteOr(options.initialFrequencyHz ?? 220, 220),
+            config,
+          )
+        : frequencyCentiHzToAngle(
+            Number.isSafeInteger(options.initialFrequencyCentiHz)
+              ? options.initialFrequencyCentiHz
+              : toCentiHertz(220),
+            config,
+          )
       : clampToDialRange(options.initialAngleRadians, config);
-  const frequency = angleToFrequency(initialAngle, config);
+  const frequencyCentiHz = angleToFrequencyCentiHz(
+    initialAngle,
+    config,
+  );
+  const frequency = fromCentiHertz(frequencyCentiHz);
   return {
     version: "mandelhowl.dial-state.v1",
     config,
@@ -110,6 +144,8 @@ export function createDialState(
     angleRadians: initialAngle,
     effectiveAngleRadians: initialAngle,
     angularVelocityRadiansPerSecond: 0,
+    frequencyCentiHz,
+    previousFrequencyCentiHz: frequencyCentiHz,
     frequencyHz: frequency,
     previousFrequencyHz: frequency,
     frequencySweepHzPerSecond: 0,
@@ -307,6 +343,36 @@ function keyboardDelta(key: DialKeyboardKey, config: DialConfig): number | null 
     default:
       return null;
   }
+}
+
+function setFrequencyCentiHz(
+  state: DialState,
+  requestedCentiHz: number,
+  timestampMs?: number,
+): DialState {
+  const minimumCentiHz = toCentiHertz(state.config.minFrequencyHz);
+  const maximumCentiHz = toCentiHertz(state.config.maxFrequencyHz);
+  const normalizedCentiHz = Number.isSafeInteger(requestedCentiHz)
+    ? requestedCentiHz
+    : state.frequencyCentiHz;
+  const frequencyCentiHz = Math.min(
+    maximumCentiHz,
+    Math.max(minimumCentiHz, normalizedCentiHz),
+  );
+  const angle = frequencyCentiHzToAngle(
+    frequencyCentiHz,
+    state.config,
+  );
+  const next = nudge(
+    state,
+    angle - state.unwrappedAngleRadians,
+    timestampMs,
+  );
+  return {
+    ...next,
+    angularVelocityRadiansPerSecond: 0,
+    inertiaElapsedSeconds: 0,
+  };
 }
 
 function nudge(
@@ -573,10 +639,9 @@ export function reduceDialState(
     case "nudge":
       return nudge(state, command.deltaRadians, command.timestampMs);
     case "set-frequency": {
-      const angle = frequencyToAngle(command.frequencyHz, state.config);
-      return nudge(
+      return setFrequencyCentiHz(
         state,
-        angle - state.unwrappedAngleRadians,
+        command.frequencyCentiHz,
         command.timestampMs,
       );
     }
@@ -585,7 +650,8 @@ export function reduceDialState(
     case "reset":
       return createDialState({
         config: command.config ?? state.config,
-        initialFrequencyHz: command.frequencyHz ?? 220,
+        initialFrequencyCentiHz:
+          command.frequencyCentiHz ?? toCentiHertz(220),
       });
   }
 }

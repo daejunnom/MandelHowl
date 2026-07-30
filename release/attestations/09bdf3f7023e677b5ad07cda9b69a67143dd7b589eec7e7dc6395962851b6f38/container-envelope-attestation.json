@@ -1,0 +1,17 @@
+{
+  "schemaVersion": "mandelhowl.container-baker-attestation-bundle.v1",
+  "releaseOnly": true,
+  "artifacts": [
+    {
+      "path": "attestation.json",
+      "sha256": "e6c5ae84eacadeac3775765a7b3bba532e2cedd08eaac2c149c6d1a80b5bfc81"
+    },
+    {
+      "path": "container-runner-attestation.json",
+      "sha256": "d12df9f5beee824ab15357259cf5180749b0432745254aa5363b46030e19e475"
+    }
+  ],
+  "imageId": "sha256:c878d65dd0d71a302228c4729092878398ab405c390226a5c3135ea51264474e",
+  "supervisorState": "dual-verified",
+  "releaseEligible": true
+}

@@ -8,6 +8,9 @@ import {
 import {
   GENERATED_DATASET_RELEASE_SPEC,
   GENERATED_DIAL_SPEC,
+  formatCentiHertz,
+  fromCentiHertz,
+  toCentiHertz,
   type RuntimeSnapshot,
 } from "@/packages/contracts/src";
 import {
@@ -509,6 +512,8 @@ function rendererSnapshot(
     options.activeMode === undefined ? state.activeMode : options.activeMode;
   const simulationTimeSeconds = options.simulationTimeSeconds ?? 1;
   const previousFrequency = options.previousFrequency ?? state.frequency;
+  const frequencyCentiHz = toCentiHertz(state.frequency);
+  const previousFrequencyCentiHz = toCentiHertz(previousFrequency);
   const sweepRate = options.sweepRateHzPerSecond ?? (state.dragging ? -48 : 0);
   const modalOverrides = options.modes;
   return Object.freeze({
@@ -518,9 +523,15 @@ function rendererSnapshot(
     simulationTimeSeconds,
     dial: Object.freeze({
       ...base.dial,
-      unwrappedAngleRad: angleForFrequency(state.frequency),
-      driveFrequencyHz: state.frequency,
-      previousDriveFrequencyHz: previousFrequency,
+      unwrappedAngleRad: angleForFrequency(
+        fromCentiHertz(frequencyCentiHz),
+      ),
+      driveFrequencyCentiHz: frequencyCentiHz,
+      previousDriveFrequencyCentiHz: previousFrequencyCentiHz,
+      driveFrequencyHz: fromCentiHertz(frequencyCentiHz),
+      previousDriveFrequencyHz: fromCentiHertz(
+        previousFrequencyCentiHz,
+      ),
       sweepRateHzPerSecond: sweepRate,
       approachDirection:
         sweepRate > 0
@@ -828,7 +839,9 @@ function renderAndObserve(
     activeModeId: snapshot.activeModeId ?? "none",
     oldModeId: oldModeId ?? "none",
     newModeId: newModeId ?? "none",
-    frequency: snapshot.dial.driveFrequencyHz.toFixed(2),
+    frequency: formatCentiHertz(
+      snapshot.dial.driveFrequencyCentiHz,
+    ),
     canvasWidth: activeCanvas.width,
     canvasHeight: activeCanvas.height,
   });
@@ -1139,6 +1152,7 @@ export function MandelHowlVisualFixture({
   return (
     <>
       <MandelHowlScene
+        frequencyCentiHz={toCentiHertz(presentedState.frequency)}
         frequency={presentedState.frequency}
         snapshotSequence={1}
         angle={angleForFrequency(presentedState.frequency)}

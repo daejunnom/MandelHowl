@@ -1,9 +1,19 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import type {
   FrequencyResponseTable,
   ResonanceDataset,
 } from "../../contracts/src";
-import { GENERATED_FEEDBACK_SPEC } from "../../contracts/src";
+import {
+  fromCentiHertz,
+  GENERATED_DATASET_RELEASE_SPEC,
+  GENERATED_FEEDBACK_SPEC,
+} from "../../contracts/src";
+import {
+  decodeModesBinaryV1,
+  decodeResponseBinaryV1,
+} from "../../asset-runtime/src";
 import {
   advanceResonance,
   classifyResonanceRegime,
@@ -32,6 +42,27 @@ function simulate(
   return getResonanceSnapshot(state);
 }
 
+function loadPinnedProductionRuntimeDataset(): RuntimeModalDataset {
+  const datasetRoot = resolve(
+    process.cwd(),
+    GENERATED_DATASET_RELEASE_SPEC.sourceDirectory,
+  );
+  const manifest = JSON.parse(
+    readFileSync(resolve(datasetRoot, "manifest.json"), "utf8"),
+  ) as ResonanceDataset["manifest"];
+  const modes = decodeModesBinaryV1(
+    readFileSync(resolve(datasetRoot, manifest.files.modes.path)),
+  );
+  const response = decodeResponseBinaryV1(
+    readFileSync(resolve(datasetRoot, manifest.files.response.path)),
+  );
+  return runtimeModalDatasetFromResonanceDataset({
+    manifest,
+    modes,
+    response,
+  });
+}
+
 describe("resonance engine", () => {
   it("is deterministic for the same dataset and drive trace", () => {
     const first = simulate(221.4, 8);
@@ -58,6 +89,56 @@ describe("resonance engine", () => {
     expect(classifyResonanceRegime(-0.025, 0.5)).toBe("critical");
     expect(classifyResonanceRegime(0.025_001, 0.5)).toBe("growing");
     expect(classifyResonanceRegime(-0.025_001, 0.5)).toBe("decaying");
+  });
+
+  it("distinguishes adjacent critical and growing centihertz in the pinned production dataset", () => {
+    const dataset = loadPinnedProductionRuntimeDataset();
+    const criticalFrequencyCentiHz = 68_411;
+    const growingFrequencyCentiHz = 68_412;
+    const criticalMargin = estimateOpenLoopMarginAtFrequency(
+      dataset,
+      fromCentiHertz(criticalFrequencyCentiHz),
+    );
+    const growingMargin = estimateOpenLoopMarginAtFrequency(
+      dataset,
+      fromCentiHertz(growingFrequencyCentiHz),
+    );
+
+    expect(Math.floor(criticalFrequencyCentiHz / 100)).toBe(
+      Math.floor(growingFrequencyCentiHz / 100),
+    );
+    expect(growingFrequencyCentiHz - criticalFrequencyCentiHz).toBe(1);
+    expect(classifyResonanceRegime(criticalMargin, 0.5)).toBe(
+      "critical",
+    );
+    expect(classifyResonanceRegime(growingMargin, 0.5)).toBe(
+      "growing",
+    );
+  });
+
+  it("quantizes incoming arbitrary hertz onto canonical centihertz before integration", () => {
+    const state = createResonanceState({
+      initialFrequencyHz: 368.5149,
+    });
+    expect(state.driveFrequencyCentiHz).toBe(36_851);
+    expect(getResonanceSnapshot(state)).toMatchObject({
+      frequencyCentiHz: 36_851,
+      frequencyHz: 368.51,
+    });
+
+    advanceResonance(state, 1 / 240, {
+      frequencyHz: 368.515,
+    });
+
+    expect(state.previousDriveFrequencyCentiHz).toBe(36_851);
+    expect(state.driveFrequencyCentiHz).toBe(36_852);
+    expect(Number.isSafeInteger(state.driveFrequencyCentiHz)).toBe(
+      true,
+    );
+    expect(getResonanceSnapshot(state)).toMatchObject({
+      frequencyCentiHz: 36_852,
+      frequencyHz: 368.52,
+    });
   });
 
   it("uses the canonical growth-slope and decayed-envelope thresholds", () => {

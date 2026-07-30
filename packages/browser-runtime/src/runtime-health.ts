@@ -19,6 +19,9 @@ export interface MandelHowlHealthSnapshot {
   readonly runtime: {
     readonly sequence: number;
     readonly simulationTimeSeconds: number;
+    /** Canonical user drive frequency in exact 0.01 Hz integer units. */
+    readonly driveFrequencyCentiHz: number;
+    /** Physics-boundary projection retained for diagnostics. */
     readonly driveFrequencyHz: number;
     readonly activeModeId: string | null;
   };

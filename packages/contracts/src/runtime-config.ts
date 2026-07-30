@@ -37,6 +37,14 @@ export interface DialConfig {
     readonly formula:
       "f=minHz*(maxHz/minHz)^((clamp(angle,minAngle,maxAngle)-minAngle)/(maxAngle-minAngle))";
   };
+  readonly fixedPoint: {
+    readonly canonicalUnit: "centihertz";
+    readonly centihertzPerHertz: 100;
+    readonly decimalPlaces: 2;
+    readonly quantization: "nearest-centihertz";
+    readonly tieBreak: "half-away-from-zero";
+    readonly physicsBoundary: "hertz-from-centihertz";
+  };
   readonly pointerSampling: {
     readonly unwrapPeriodRad: number;
     readonly minimumRadiusRatio: number;

@@ -57,6 +57,7 @@ production pin을 기준으로 검증한다.
 | NUI1 | 두 view가 공통 dial-input mapping과 canonical runtime을 사용하고 같은 gesture 결과 생성 | PASS — input contract unit + forced React/Svelte differential E2E |
 | NUI2 | availability fault에서 session state를 보존하며 세대·중복 입력을 막고 one-way failover | PASS — supervisor unit + load/mount/active-view/attached-renderer fault E2E |
 | NUI3 | digest mismatch 격리, 근거 진단, hidden heartbeat와 두 구현/supervisor/host source provenance | PASS — `MH-UI-*` unit + release provenance v4 verifier |
+| DIAL0 | 사용자 drive를 integer centihertz로 보존하고 정확히 두 자리로 표시하며 1 Hz 안의 공진 상태를 분리하되 별도 fine-control shortcut은 제공하지 않음 | PASS — fixed-point/unit, React·Svelte web parity, 실제 production critical/growing 인접 cHz, inert Shift+Arrow browser check, v2 reachability replay |
 | M1 | 같은 `baker-algorithm.v1`을 독립 구현한 Rust native/Python stdlib 전체 generator | PASS — 격리된 Linux/amd64 OCI full-generation differential과 committed candidate bundle |
 | M2 | Rust primary, availability-only Python degraded fallback, scientific split-brain/LKG 정책 | PASS — broker policy/process/semantic-diff tests |
 | M3 | 4551 구조화, Linux/OCI-only native 실행, committed OCI bundle과 provenance v4 release binding | PASS — no-native Windows plan + envelope mutation tests + release verifier |

@@ -3,13 +3,16 @@ import {
   GENERATED_DIAL_SPEC,
 } from "../../contracts/src";
 import {
+  angleToFrequencyCentiHz,
   createDialGestureTrace,
   createDialState,
+  frequencyCentiHzToAngle,
   recordDialTraceCommand,
   reduceDialState,
   replayDialGestureTrace,
   stepDialState,
   stepDialStateInPlace,
+  validateDialGestureTrace,
 } from "./index";
 
 describe("canonical dial engine", () => {
@@ -36,6 +39,26 @@ describe("canonical dial engine", () => {
     expect(end.frequencyHz).toBeCloseTo(6000, 10);
   });
 
+  it("round-trips representative centihertz ticks through the log dial", () => {
+    const config = createDialState().config;
+    for (const frequencyCentiHz of [
+      4_500,
+      4_501,
+      22_000,
+      68_319,
+      100_000,
+      599_999,
+      600_000,
+    ]) {
+      expect(
+        angleToFrequencyCentiHz(
+          frequencyCentiHzToAngle(frequencyCentiHz, config),
+          config,
+        ),
+      ).toBe(frequencyCentiHz);
+    }
+  });
+
   it("gives keyboard and wheel adapters the same sweep history semantics", () => {
     const initial = createDialState({ initialFrequencyHz: 220 });
     const keyboard = reduceDialState(initial, {
@@ -55,6 +78,128 @@ describe("canonical dial engine", () => {
     expect(wheel.previousFrequencyHz).toBe(keyboard.frequencyHz);
     expect(wheel.frequencySweepHzPerSecond).toBeGreaterThan(0);
     expect(wheel.direction).toBe(1);
+  });
+
+  it("keeps every physical input path on safe integer centihertz", () => {
+    const expectFixedPointState = (
+      state: ReturnType<typeof createDialState>,
+    ) => {
+      expect(Number.isSafeInteger(state.frequencyCentiHz)).toBe(true);
+      expect(
+        Number.isSafeInteger(state.previousFrequencyCentiHz),
+      ).toBe(true);
+      expect(state.frequencyHz).toBe(state.frequencyCentiHz / 100);
+      expect(state.previousFrequencyHz).toBe(
+        state.previousFrequencyCentiHz / 100,
+      );
+    };
+
+    let state = createDialState({
+      initialFrequencyCentiHz: 68_319,
+    });
+    expectFixedPointState(state);
+    state = reduceDialState(state, {
+      type: "pointer-start",
+      point: { x: 100, y: 0 },
+      center: { x: 0, y: 0 },
+      timestampMs: 0,
+    });
+    expectFixedPointState(state);
+    state = reduceDialState(state, {
+      type: "pointer-move",
+      point: { x: 98, y: 20 },
+      center: { x: 0, y: 0 },
+      timestampMs: 16,
+    });
+    expectFixedPointState(state);
+    state = reduceDialState(state, {
+      type: "pointer-end",
+      timestampMs: 17,
+    });
+    expectFixedPointState(state);
+    state = reduceDialState(state, {
+      type: "wheel",
+      deltaY: -20,
+      timestampMs: 32,
+    });
+    expectFixedPointState(state);
+    state = reduceDialState(state, {
+      type: "keyboard",
+      key: "ArrowRight",
+      timestampMs: 48,
+    });
+    expectFixedPointState(state);
+    state = reduceDialState(state, {
+      type: "keyboard",
+      key: "ArrowLeft",
+      timestampMs: 64,
+    });
+    expectFixedPointState(state);
+    state = stepDialState(state, 1 / 60);
+    expectFixedPointState(state);
+  });
+
+  it("clamps boundaries and fails safely for invalid centihertz commands", () => {
+    const initial = createDialState({
+      initialFrequencyCentiHz: 68_319,
+    });
+    const minimum = reduceDialState(initial, {
+      type: "set-frequency",
+      frequencyCentiHz: Number.MIN_SAFE_INTEGER,
+      timestampMs: 16,
+    });
+    expect(minimum.frequencyCentiHz).toBe(4_500);
+    expect(minimum.frequencyHz).toBe(45);
+
+    const maximum = reduceDialState(initial, {
+      type: "set-frequency",
+      frequencyCentiHz: Number.MAX_SAFE_INTEGER,
+      timestampMs: 16,
+    });
+    expect(maximum.frequencyCentiHz).toBe(600_000);
+    expect(maximum.frequencyHz).toBe(6_000);
+
+    const rejectedFraction = reduceDialState(initial, {
+      type: "set-frequency",
+      frequencyCentiHz: 68_319.5,
+      timestampMs: 16,
+    });
+    expect(rejectedFraction.frequencyCentiHz).toBe(
+      initial.frequencyCentiHz,
+    );
+
+    for (const invalid of [
+      Number.NaN,
+      Number.POSITIVE_INFINITY,
+      Number.NEGATIVE_INFINITY,
+      Number.MAX_SAFE_INTEGER + 1,
+    ]) {
+      const retained = reduceDialState(initial, {
+        type: "set-frequency",
+        frequencyCentiHz: invalid,
+        timestampMs: 16,
+      });
+      expect(retained.frequencyCentiHz).toBe(
+        initial.frequencyCentiHz,
+      );
+      expect(retained.frequencyHz).toBe(initial.frequencyHz);
+      expect(Number.isSafeInteger(retained.frequencyCentiHz)).toBe(
+        true,
+      );
+    }
+
+    const home = reduceDialState(initial, {
+      type: "keyboard",
+      key: "Home",
+      timestampMs: 16,
+    });
+    const end = reduceDialState(home, {
+      type: "keyboard",
+      key: "End",
+      timestampMs: 32,
+    });
+    expect(home.frequencyCentiHz).toBe(4_500);
+    expect(end.frequencyCentiHz).toBe(600_000);
   });
 
   it("rejects stale pointer deltas and cleans a cancelled gesture", () => {
@@ -192,7 +337,7 @@ describe("canonical dial engine", () => {
 
   it("uses the canonical velocity window and caps release inertia", () => {
     const initial = createDialState({
-      initialFrequencyHz: 220,
+      initialFrequencyCentiHz: 22_000,
       config: {
         velocityHistoryWindowSeconds: 0.12,
         maximumInitialInertiaVelocity: 0.5,
@@ -397,9 +542,9 @@ describe("canonical dial engine", () => {
 
   it("records and replays a deterministic gesture trace", () => {
     let trace = createDialGestureTrace({
-      traceId: "keyboard-wheel-history",
-      initialFrequencyHz: 220,
-      durationSeconds: 0.2,
+      traceId: "centihertz-v2-history",
+      initialFrequencyCentiHz: 68_319,
+      durationSeconds: 0.3,
     });
     trace = recordDialTraceCommand(trace, 0.05, {
       type: "keyboard",
@@ -407,14 +552,35 @@ describe("canonical dial engine", () => {
       timestampMs: 99_999,
     });
     trace = recordDialTraceCommand(trace, 0.1, {
-      type: "wheel",
-      deltaY: -12,
+      type: "keyboard",
+      key: "ArrowLeft",
       timestampMs: 88_888,
     });
+    trace = recordDialTraceCommand(trace, 0.15, {
+      type: "set-frequency",
+      frequencyCentiHz: 68_325,
+      timestampMs: 77_777,
+    });
+
+    expect(validateDialGestureTrace(trace)).toEqual([]);
+    const serialized = JSON.stringify(trace);
+    expect(serialized).toContain(
+      '"schemaVersion":"mandelhowl.dial-gesture-trace.v2"',
+    );
+    expect(serialized).toContain('"initialFrequencyCentiHz":68319');
+    expect(serialized).not.toContain('"precision"');
+    expect(serialized).not.toContain("initialFrequencyHz");
+
     const first = replayDialGestureTrace(trace);
     const second = replayDialGestureTrace(trace);
     expect(first.finalState).toEqual(second.finalState);
-    expect(first.finalState.frequencyHz).toBeGreaterThan(220);
-    expect(first.eventStates).toHaveLength(2);
+    expect(
+      first.eventStates.every(({ frequencyCentiHz }) =>
+        Number.isSafeInteger(frequencyCentiHz),
+      ),
+    ).toBe(true);
+    expect(first.finalState.frequencyCentiHz).toBe(68_325);
+    expect(first.finalState.frequencyHz).toBe(683.25);
+    expect(first.eventStates).toHaveLength(3);
   });
 });

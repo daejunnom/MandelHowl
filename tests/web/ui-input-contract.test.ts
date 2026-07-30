@@ -7,6 +7,7 @@ import {
   createUiInputEventIdScope,
   isDialKeyboardKey,
 } from "../../packages/browser-runtime/src";
+import { GENERATED_DIAL_SPEC } from "../../packages/contracts/src";
 
 describe("framework-neutral dial input contract", () => {
   it("keeps one pointer as the gesture owner until it is released", () => {
@@ -52,6 +53,28 @@ describe("framework-neutral dial input contract", () => {
     });
   });
 
+  it("suppresses Shift+Arrow instead of exposing a fine-control shortcut", () => {
+    expect(GENERATED_DIAL_SPEC.keyboard.arrowStepRad).toBe(0.035);
+    expect(createDialKeyboardCommand("ArrowRight", 12)).toEqual({
+      type: "keyboard",
+      key: "ArrowRight",
+      timestampMs: 12,
+    });
+    for (const key of [
+      "ArrowLeft",
+      "ArrowRight",
+      "ArrowUp",
+      "ArrowDown",
+    ] as const) {
+      expect(createDialKeyboardCommand(key, 12, true)).toBeNull();
+    }
+    expect(createDialKeyboardCommand("PageUp", 12, true)).toEqual({
+      type: "keyboard",
+      key: "PageUp",
+      timestampMs: 12,
+    });
+  });
+
   it("keeps native event identity stable across UI generations", () => {
     const command = createDialKeyboardCommand("ArrowUp", 91.25);
     const svelteIds = createUiInputEventIdScope("svelte5:1");
@@ -63,8 +86,12 @@ describe("framework-neutral dial input contract", () => {
     expect(reactIds.forCommand(command)).toBe(
       "keyboard:91.25:ArrowUp",
     );
-    expect(svelteIds.related()).toBe("keyboard:91.25:ArrowUp");
-    expect(reactIds.related()).toBe("keyboard:91.25:ArrowUp");
+    expect(svelteIds.related()).toBe(
+      "keyboard:91.25:ArrowUp",
+    );
+    expect(reactIds.related()).toBe(
+      "keyboard:91.25:ArrowUp",
+    );
   });
 
   it("does not collapse distinct low-resolution events with one timestamp", () => {

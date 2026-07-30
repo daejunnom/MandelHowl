@@ -9,7 +9,11 @@ import type {
 } from "react";
 import {
   CANONICAL_SCENE_LAYOUT,
+  formatCompactFrequencyHz,
+  formatDriveFrequencyCentiHz,
+  formatDriveFrequencyHz,
   formatVirtualVolume,
+  logarithmicFrequencyTickHz,
   measurementStatusLabel,
   presentCausalMotion,
   presentOscilloscope,
@@ -21,6 +25,7 @@ import {
   GENERATED_DIAL_SPEC,
   GENERATED_MOTION_SAFETY_SPEC,
   GENERATED_SCENE_SPEC,
+  fromCentiHertz,
 } from "@/packages/contracts/src";
 
 export type MandelHowlRegime =
@@ -30,6 +35,8 @@ export type MandelHowlRegime =
   | "saturated";
 
 export interface MandelHowlSceneProps {
+  /** Canonical drive frequency as an integer centihertz. */
+  frequencyCentiHz: number;
   /** Current drive frequency in hertz. */
   frequency: number;
   snapshotSequence?: number;
@@ -129,31 +136,8 @@ function clampUnit(value: number) {
   return Math.min(1, Math.max(0, value));
 }
 
-function formatFrequency(frequency: number) {
-  if (frequency >= 1000) {
-    const precision = frequency < 10000 ? 2 : 1;
-    return `${(frequency / 1000).toFixed(precision)} kHz`;
-  }
-
-  return `${frequency.toFixed(frequency < 100 ? 1 : 0)} Hz`;
-}
-
-function formatCompactFrequency(frequency: number) {
-  if (frequency >= 1000) {
-    return `${Number((frequency / 1000).toPrecision(3))}k`;
-  }
-  return `${Math.round(frequency)}`;
-}
-
-function logarithmicTick(
-  minimum: number,
-  maximum: number,
-  normalized: number,
-) {
-  return minimum * Math.pow(maximum / minimum, normalized);
-}
-
 export function MandelHowlScene({
+  frequencyCentiHz,
   frequency,
   snapshotSequence = 0,
   frequencyMin = GENERATED_DIAL_SPEC.mapping.minimumFrequencyHz,
@@ -194,13 +178,14 @@ export function MandelHowlScene({
   const progress = clampUnit(measurementProgress);
   const visualEnvelope = clampUnit(envelope);
   const displayedVolume = formatVirtualVolume(volume);
-  const displayedFrequency = formatFrequency(frequency);
+  const displayedFrequency =
+    formatDriveFrequencyCentiHz(frequencyCentiHz);
   const frequencyTicks = [
     frequencyMin,
-    logarithmicTick(frequencyMin, frequencyMax, 1 / 3),
-    logarithmicTick(frequencyMin, frequencyMax, 2 / 3),
+    logarithmicFrequencyTickHz(frequencyMin, frequencyMax, 1 / 3),
+    logarithmicFrequencyTickHz(frequencyMin, frequencyMax, 2 / 3),
     frequencyMax,
-  ].map(formatCompactFrequency);
+  ].map(formatCompactFrequencyHz);
   const modeLabel =
     activeMode === null
       ? "NO MODE"
@@ -328,7 +313,7 @@ export function MandelHowlScene({
             aria-label="Drive frequency"
             aria-valuemin={frequencyMin}
             aria-valuemax={frequencyMax}
-            aria-valuenow={Math.round(frequency)}
+            aria-valuenow={fromCentiHertz(frequencyCentiHz)}
             aria-valuetext={`${displayedFrequency}, ${regimeCopy.label.toLowerCase()}`}
             aria-orientation="horizontal"
             onPointerDown={onDialPointerDown}
@@ -358,7 +343,9 @@ export function MandelHowlScene({
               <span className="mh-dial-type">DRIVE FREQUENCY</span>
               <strong>{displayedFrequency}</strong>
               <span className="mh-dial-hint">
-                {dragging ? "SWEEPING" : "DRAG · KEYS · WHEEL"}
+                {dragging
+                  ? "SWEEPING"
+                  : "DRAG · KEYS · WHEEL"}
               </span>
             </span>
 
@@ -371,9 +358,9 @@ export function MandelHowlScene({
             <span>LOG SWEEP</span>
             <span className="mh-drive-direction">
               <i aria-hidden="true">−</i>
-              {formatFrequency(frequencyMin)}
+              {formatDriveFrequencyHz(frequencyMin)}
               <b aria-hidden="true" />
-              {formatFrequency(frequencyMax)}
+              {formatDriveFrequencyHz(frequencyMax)}
               <i aria-hidden="true">+</i>
             </span>
           </div>

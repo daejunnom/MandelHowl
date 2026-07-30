@@ -25,7 +25,10 @@ export type DialTraceCommand =
     }
   | { readonly type: "wheel"; readonly deltaY: number }
   | { readonly type: "nudge"; readonly deltaRadians: number }
-  | { readonly type: "set-frequency"; readonly frequencyHz: number };
+  | {
+      readonly type: "set-frequency";
+      readonly frequencyCentiHz: number;
+    };
 
 export interface DialTraceEvent {
   readonly sequence: number;
@@ -33,9 +36,9 @@ export interface DialTraceEvent {
   readonly command: DialTraceCommand;
 }
 export interface DialGestureTrace {
-  readonly schemaVersion: "mandelhowl.dial-gesture-trace.v1";
+  readonly schemaVersion: "mandelhowl.dial-gesture-trace.v2";
   readonly traceId: string;
-  readonly initialFrequencyHz: number;
+  readonly initialFrequencyCentiHz: number;
   readonly durationSeconds: number;
   readonly events: readonly DialTraceEvent[];
 }

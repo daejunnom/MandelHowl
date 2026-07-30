@@ -17,7 +17,7 @@ function snapshot(
   datasetId = `sha256:${"0".repeat(64)}`,
 ): RuntimeSnapshot {
   return {
-    schemaVersion: "mandelhowl.runtime-snapshot.v1",
+    schemaVersion: "mandelhowl.runtime-snapshot.v2",
     unitSystem: "SI",
     datasetId: datasetId as `sha256:${string}`,
     sequence,
@@ -26,6 +26,8 @@ function snapshot(
     dial: {
       unwrappedAngleRad: 0,
       angularVelocityRadPerSecond: 0,
+      driveFrequencyCentiHz: 22_000,
+      previousDriveFrequencyCentiHz: 22_000,
       driveFrequencyHz: 220,
       previousDriveFrequencyHz: 220,
       sweepRateHzPerSecond: 0,

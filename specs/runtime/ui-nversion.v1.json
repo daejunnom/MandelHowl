@@ -4,7 +4,7 @@
   "primary": "svelte5",
   "standby": "react",
   "sharedAlgorithms": {
-    "runtimeSnapshot": "mandelhowl.runtime-snapshot.v1",
+    "runtimeSnapshot": "mandelhowl.runtime-snapshot.v2",
     "dialInputMapping": "packages/browser-runtime/src/dial-input.ts",
     "oscilloscopePresentation": "packages/presentation-model/src/oscilloscope-presenter.ts",
     "causalMotionPresentation": "packages/presentation-model/src/causal-motion-presenter.ts",

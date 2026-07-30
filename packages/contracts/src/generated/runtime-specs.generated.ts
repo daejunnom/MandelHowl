@@ -8,8 +8,8 @@ import type { PerformanceBudgetSpec } from "../performance-budget";
 import type { MotionSafetySpec, RenderQualityTiersSpec, SceneSpec } from "../visual-specs";
 
 export const RUNTIME_SPEC_SOURCE_HASHES = Object.freeze({
-  "dial": "bd1fc1e618e82b513b5f0f84b315b7d10eded2c420661eca332c4865f30fc0e0",
-  "feedback": "468a57ee1c93c74dc7d23d6c1584413cc39bd0d54fd90cf26085d8eb3147557f",
+  "dial": "07f831116a2193ae88dc2b98b8d29d020d77e6bdd83de1b845afbf1aa7a98e76",
+  "feedback": "3031dc82b8f3f9e9d4279e2bcde7fb92d06e5601767dbcce67b576a4caf386a4",
   "volumeMap": "7fda34e109a98993a818e488aa5e0e81566659e085aec921f1e575822539c90a",
   "audioSafety": "ec7e0358f7ce0bc16c9295ffc0797be0bbd0b2c3876d7438e85144856cfc00e6",
   "performanceBudget": "91ed596c5c25a1606bb2a481878ac164be156664f813bc2602a98e27301d8e81",
@@ -18,11 +18,11 @@ export const RUNTIME_SPEC_SOURCE_HASHES = Object.freeze({
   "scene": "2072d7a2e8494b37c8a6ed499d361f6e7bb4add1a6e8348c826e3480237504ec"
 } as const);
 
-export const COVERAGE_REPORT_SCHEMA_SHA256 = "255df55224022354daaafe42b318f692a550ff94cd861df686e348101a6f33ba";
+export const COVERAGE_REPORT_SCHEMA_SHA256 = "f4d1fedda16dc4dd0bd8774d476227ebf50f9566d64f0d84b47c55015696163e";
 
 export const N_VERSION_CONTRACT_DIGESTS = Object.freeze({
   "scientificAlgorithm": "sha256:4fac7c12618d1e561dab27214ce47e2b94cbc91e734ce9a100f32a143dc222ca",
-  "presentationContract": "sha256:780e74f5a26d25731ed3b2f6baca2688e640ba40bfb75bb8b00cf3c85367d7a0"
+  "presentationContract": "sha256:6d2da47fbae613748a920516c5d303c1e92970703a23897ae10acc7f191cfb26"
 } as const);
 
 export const GENERATED_DIAL_SPEC = Object.freeze({
@@ -47,6 +47,14 @@ export const GENERATED_DIAL_SPEC = Object.freeze({
     "initialUnwrappedAngleRad": 0,
     "clampFrequencyAtEndStops": true,
     "formula": "f=minHz*(maxHz/minHz)^((clamp(angle,minAngle,maxAngle)-minAngle)/(maxAngle-minAngle))"
+  },
+  "fixedPoint": {
+    "canonicalUnit": "centihertz",
+    "centihertzPerHertz": 100,
+    "decimalPlaces": 2,
+    "quantization": "nearest-centihertz",
+    "tieBreak": "half-away-from-zero",
+    "physicsBoundary": "hertz-from-centihertz"
   },
   "pointerSampling": {
     "unwrapPeriodRad": 6.283185307179586,
@@ -94,7 +102,7 @@ export const GENERATED_DIAL_SPEC = Object.freeze({
 
 export const GENERATED_FEEDBACK_SPEC = Object.freeze({
   "schemaVersion": "mandelhowl.feedback-spec.v1",
-  "algorithmRevision": "fixed-step-modal-feedback-v3",
+  "algorithmRevision": "fixed-step-modal-feedback-v4",
   "canonicalOwner": {
     "path": "specs/runtime/feedback.v1.yaml",
     "policy": "edit-source-regenerate-derived"

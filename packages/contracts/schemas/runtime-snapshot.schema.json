@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://mandelhowl.dev/schemas/runtime-snapshot.v1.schema.json",
-  "title": "MandelHowl runtime snapshot v1",
+  "$id": "https://mandelhowl.dev/schemas/runtime-snapshot.v2.schema.json",
+  "title": "MandelHowl runtime snapshot v2",
   "description": "Canonical deterministic value shape shared by all consumers. Retaining consumers receive owned immutable payloads; synchronous rendering and audio consumers may receive an equivalent non-retaining lease.",
   "type": "object",
   "additionalProperties": false,
@@ -23,7 +23,7 @@
   ],
   "properties": {
     "schemaVersion": {
-      "const": "mandelhowl.runtime-snapshot.v1"
+      "const": "mandelhowl.runtime-snapshot.v2"
     },
     "unitSystem": {
       "const": "SI"
@@ -98,6 +98,8 @@
       "required": [
         "unwrappedAngleRad",
         "angularVelocityRadPerSecond",
+        "driveFrequencyCentiHz",
+        "previousDriveFrequencyCentiHz",
         "driveFrequencyHz",
         "previousDriveFrequencyHz",
         "sweepRateHzPerSecond",
@@ -112,6 +114,16 @@
         },
         "angularVelocityRadPerSecond": {
           "type": "number"
+        },
+        "driveFrequencyCentiHz": {
+          "type": "integer",
+          "minimum": 4500,
+          "maximum": 600000
+        },
+        "previousDriveFrequencyCentiHz": {
+          "type": "integer",
+          "minimum": 4500,
+          "maximum": 600000
         },
         "driveFrequencyHz": {
           "type": "number",

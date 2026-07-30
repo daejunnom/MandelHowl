@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://mandelhowl.dev/schemas/coverage-report.v1.schema.json",
-  "title": "MandelHowl reachability coverage report v1",
+  "$id": "https://mandelhowl.dev/schemas/coverage-report.v2.schema.json",
+  "title": "MandelHowl reachability coverage report v2",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -21,13 +21,13 @@
     "outputs"
   ],
   "properties": {
-    "schemaVersion": { "const": "mandelhowl.coverage-report.v1" },
+    "schemaVersion": { "const": "mandelhowl.coverage-report.v2" },
     "modalModelId": {
       "type": "string",
       "pattern": "^sha256:[a-f0-9]{64}$"
     },
     "runtimeAlgorithmRevision": {
-      "const": "fixed-step-modal-feedback-v3"
+      "const": "fixed-step-modal-feedback-v4"
     },
     "coverageContract": {
       "type": "object",
@@ -35,7 +35,7 @@
       "required": ["schemaVersion", "schemaSha256"],
       "properties": {
         "schemaVersion": {
-          "const": "mandelhowl.coverage-report.v1"
+          "const": "mandelhowl.coverage-report.v2"
         },
         "schemaSha256": { "$ref": "#/$defs/sha256" }
       }
@@ -51,10 +51,10 @@
       ],
       "properties": {
         "algorithm": {
-          "const": "deterministic-global-trajectory-search-v1"
+          "const": "deterministic-global-trajectory-search-v2"
         },
         "feedbackAlgorithmRevision": {
-          "const": "fixed-step-modal-feedback-v3"
+          "const": "fixed-step-modal-feedback-v4"
         },
         "perValueRuntimeLookup": { "const": "forbidden" },
         "randomSource": { "const": "forbidden" }

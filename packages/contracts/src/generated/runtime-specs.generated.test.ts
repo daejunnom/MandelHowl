@@ -153,6 +153,8 @@ describe("generated runtime specifications", () => {
     expect(snapshot.$defs?.dial.required).toEqual(
       expect.arrayContaining([
         "unwrappedAngleRad",
+        "driveFrequencyCentiHz",
+        "previousDriveFrequencyCentiHz",
         "driveFrequencyHz",
       ]),
     );

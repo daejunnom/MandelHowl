@@ -1086,6 +1086,7 @@ export function MandelHowlLab() {
             sequence: runtime.resonance.sequence,
             simulationTimeSeconds:
               runtime.resonance.simulationTimeSeconds,
+            driveFrequencyCentiHz: runtime.dial.frequencyCentiHz,
             driveFrequencyHz: runtime.dial.frequencyHz,
             activeModeId:
               activeModeIndex === null

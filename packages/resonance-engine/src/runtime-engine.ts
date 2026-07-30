@@ -316,7 +316,7 @@ function createMutableSnapshot(
   samples.length = 0;
 
   return {
-    schemaVersion: "mandelhowl.runtime-snapshot.v1",
+    schemaVersion: "mandelhowl.runtime-snapshot.v2",
     unitSystem: "SI",
     datasetId: resonance.dataset.datasetId,
     sequence: 0,
@@ -325,6 +325,8 @@ function createMutableSnapshot(
     dial: {
       unwrappedAngleRad: 0,
       angularVelocityRadPerSecond: 0,
+      driveFrequencyCentiHz: 0,
+      previousDriveFrequencyCentiHz: 0,
       driveFrequencyHz: 0,
       previousDriveFrequencyHz: 0,
       sweepRateHzPerSecond: 0,
@@ -526,6 +528,9 @@ class ReusableRuntimeSnapshotWriter
     target.dial.unwrappedAngleRad = dial.unwrappedAngleRadians;
     target.dial.angularVelocityRadPerSecond =
       dial.angularVelocityRadiansPerSecond;
+    target.dial.driveFrequencyCentiHz = dial.frequencyCentiHz;
+    target.dial.previousDriveFrequencyCentiHz =
+      dial.previousFrequencyCentiHz;
     target.dial.driveFrequencyHz = dial.frequencyHz;
     target.dial.previousDriveFrequencyHz =
       dial.previousFrequencyHz;
@@ -617,7 +622,7 @@ export function getRuntimeSnapshot(
     ),
   ]);
   return Object.freeze({
-    schemaVersion: "mandelhowl.runtime-snapshot.v1",
+    schemaVersion: "mandelhowl.runtime-snapshot.v2",
     unitSystem: "SI",
     datasetId: resonance.dataset.datasetId,
     sequence: resonance.sequence,
@@ -627,6 +632,9 @@ export function getRuntimeSnapshot(
       unwrappedAngleRad: dial.unwrappedAngleRadians,
       angularVelocityRadPerSecond:
         dial.angularVelocityRadiansPerSecond,
+      driveFrequencyCentiHz: dial.frequencyCentiHz,
+      previousDriveFrequencyCentiHz:
+        dial.previousFrequencyCentiHz,
       driveFrequencyHz: dial.frequencyHz,
       previousDriveFrequencyHz: dial.previousFrequencyHz,
       sweepRateHzPerSecond: dial.frequencySweepHzPerSecond,

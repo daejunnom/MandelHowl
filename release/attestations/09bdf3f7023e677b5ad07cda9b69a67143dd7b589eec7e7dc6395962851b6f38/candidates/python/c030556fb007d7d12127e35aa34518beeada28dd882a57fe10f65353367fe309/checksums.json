@@ -1,0 +1,306 @@
+{
+  "algorithm": "sha256",
+  "files": [
+    {
+      "byteLength": 15089,
+      "path": "convergence-report.json",
+      "sha256": "52fcc4e7d524b251b58ba9d26697009327b5b1dcffc584f31aa45bb4d213c27b"
+    },
+    {
+      "byteLength": 131433,
+      "path": "coverage-report.json",
+      "sha256": "bba7fd1edb2d540ce29a8897f9375d113dc733e50d6a3211670c453b07927da1"
+    },
+    {
+      "byteLength": 1048600,
+      "path": "field/mandelbrot-field.bin",
+      "sha256": "892a21be4fa744b1d721a0df7e5716bf9fa4783f733b07130dbd6dac14421898"
+    },
+    {
+      "byteLength": 902,
+      "path": "generation-report.json",
+      "sha256": "3813f6c15c7642c31146cd9832bd80aa0a60737167c65c40e57a99a737580eb2"
+    },
+    {
+      "byteLength": 2375442,
+      "path": "mesh/fine-polar-mesh.mhmz",
+      "sha256": "696112e6c3bea04d4f895f524bd13cc5f71475c393b4f5f9cf7d286916c9f169"
+    },
+    {
+      "byteLength": 2035,
+      "path": "mesh/mesh-evidence.json",
+      "sha256": "1747f1831ef76275837d37c74369415c323e676e14343c0cd1ec0d379c240ab6"
+    },
+    {
+      "byteLength": 4624,
+      "path": "modes.bin",
+      "sha256": "639f487e3b5ab92f23afed4fc8887017af30c4ee399e13a096d004a526c07c28"
+    },
+    {
+      "byteLength": 3679,
+      "path": "plate-spec.json",
+      "sha256": "a016cde1eac30d0022521c9ca6ae9a401a5857b9586ba34562b9d60130f4939c"
+    },
+    {
+      "byteLength": 82630,
+      "path": "provenance.json",
+      "sha256": "01ed5aa10076ec55d6e39e1ada78df03571dbb178b5f95d92c98ab14733e357d"
+    },
+    {
+      "byteLength": 12304,
+      "path": "response.bin",
+      "sha256": "896cd1d114c64009d69113a24789a0fd4f2ef09c40d451c4196c7ad48734a4ba"
+    },
+    {
+      "byteLength": 4813,
+      "path": "science/baker-algorithm.v1.json",
+      "sha256": "4fac7c12618d1e561dab27214ce47e2b94cbc91e734ce9a100f32a143dc222ca"
+    },
+    {
+      "byteLength": 361780,
+      "path": "science/solver-evidence.bin",
+      "sha256": "6f6a13a23c6afcbc140967abc1b6b1ab4156da7005ce7b8c7be6fee570c9ca82"
+    },
+    {
+      "byteLength": 1503,
+      "path": "textures/nodal-mask-00-03.ktx2",
+      "sha256": "6b80dc513263f7bbfe3e239d3af8cfa3425978efe17ae22613a299af403bd73a"
+    },
+    {
+      "byteLength": 1860,
+      "path": "textures/nodal-mask-04-07.ktx2",
+      "sha256": "1a3c1bf50990fa8363d7b6df5ba447c639316d4b71bbd0b8c1fb03bb9690ac3e"
+    },
+    {
+      "byteLength": 2141,
+      "path": "textures/nodal-mask-08-11.ktx2",
+      "sha256": "f4cc72446f82db04317cb8f8059d451f599e56c05d9dfb60e25aceaa05b4f99b"
+    },
+    {
+      "byteLength": 2450,
+      "path": "textures/nodal-mask-12-15.ktx2",
+      "sha256": "e97d1413620aba04547c569adfc7d35f0cd22b77d428c64c75e53b708e380e6e"
+    },
+    {
+      "byteLength": 2518,
+      "path": "textures/nodal-mask-16-19.ktx2",
+      "sha256": "64f06ffd9a277f9fba82667c70e0e446c7b454b9540a40686dd3017983387f7c"
+    },
+    {
+      "byteLength": 2431,
+      "path": "textures/nodal-mask-20-23.ktx2",
+      "sha256": "8cd8a72ef823a6197dbbb1740a30fa0c4d8880ebf2ecbd213ee03ecfd365fdd6"
+    },
+    {
+      "byteLength": 2750,
+      "path": "textures/nodal-mask-24-27.ktx2",
+      "sha256": "c5cfc7fdebfc286d38a22e06811897d8fc3ed66a4d76cf230086742ffac3d660"
+    },
+    {
+      "byteLength": 2716,
+      "path": "textures/nodal-mask-28-31.ktx2",
+      "sha256": "b0fa92acf2cd56f62b67b6324a564c075a5c7a6399fa187879f6efcd03ad35be"
+    },
+    {
+      "byteLength": 3113,
+      "path": "textures/nodal-mask-32-35.ktx2",
+      "sha256": "e1926ea0834aea1cbf266ab879cfd15c1d01b32d90fa3f8098bfeb09264a89e3"
+    },
+    {
+      "byteLength": 3282,
+      "path": "textures/nodal-mask-36-39.ktx2",
+      "sha256": "3ede18042dddce3742af3d10742884dfdac018f929aaad3b9726a0e37dbc4a29"
+    },
+    {
+      "byteLength": 3233,
+      "path": "textures/nodal-mask-40-43.ktx2",
+      "sha256": "f2edef92888d88367b7f64700dc43abd296cb7c70ce07e0d32d365f3761566e9"
+    },
+    {
+      "byteLength": 3347,
+      "path": "textures/nodal-mask-44-47.ktx2",
+      "sha256": "b7bec39f75c02c870509c4cd8792f855e73d74daaea7458090399daa869dd35f"
+    },
+    {
+      "byteLength": 4022,
+      "path": "textures/normal-00-03.ktx2",
+      "sha256": "618695d2ff750277efe1dc3fa7129197e5fa360646232f08e7363b4902a413f3"
+    },
+    {
+      "byteLength": 7709,
+      "path": "textures/normal-04-07.ktx2",
+      "sha256": "957454fc7d6e807736d7be3919c7d611fc35e02e804b6df25f4bd8f35269cfb2"
+    },
+    {
+      "byteLength": 11342,
+      "path": "textures/normal-08-11.ktx2",
+      "sha256": "54cde6355e8aa4273d8cf9fd553921fdddaeed181f662b2c07cdf108dc2c2506"
+    },
+    {
+      "byteLength": 12197,
+      "path": "textures/normal-12-15.ktx2",
+      "sha256": "b1a88ba5433971a98d4de9a6e3ec90d6fe55e2103030305ba6aa5104c65fa978"
+    },
+    {
+      "byteLength": 13750,
+      "path": "textures/normal-16-19.ktx2",
+      "sha256": "35416215736a547c59f73ab115115c232088f899be5a6f9701d5be3178b71a0e"
+    },
+    {
+      "byteLength": 18594,
+      "path": "textures/normal-20-23.ktx2",
+      "sha256": "90d1e4371c8664b7575d3960bc72526fc75c9c902cd59457db248fd59a5c6777"
+    },
+    {
+      "byteLength": 20441,
+      "path": "textures/normal-24-27.ktx2",
+      "sha256": "b9be74404a2c131d44377db1efeba119d0fc97bf9ea952388e41eaf5a18cb589"
+    },
+    {
+      "byteLength": 22035,
+      "path": "textures/normal-28-31.ktx2",
+      "sha256": "341fdbb3042acfbedc3bc67fa188cc8c28611b0618aba5fcba5bf2bba7ad5a97"
+    },
+    {
+      "byteLength": 28078,
+      "path": "textures/normal-32-35.ktx2",
+      "sha256": "ef1ef1f36338543b58f092f7c4905c9796152d781e306e582befee4a3a85febe"
+    },
+    {
+      "byteLength": 30187,
+      "path": "textures/normal-36-39.ktx2",
+      "sha256": "e2fe87e85fcb5fa043b291b7210e4f8bba42304cf3d36600ba824def191eb201"
+    },
+    {
+      "byteLength": 30100,
+      "path": "textures/normal-40-43.ktx2",
+      "sha256": "903f9380dda66e5bf41b6dc40e947552d7dea2c87f32873fc79966f6958cd6e0"
+    },
+    {
+      "byteLength": 30665,
+      "path": "textures/normal-44-47.ktx2",
+      "sha256": "acfb2855557c54036a21763a4c0f7b11e2b78ce6698c2e536a3a921153206766"
+    },
+    {
+      "byteLength": 12014,
+      "path": "textures/sand-density-00-03.ktx2",
+      "sha256": "7978f6b059efd1d92271b802bdc05693e34c56760c382d575346f75c3d77fd0d"
+    },
+    {
+      "byteLength": 14861,
+      "path": "textures/sand-density-04-07.ktx2",
+      "sha256": "cfe27b8aaefd66cbd37e382c48ec91cbc9d62aaefe57e46005db45d0798675b0"
+    },
+    {
+      "byteLength": 16405,
+      "path": "textures/sand-density-08-11.ktx2",
+      "sha256": "7309cc47096e95d57525d9874d35468f9f5cab522169525f8a1a1810d0b3c021"
+    },
+    {
+      "byteLength": 16570,
+      "path": "textures/sand-density-12-15.ktx2",
+      "sha256": "cc66e32186a6e6d260e4948f2e9e92100479f6a7683a0ebd3dc08394a4ed5a63"
+    },
+    {
+      "byteLength": 18821,
+      "path": "textures/sand-density-16-19.ktx2",
+      "sha256": "0970fa6fb33fdda89e042f088177fbb883e00d2ac89e4ac40d29bd864eeb5084"
+    },
+    {
+      "byteLength": 16733,
+      "path": "textures/sand-density-20-23.ktx2",
+      "sha256": "fa819051f3b021773b15d9c4c44948ba05461f9c29e90f1920564d19a07da539"
+    },
+    {
+      "byteLength": 16610,
+      "path": "textures/sand-density-24-27.ktx2",
+      "sha256": "c6cbb778039b41e1d7f3fd3b65d7332af1a034c1422a2237d806a1e17fde12de"
+    },
+    {
+      "byteLength": 16733,
+      "path": "textures/sand-density-28-31.ktx2",
+      "sha256": "dd007557bc038ec04891d60f79a954422903637d6450e27932da3e31ebfa760b"
+    },
+    {
+      "byteLength": 16745,
+      "path": "textures/sand-density-32-35.ktx2",
+      "sha256": "3a99e97d4fd4107764c26d5fd97143510495b68dff812854184e196da65395d5"
+    },
+    {
+      "byteLength": 17857,
+      "path": "textures/sand-density-36-39.ktx2",
+      "sha256": "083a7cf65dbd201c77b42481230a80065d131d4feab7252efbe0fb31ce8ef4ce"
+    },
+    {
+      "byteLength": 18974,
+      "path": "textures/sand-density-40-43.ktx2",
+      "sha256": "29f75808f23d3bd2c72ab757c3484818407324cf7129ecb78c8d328037ede898"
+    },
+    {
+      "byteLength": 19837,
+      "path": "textures/sand-density-44-47.ktx2",
+      "sha256": "394a6f01d0c96a5a849669662896e52eccc246c0a22f10b78ede12d970d612e1"
+    },
+    {
+      "byteLength": 14608,
+      "path": "textures/signed-displacement-00-03.ktx2",
+      "sha256": "b46d296f814c8217534e11629b25a6484cd4c5d5217b651f76fbd502130ddb81"
+    },
+    {
+      "byteLength": 17124,
+      "path": "textures/signed-displacement-04-07.ktx2",
+      "sha256": "b03d0198a9c421e7caec5f760ab93cafb835b0cea0f7c6f678a54a4126586d94"
+    },
+    {
+      "byteLength": 22263,
+      "path": "textures/signed-displacement-08-11.ktx2",
+      "sha256": "565d11f4ac9502e32c3c6dda81a9c13547f51de15a0a94e045f6b01ede04baf4"
+    },
+    {
+      "byteLength": 24694,
+      "path": "textures/signed-displacement-12-15.ktx2",
+      "sha256": "532d85d374e8657a1e6b7eb16134ac4bfc18057d184d5bd3b89cdba6c6adc51f"
+    },
+    {
+      "byteLength": 22564,
+      "path": "textures/signed-displacement-16-19.ktx2",
+      "sha256": "7057a296b938253f24df0f7c86cd14810abdbacff89f807a89fa93052ac273e5"
+    },
+    {
+      "byteLength": 25139,
+      "path": "textures/signed-displacement-20-23.ktx2",
+      "sha256": "7d6c014fd44a360d7a1e62719fd2d63928fabd94a8566ec1ed52692783ff5e1d"
+    },
+    {
+      "byteLength": 28032,
+      "path": "textures/signed-displacement-24-27.ktx2",
+      "sha256": "a4acb195e00492738408b992e6d319351a5e7df68f0c246c3760e5da579b68eb"
+    },
+    {
+      "byteLength": 26561,
+      "path": "textures/signed-displacement-28-31.ktx2",
+      "sha256": "fa38216fee41faf99f519eec22c16d79a7ae19d4249ad44f6f9388fc9a446402"
+    },
+    {
+      "byteLength": 26511,
+      "path": "textures/signed-displacement-32-35.ktx2",
+      "sha256": "2bf78a37d3f466adda11f2d64b61d02a13b2dabe8f7dbb3cd9eada84ad56be11"
+    },
+    {
+      "byteLength": 31409,
+      "path": "textures/signed-displacement-36-39.ktx2",
+      "sha256": "c26155816cdb13ffede2db000e12b17f3059ceb109e1618e5274262ccc0983af"
+    },
+    {
+      "byteLength": 31038,
+      "path": "textures/signed-displacement-40-43.ktx2",
+      "sha256": "44283e98dd58dbfe0dd59321b53dd6bebba2baa02832bac3e6e9cbf50187a309"
+    },
+    {
+      "byteLength": 29885,
+      "path": "textures/signed-displacement-44-47.ktx2",
+      "sha256": "fbc03edaaef99955abc5cbe624156903c57eae4cbd9589faea482f1857e4c65a"
+    }
+  ],
+  "schemaVersion": "mandelhowl.checksums.v1"
+}

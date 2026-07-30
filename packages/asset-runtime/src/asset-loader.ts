@@ -4,6 +4,7 @@ import {
   GENERATED_FEEDBACK_SPEC,
   N_VERSION_CONTRACT_DIGESTS,
   RUNTIME_SPEC_SOURCE_HASHES,
+  toCentiHertz,
   type AssetReference,
   type ChecksumsFile,
   type DiagnosticRecord,
@@ -1010,24 +1011,27 @@ function isCoverageTrace(
   maximumFrequencyHz: number,
 ): value is Record<string, unknown> {
   if (!isJsonRecord(value)) return false;
+  const minimumFrequencyCentiHz = toCentiHertz(minimumFrequencyHz);
+  const maximumFrequencyCentiHz = toCentiHertz(maximumFrequencyHz);
   if (
     !hasExactKeys(value, [
       "schemaVersion",
       "traceId",
       "modalModelId",
-      "initialFrequencyHz",
+      "initialFrequencyCentiHz",
       "durationSeconds",
       "expectedSettledVolume",
       "keyframes",
     ]) ||
     value.schemaVersion !==
-      "mandelhowl.resonance-trajectory-trace.v1" ||
+      "mandelhowl.resonance-trajectory-trace.v2" ||
     typeof value.traceId !== "string" ||
     value.traceId.length === 0 ||
     value.modalModelId !== modalModelId ||
-    !isFiniteNumber(value.initialFrequencyHz) ||
-    value.initialFrequencyHz < minimumFrequencyHz ||
-    value.initialFrequencyHz > maximumFrequencyHz ||
+    !isFiniteNumber(value.initialFrequencyCentiHz) ||
+    !Number.isSafeInteger(value.initialFrequencyCentiHz) ||
+    value.initialFrequencyCentiHz < minimumFrequencyCentiHz ||
+    value.initialFrequencyCentiHz > maximumFrequencyCentiHz ||
     !isFiniteNumber(value.durationSeconds) ||
     value.durationSeconds <= 0 ||
     value.expectedSettledVolume !== expectedVolume ||
@@ -1046,15 +1050,16 @@ function isCoverageTrace(
       !hasExactKeys(keyframe, [
         "sequence",
         "atSeconds",
-        "frequencyHz",
+        "frequencyCentiHz",
       ]) ||
       keyframe.sequence !== index ||
       !isFiniteNumber(keyframe.atSeconds) ||
       keyframe.atSeconds < previousTime ||
       keyframe.atSeconds > durationSeconds ||
-      !isFiniteNumber(keyframe.frequencyHz) ||
-      keyframe.frequencyHz < minimumFrequencyHz ||
-      keyframe.frequencyHz > maximumFrequencyHz
+      !isFiniteNumber(keyframe.frequencyCentiHz) ||
+      !Number.isSafeInteger(keyframe.frequencyCentiHz) ||
+      keyframe.frequencyCentiHz < minimumFrequencyCentiHz ||
+      keyframe.frequencyCentiHz > maximumFrequencyCentiHz
     ) {
       return false;
     }
@@ -1071,7 +1076,7 @@ function coverageTracesEqual(
     left.schemaVersion !== right.schemaVersion ||
     left.traceId !== right.traceId ||
     left.modalModelId !== right.modalModelId ||
-    left.initialFrequencyHz !== right.initialFrequencyHz ||
+    left.initialFrequencyCentiHz !== right.initialFrequencyCentiHz ||
     left.durationSeconds !== right.durationSeconds ||
     left.expectedSettledVolume !== right.expectedSettledVolume ||
     !Array.isArray(left.keyframes) ||
@@ -1089,7 +1094,8 @@ function coverageTracesEqual(
       isJsonRecord(rightKeyframe) &&
       leftKeyframe.sequence === rightKeyframe.sequence &&
       leftKeyframe.atSeconds === rightKeyframe.atSeconds &&
-      leftKeyframe.frequencyHz === rightKeyframe.frequencyHz
+      leftKeyframe.frequencyCentiHz ===
+        rightKeyframe.frequencyCentiHz
     );
   });
 }
@@ -1401,7 +1407,7 @@ function validateJsonEvidenceAssets(
     coverage?.runtimeAlgorithmRevision ===
       GENERATED_FEEDBACK_SPEC.algorithmRevision &&
     coverageContract?.schemaVersion ===
-      "mandelhowl.coverage-report.v1" &&
+      "mandelhowl.coverage-report.v2" &&
     coverageContract?.schemaSha256 ===
       COVERAGE_REPORT_SCHEMA_SHA256 &&
     !!generatedBy &&
@@ -1460,7 +1466,7 @@ function validateJsonEvidenceAssets(
     : versionedCoverageBindingValid || legacyCoverageBindingValid;
   if (
     !coverageShapeValid ||
-    coverage?.schemaVersion !== "mandelhowl.coverage-report.v1" ||
+    coverage?.schemaVersion !== "mandelhowl.coverage-report.v2" ||
     coverage.modalModelId !== modalModelId ||
     !coverageBindingValid ||
     coverage.perValueRuntimeExceptionTable !== false ||
@@ -1468,7 +1474,7 @@ function validateJsonEvidenceAssets(
     coverage.replayVerified !== true ||
     !generatedBy ||
     generatedBy.algorithm !==
-      "deterministic-global-trajectory-search-v1" ||
+      "deterministic-global-trajectory-search-v2" ||
     generatedBy?.perValueRuntimeLookup !== "forbidden" ||
     generatedBy?.randomSource !== "forbidden" ||
     !staticDistributionValid ||

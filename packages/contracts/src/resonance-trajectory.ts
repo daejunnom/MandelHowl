@@ -1,7 +1,7 @@
 export interface ResonanceTrajectoryKeyframe {
   readonly sequence: number;
   readonly atSeconds: number;
-  readonly frequencyHz: number;
+  readonly frequencyCentiHz: number;
 }
 
 /**
@@ -9,11 +9,11 @@ export interface ResonanceTrajectoryKeyframe {
  * clock. It is validation evidence, never a runtime volume lookup table.
  */
 export interface ResonanceTrajectoryTrace {
-  readonly schemaVersion: "mandelhowl.resonance-trajectory-trace.v1";
+  readonly schemaVersion: "mandelhowl.resonance-trajectory-trace.v2";
   readonly traceId: string;
   /** Stable modes.bin identity; unlike the package id, this is non-circular. */
   readonly modalModelId: `sha256:${string}`;
-  readonly initialFrequencyHz: number;
+  readonly initialFrequencyCentiHz: number;
   readonly durationSeconds: number;
   readonly expectedSettledVolume: number;
   readonly keyframes: readonly ResonanceTrajectoryKeyframe[];
@@ -30,16 +30,16 @@ export interface StaticDistributionReport {
 }
 
 export interface ReachabilityCoverageReport {
-  readonly schemaVersion: "mandelhowl.coverage-report.v1";
+  readonly schemaVersion: "mandelhowl.coverage-report.v2";
   readonly modalModelId: `sha256:${string}`;
-  readonly runtimeAlgorithmRevision: "fixed-step-modal-feedback-v3";
+  readonly runtimeAlgorithmRevision: "fixed-step-modal-feedback-v4";
   readonly coverageContract: {
-    readonly schemaVersion: "mandelhowl.coverage-report.v1";
+    readonly schemaVersion: "mandelhowl.coverage-report.v2";
     readonly schemaSha256: string;
   };
   readonly generatedBy: {
-    readonly algorithm: "deterministic-global-trajectory-search-v1";
-    readonly feedbackAlgorithmRevision: "fixed-step-modal-feedback-v3";
+    readonly algorithm: "deterministic-global-trajectory-search-v2";
+    readonly feedbackAlgorithmRevision: "fixed-step-modal-feedback-v4";
     readonly perValueRuntimeLookup: "forbidden";
     readonly randomSource: "forbidden";
   };

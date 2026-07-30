@@ -1,6 +1,7 @@
 import {
   GENERATED_DIAL_SPEC,
   GENERATED_FEEDBACK_SPEC,
+  quantizeFrequencyHz,
 } from "../../contracts/src";
 import { clamp, finiteOr } from "./math";
 
@@ -45,7 +46,13 @@ export interface DialState {
   /** The angle used by the frequency scale after clamping to the physical range. */
   readonly effectiveAngleRadians: number;
   readonly angularVelocityRadiansPerSecond: number;
+  /** Canonical user-controlled frequency stored as an integer centihertz. */
+  readonly frequencyCentiHz: number;
+  /** Previous canonical frequency stored as an integer centihertz. */
+  readonly previousFrequencyCentiHz: number;
+  /** Physics-boundary projection derived from frequencyCentiHz. */
   readonly frequencyHz: number;
+  /** Physics-boundary projection derived from previousFrequencyCentiHz. */
   readonly previousFrequencyHz: number;
   readonly frequencySweepHzPerSecond: number;
   readonly direction: RotationDirection;
@@ -103,20 +110,20 @@ export const DEFAULT_DIAL_CONFIG: DialConfig = Object.freeze({
 export function createDialConfig(
   overrides: Partial<Omit<DialConfig, "version">> = {},
 ): DialConfig {
-  const minFrequencyHz = Math.max(
+  const minFrequencyHz = quantizeFrequencyHz(Math.max(
     Number.MIN_VALUE,
     finiteOr(
       overrides.minFrequencyHz ?? DEFAULT_DIAL_CONFIG.minFrequencyHz,
       DEFAULT_DIAL_CONFIG.minFrequencyHz,
     ),
-  );
-  const maxFrequencyHz = Math.max(
-    minFrequencyHz + Number.EPSILON,
+  ));
+  const maxFrequencyHz = quantizeFrequencyHz(Math.max(
+    minFrequencyHz + 1 / GENERATED_DIAL_SPEC.fixedPoint.centihertzPerHertz,
     finiteOr(
       overrides.maxFrequencyHz ?? DEFAULT_DIAL_CONFIG.maxFrequencyHz,
       DEFAULT_DIAL_CONFIG.maxFrequencyHz,
     ),
-  );
+  ));
   const minAngleRadians = finiteOr(
     overrides.minAngleRadians ?? DEFAULT_DIAL_CONFIG.minAngleRadians,
     DEFAULT_DIAL_CONFIG.minAngleRadians,

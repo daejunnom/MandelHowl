@@ -8,6 +8,8 @@ import {
   GENERATED_DATASET_RELEASE_SPEC,
   GENERATED_SCENE_SPEC,
   GENERATED_VOLUME_MAP_SPEC,
+  formatFrequencyHz,
+  toCentiHertz,
 } from "../../packages/contracts/src";
 import {
   MandelHowlScene,
@@ -15,6 +17,24 @@ import {
 } from "../../app/mandelhowl-scene";
 
 const noOp = () => undefined;
+const REACT_SCENE_SOURCE = readFileSync(
+  resolve(process.cwd(), "app/mandelhowl-scene.tsx"),
+  "utf8",
+);
+const REACT_ADAPTER_SOURCE = readFileSync(
+  resolve(
+    process.cwd(),
+    "apps/react-ui/src/MandelHowlReactApp.tsx",
+  ),
+  "utf8",
+);
+const SVELTE_SCENE_SOURCE = readFileSync(
+  resolve(
+    process.cwd(),
+    "apps/svelte-ui/src/MandelHowlApp.svelte",
+  ),
+  "utf8",
+);
 const PINNED_MODES = decodeModesBinaryV1(
   readFileSync(
     resolve(
@@ -34,10 +54,7 @@ if (PRESENTATION_FREQUENCY === undefined) {
 }
 
 function formatExpectedFrequency(frequency: number): string {
-  if (frequency >= 1000) {
-    return `${(frequency / 1000).toFixed(frequency < 10_000 ? 2 : 1)} kHz`;
-  }
-  return `${frequency.toFixed(frequency < 100 ? 1 : 0)} Hz`;
+  return formatFrequencyHz(frequency);
 }
 
 function renderScene(
@@ -45,6 +62,7 @@ function renderScene(
 ): string {
   return renderToStaticMarkup(
     createElement(MandelHowlScene, {
+      frequencyCentiHz: toCentiHertz(PRESENTATION_FREQUENCY),
       frequency: PRESENTATION_FREQUENCY,
       angle: 0,
       volume: 50,
@@ -92,6 +110,65 @@ describe("instrument presentation", () => {
 
     expect(html).toContain(formatExpectedFrequency(PRESENTATION_FREQUENCY));
     expect(html).not.toContain("mh-dial-cap");
+  });
+
+  it("renders canonical centihertz in text and raw ARIA without kHz loss", () => {
+    const cases = [
+      [4_500, "45.00"],
+      [68_319, "683.19"],
+      [100_000, "1000.00"],
+      [600_000, "6000.00"],
+    ] as const;
+
+    for (const [frequencyCentiHz, decimal] of cases) {
+      const html = renderScene({
+        frequencyCentiHz,
+        frequency: frequencyCentiHz / 100,
+      });
+      const ariaNumeric = String(frequencyCentiHz / 100);
+
+      expect(html).toContain(`>${decimal} Hz</strong>`);
+      expect(html).toContain(
+        `aria-valuenow="${ariaNumeric}"`,
+      );
+      expect(html).toContain(
+        `aria-valuetext="${decimal} Hz, critical"`,
+      );
+      expect(html).not.toContain("aria-keyshortcuts");
+      expect(html).not.toContain("kHz</strong>");
+    }
+  });
+
+  it("keeps React and Svelte on the shared exact frequency and ARIA contract", () => {
+    for (const source of [
+      REACT_SCENE_SOURCE,
+      SVELTE_SCENE_SOURCE,
+    ]) {
+      expect(source).toContain("formatDriveFrequencyCentiHz");
+      expect(source).toContain(
+        "fromCentiHertz(frequencyCentiHz)",
+      );
+      expect(source).toMatch(
+        /aria-valuenow=\{fromCentiHertz\(frequencyCentiHz\)\}/,
+      );
+      expect(source).not.toContain("aria-keyshortcuts");
+      expect(source).not.toContain(
+        "aria-valuenow={Math.round(frequency)}",
+      );
+      expect(source).not.toMatch(/function formatFrequency\(/);
+    }
+
+    for (const source of [
+      REACT_ADAPTER_SOURCE,
+      SVELTE_SCENE_SOURCE,
+    ]) {
+      expect(source).toMatch(
+        /createDialKeyboardCommand\(\s*event\.key,\s*event\.timeStamp,\s*event\.shiftKey,\s*\)/,
+      );
+      expect(source).toMatch(
+        /if \(command === null\) return;\s*dispatch\(command\);\s*activateAudio\(\);/,
+      );
+    }
   });
 
   it("claims the precomputed material cutaway only when the renderer has it", () => {

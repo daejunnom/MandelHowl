@@ -1607,7 +1607,7 @@
       "requestedModeCount": 48
     },
     "containerDigestMeaning": "OCI image content digest supplied by the executing container runner; it identifies the image used for this bake.",
-    "containerImageDigest": "sha256:6382ed4eef8be1ef5a944b25ca84f1630a8422bbdf3542e5b85ac5ed1e28f421",
+    "containerImageDigest": "sha256:c878d65dd0d71a302228c4729092878398ab405c390226a5c3135ea51264474e",
     "containerRunnerAttestation": "trusted-runner-attested",
     "containerized": true,
     "eigensolver": {

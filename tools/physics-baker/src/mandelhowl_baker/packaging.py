@@ -139,7 +139,7 @@ def _foundation_coverage(modes: PostprocessedDataset) -> dict[str, Any]:
             }
         )
     return {
-        "schemaVersion": "mandelhowl.coverage-report.v1",
+        "schemaVersion": "mandelhowl.coverage-report.v2",
         "verificationStatus": "physics-foundation-only",
         "model": "global-exponential-modal-capture-seed-v1",
         "perValueRuntimeExceptionTable": False,
@@ -177,7 +177,7 @@ def _expected_runtime_coverage_binding() -> dict[str, Any]:
             for key, relative in source_paths.items()
         },
         "coverageContract": {
-            "schemaVersion": "mandelhowl.coverage-report.v1",
+            "schemaVersion": "mandelhowl.coverage-report.v2",
             "schemaSha256": sha256_file(coverage_schema_path),
         },
     }
@@ -200,7 +200,7 @@ def _validate_external_coverage(
         binding = _expected_runtime_coverage_binding()
         generated_by = report.get("generatedBy", {})
         if (
-            report.get("schemaVersion") != "mandelhowl.coverage-report.v1"
+            report.get("schemaVersion") != "mandelhowl.coverage-report.v2"
             or report.get("modalModelId") != expected_modal_model_id
             or report.get("verificationStatus") != "runtime-replay-verified"
             or report.get("runtimeAlgorithmRevision")
@@ -208,7 +208,7 @@ def _validate_external_coverage(
             or report.get("runtimeSpecSha256") != binding["runtimeSpecSha256"]
             or report.get("coverageContract") != binding["coverageContract"]
             or generated_by.get("algorithm")
-            != "deterministic-global-trajectory-search-v1"
+            != "deterministic-global-trajectory-search-v2"
             or generated_by.get("feedbackAlgorithmRevision")
             != binding["runtimeAlgorithmRevision"]
             or generated_by.get("perValueRuntimeLookup") != "forbidden"

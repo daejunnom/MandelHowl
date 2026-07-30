@@ -221,7 +221,13 @@ export function MandelHowlReactApp({
     (event: KeyboardEvent<HTMLDivElement>) => {
       if (!isDialKeyboardKey(event.key)) return;
       event.preventDefault();
-      dispatch(createDialKeyboardCommand(event.key, event.timeStamp));
+      const command = createDialKeyboardCommand(
+        event.key,
+        event.timeStamp,
+        event.shiftKey,
+      );
+      if (command === null) return;
+      dispatch(command);
       activateAudio();
     },
     [activateAudio, dispatch],
@@ -253,6 +259,7 @@ export function MandelHowlReactApp({
 
   return (
     <MandelHowlScene
+      frequencyCentiHz={snapshot.dial.driveFrequencyCentiHz}
       frequency={snapshot.dial.driveFrequencyHz}
       snapshotSequence={snapshot.sequence}
       frequencyMin={presentation.minimumFrequencyHz}

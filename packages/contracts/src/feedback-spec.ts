@@ -3,7 +3,7 @@ import type { CanonicalOwnership } from "./contract-metadata";
 export interface FeedbackSpec {
   readonly $schema?: string;
   readonly schemaVersion: "mandelhowl.feedback-spec.v1";
-  readonly algorithmRevision: "fixed-step-modal-feedback-v3";
+  readonly algorithmRevision: "fixed-step-modal-feedback-v4";
   readonly canonicalOwner: CanonicalOwnership;
   readonly units: {
     readonly time: "s";

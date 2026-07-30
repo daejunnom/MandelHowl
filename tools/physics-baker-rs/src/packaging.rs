@@ -739,7 +739,7 @@ fn foundation_coverage(modes: &[RuntimeMode], algorithm: &Algorithm) -> Value {
         })
         .collect::<Vec<_>>();
     json!({
-        "schemaVersion": "mandelhowl.coverage-report.v1",
+        "schemaVersion": "mandelhowl.coverage-report.v2",
         "verificationStatus": "physics-foundation-only",
         "model": "global-exponential-modal-capture-seed-v1",
         "perValueRuntimeExceptionTable": false,
@@ -779,7 +779,7 @@ pub(crate) fn expected_runtime_coverage_binding() -> Result<(String, Value, Valu
         .to_owned();
     let schema_path = repository.join("packages/contracts/schemas/coverage-report.schema.json");
     let coverage_contract = json!({
-        "schemaVersion": "mandelhowl.coverage-report.v1",
+        "schemaVersion": "mandelhowl.coverage-report.v2",
         "schemaSha256": file_sha256(&schema_path)?,
     });
     Ok((
@@ -834,7 +834,7 @@ pub(crate) fn validate_external_coverage(
             .and_then(Value::as_array)
             .ok_or_else(|| "release coverage missingValues are missing".to_owned())?;
         if report.get("schemaVersion").and_then(Value::as_str)
-            != Some("mandelhowl.coverage-report.v1")
+            != Some("mandelhowl.coverage-report.v2")
             || report.get("modalModelId").and_then(Value::as_str) != Some(expected_modal_model_id)
             || report.get("verificationStatus").and_then(Value::as_str)
                 != Some("runtime-replay-verified")
@@ -845,7 +845,7 @@ pub(crate) fn validate_external_coverage(
             || report.get("runtimeSpecSha256") != Some(&runtime_hashes)
             || report.get("coverageContract") != Some(&coverage_contract)
             || generated_by.get("algorithm").and_then(Value::as_str)
-                != Some("deterministic-global-trajectory-search-v1")
+                != Some("deterministic-global-trajectory-search-v2")
             || generated_by
                 .get("feedbackAlgorithmRevision")
                 .and_then(Value::as_str)

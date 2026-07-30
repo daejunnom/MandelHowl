@@ -68,6 +68,18 @@ export type {
   DiagnosticSeverity,
 } from "./diagnostic-record";
 export {
+  CENTIHERTZ_PER_HERTZ,
+  FREQUENCY_DECIMAL_PLACES,
+  formatCentiHertz,
+  formatFrequencyHz,
+  fromCentiHertz,
+  isCentiHertzInteger,
+  isFrequencyOnCentiHertzGrid,
+  normalizeCentiHertz,
+  quantizeFrequencyHz,
+  toCentiHertz,
+} from "./frequency-fixed-point";
+export {
   createDiagnosticRecord,
   DIAGNOSTIC_CODE_PATTERN,
   isDiagnosticCode,

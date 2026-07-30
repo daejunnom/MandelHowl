@@ -3,7 +3,7 @@
   "contentAddressing": {
     "algorithm": "sha256",
     "canonicalization": "RFC8785",
-    "directoryName": "92d15f158419992bee4289328d8529f1cd8fdda82a4fbe2a6ba139200b28b19d",
+    "directoryName": "09bdf3f7023e677b5ad07cda9b69a67143dd7b589eec7e7dc6395962851b6f38",
     "identityScope": "manifest-with-datasetId-and-directoryName-omitted-and-all-referenced-file-digests"
   },
   "coordinateSystem": {
@@ -14,13 +14,13 @@
     "yAxis": "mandelbrot-imaginary-positive",
     "zAxis": "front-normal"
   },
-  "datasetId": "sha256:92d15f158419992bee4289328d8529f1cd8fdda82a4fbe2a6ba139200b28b19d",
+  "datasetId": "sha256:09bdf3f7023e677b5ad07cda9b69a67143dd7b589eec7e7dc6395962851b6f38",
   "files": {
     "checksums": {
       "byteLength": 10309,
       "mediaType": "application/json",
       "path": "checksums.json",
-      "sha256": "973a31aba27ecdcb92fd8ab42d52b8b179b2a59b95ceab1898c33a2b168953e2"
+      "sha256": "b1c0e2b4c2ca4f2314d06f4c991625c22bc11302e34a676fc54a0d1d8d8b4f95"
     },
     "convergenceReport": {
       "byteLength": 15098,
@@ -29,10 +29,10 @@
       "sha256": "d88888ac5cb928ba8d3f533cd28b4f2a09e805359be982ac970999329b417854"
     },
     "coverageReport": {
-      "byteLength": 129047,
+      "byteLength": 131433,
       "mediaType": "application/json",
       "path": "coverage-report.json",
-      "sha256": "d3e3601a864d81682b0d2b291e5da027043cc8638b35c3d6b5e4eac67367a534"
+      "sha256": "bba7fd1edb2d540ce29a8897f9375d113dc733e50d6a3211670c453b07927da1"
     },
     "modes": {
       "byteLength": 4624,
@@ -50,7 +50,7 @@
       "byteLength": 82777,
       "mediaType": "application/json",
       "path": "provenance.json",
-      "sha256": "992a2d179ce6c8f5ba368d5522649002cc528d55413534f1840920211b5ad111"
+      "sha256": "77a20e5ddb756d10702b4c59b38023c5b13302b0c8e9cdada1b880b18ff8f83e"
     },
     "response": {
       "byteLength": 12304,
@@ -1020,7 +1020,7 @@
   },
   "schemaVersion": "mandelhowl.resonance-manifest.v1",
   "solverProvenance": {
-    "containerImageDigest": "sha256:6382ed4eef8be1ef5a944b25ca84f1630a8422bbdf3542e5b85ac5ed1e28f421",
+    "containerImageDigest": "sha256:c878d65dd0d71a302228c4729092878398ab405c390226a5c3135ea51264474e",
     "executionKind": "oci-container",
     "optionsSha256": "76f8153c13c8cabc84a420f4b33165e2afb7ad7a3cd18f1f9912d07dc333909e",
     "solverName": "mandelhowl-kirchhoff-love-finite-strip",

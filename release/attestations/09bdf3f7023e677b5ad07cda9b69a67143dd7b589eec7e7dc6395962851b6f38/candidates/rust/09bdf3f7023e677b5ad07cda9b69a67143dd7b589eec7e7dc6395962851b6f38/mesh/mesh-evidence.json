@@ -1,0 +1,59 @@
+{
+  "domain": "annulus from clamped hub radius to free outer rim",
+  "levels": [
+    {
+      "angularDivisions": 189,
+      "connectedComponentCount": 1,
+      "fingerprintSha256": "eef0ccab28d6e2ffab76f47b8d03190c446ce295766e7f561ffcb3d69465ced1",
+      "invertedTriangleCount": 0,
+      "levelName": "coarse",
+      "maximumAspectRatio": 2.0335591094475207,
+      "minimumEdgeM": 0.0005983710451101258,
+      "minimumSignedAreaM2": 1.8006660030121778e-07,
+      "nodeCount": 13419,
+      "radialDivisions": 70,
+      "targetElementSizeM": 0.006,
+      "triangleCount": 26460
+    },
+    {
+      "angularDivisions": 377,
+      "connectedComponentCount": 1,
+      "fingerprintSha256": "1357deb7fbd7b534888894be6f3e3d9370b9045d49ddb356fa70e9e05f319a16",
+      "invertedTriangleCount": 0,
+      "levelName": "medium",
+      "maximumAspectRatio": 2.0167410864227135,
+      "minimumEdgeM": 0.00029998946047348965,
+      "minimumSignedAreaM2": 4.509583196960298e-08,
+      "nodeCount": 52780,
+      "radialDivisions": 139,
+      "targetElementSizeM": 0.003,
+      "triangleCount": 104806
+    },
+    {
+      "angularDivisions": 754,
+      "connectedComponentCount": 1,
+      "fingerprintSha256": "b7e7b359f1ad53fa979b05f31ccd06cdac16655e80c706c50be74ca42fcdedf7",
+      "invertedTriangleCount": 0,
+      "levelName": "fine",
+      "maximumAspectRatio": 2.0083534095713773,
+      "minimumEdgeM": 0.00014999603222239538,
+      "minimumSignedAreaM2": 1.1268360559369594e-08,
+      "nodeCount": 209612,
+      "radialDivisions": 277,
+      "targetElementSizeM": 0.0015,
+      "triangleCount": 417716
+    }
+  ],
+  "qualityPolicy": {
+    "accepted": true,
+    "disconnectedComponentsAllowed": false,
+    "fingerprint": "sha256 over float64 node positions and uint32 triangle indices",
+    "maximumAspectRatio": 2.1,
+    "maximumInvertedTriangleCount": 0,
+    "minimumEdgeM": 0.00014,
+    "minimumSignedAreaM2": 1e-08,
+    "negativeAreaAllowed": false,
+    "requiredConnectedComponentCount": 1
+  },
+  "schemaVersion": "mandelhowl.mesh-evidence.v1"
+}

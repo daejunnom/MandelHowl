@@ -14,7 +14,7 @@ const PRESENTATION_DIGEST = `sha256:${"2".repeat(64)}`;
 
 function runtimeSnapshot(sequence = 0): RuntimeSnapshot {
   return {
-    schemaVersion: "mandelhowl.runtime-snapshot.v1",
+    schemaVersion: "mandelhowl.runtime-snapshot.v2",
     unitSystem: "SI",
     datasetId: `sha256:${"0".repeat(64)}`,
     sequence,
@@ -23,6 +23,8 @@ function runtimeSnapshot(sequence = 0): RuntimeSnapshot {
     dial: {
       unwrappedAngleRad: 0,
       angularVelocityRadPerSecond: 0,
+      driveFrequencyCentiHz: 22_000,
+      previousDriveFrequencyCentiHz: 22_000,
       driveFrequencyHz: 220,
       previousDriveFrequencyHz: 220,
       sweepRateHzPerSecond: 0,
@@ -435,7 +437,11 @@ describe("UiNVersionSupervisor", () => {
     ).toBe(false);
     expect(
       context.runtime.dispatchDial(
-        { type: "set-frequency", frequencyHz: 440, timestampMs: 2 },
+        {
+          type: "set-frequency",
+          frequencyCentiHz: 44_000,
+          timestampMs: 2,
+        },
         "set-frequency:2",
       ),
     ).toBe(false);
@@ -447,7 +453,7 @@ describe("UiNVersionSupervisor", () => {
     ).toBe(false);
     expect(
       context.runtime.dispatchDial(
-        { type: "reset", frequencyHz: 440 },
+        { type: "reset", frequencyCentiHz: 44_000 },
         "reset:4",
       ),
     ).toBe(false);

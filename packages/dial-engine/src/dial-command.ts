@@ -40,7 +40,7 @@ export type DialCommand =
     }
   | {
       readonly type: "set-frequency";
-      readonly frequencyHz: number;
+      readonly frequencyCentiHz: number;
       readonly timestampMs?: number;
     }
   | {
@@ -49,6 +49,6 @@ export type DialCommand =
     }
   | {
       readonly type: "reset";
-      readonly frequencyHz?: number;
+      readonly frequencyCentiHz?: number;
       readonly config?: Partial<Omit<DialConfig, "version">>;
     };

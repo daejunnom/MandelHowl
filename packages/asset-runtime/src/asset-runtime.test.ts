@@ -335,13 +335,15 @@ async function fixture(
   );
   const modalModelId = `sha256:${modes.sha256}`;
   const traces = Array.from({ length: 101 }, (_, target) => ({
-    schemaVersion: "mandelhowl.resonance-trajectory-trace.v1",
+    schemaVersion: "mandelhowl.resonance-trajectory-trace.v2",
     traceId: `fixture-${target.toString().padStart(3, "0")}`,
     modalModelId,
-    initialFrequencyHz: 45,
+    initialFrequencyCentiHz: 4_500,
     durationSeconds: 1,
     expectedSettledVolume: target,
-    keyframes: [{ sequence: 0, atSeconds: 0, frequencyHz: 45 }],
+    keyframes: [
+      { sequence: 0, atSeconds: 0, frequencyCentiHz: 4_500 },
+    ],
   }));
   const solverOptions = {
     method:
@@ -530,16 +532,16 @@ async function fixture(
     }),
   );
   const coverage: Record<string, unknown> = {
-    schemaVersion: "mandelhowl.coverage-report.v1",
+    schemaVersion: "mandelhowl.coverage-report.v2",
     modalModelId,
     runtimeAlgorithmRevision:
       GENERATED_FEEDBACK_SPEC.algorithmRevision,
     coverageContract: {
-      schemaVersion: "mandelhowl.coverage-report.v1",
+      schemaVersion: "mandelhowl.coverage-report.v2",
       schemaSha256: COVERAGE_REPORT_SCHEMA_SHA256,
     },
     generatedBy: {
-      algorithm: "deterministic-global-trajectory-search-v1",
+      algorithm: "deterministic-global-trajectory-search-v2",
       feedbackAlgorithmRevision:
         GENERATED_FEEDBACK_SPEC.algorithmRevision,
       perValueRuntimeLookup: "forbidden",
